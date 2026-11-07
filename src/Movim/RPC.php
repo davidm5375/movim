@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,26 +7,34 @@
 
 namespace Movim;
 
+use App\User;
 use Movim\Widget\Wrapper;
 
 class RPC
 {
     private static $json = [];
 
-    public static function call($funcname, ...$args)
+    public function __construct(private ?User $user = null, private ?string $sessionId = null)
     {
-        $payload = [
-            'func' => $funcname
-        ];
+    }
 
-        if (!empty($args)) {
-            $payload['p'] = $args;
+    public function call($funcname, ...$args)
+    {
+        $payload = new \stdClass;
+        $payload->func = $funcname;
+
+        if (! empty($args)) {
+            $payload->p = $args;
         }
 
         if (php_sapi_name() != 'cli') {
             array_push(self::$json, $payload);
-        } else {
-            writeOut($payload);
+        } elseif ($this->sessionId || $this?->user?->session) {
+            global $linkersManager;
+            $linkersManager->sendWebsocket(
+                $this->sessionId ?? $this->user->session->id,
+                $payload
+            );
         }
     }
 
@@ -38,16 +47,21 @@ class RPC
     /**
      * Handles incoming requests.
      */
-    public function handleJSON($request)
+    public function handleJSON(\stdClass $request, ?string $sid = null)
     {
-        if (!isset($request->w)) {
+        if (! isset($request->w)) {
             return;
         }
 
-        (new Wrapper)->runWidget(
-            (string)$request->w,
-            (string)$request->f,
-            isset($request->p) ? (array)$request->p : []
-        );
+        if (preg_match('/^ajax/', (string) $request->f)) {
+            $wrapper = new Wrapper;
+            $wrapper->runWidget(
+                widgetName: (string) $request->w,
+                method: (string) $request->f,
+                params: isset($request->p) ? (array) $request->p : [],
+                user: $this->user,
+                sessionId: $sid
+            );
+        }
     }
 }

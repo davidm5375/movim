@@ -1,0 +1,98 @@
+<?php
+
+namespace Moxl\Xec\Payload;
+
+use App\Message;
+use Movim\Librairies\SDPtoJingle;
+use Moxl\Stanza\Jingle as JingleStanza;
+
+class Jingle extends Payload
+{
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        $from = (string) $parent->attributes()->from;
+        $id = (string) $parent->attributes()->id;
+
+        $action = (string) $stanza->attributes()->action;
+
+        $message = Message::eventMessageFactory(
+            $this->me,
+            'jingle',
+            bareJid((string) $from),
+            (string) $stanza->attributes()->sid
+        );
+
+        // if ($linkersManager->currentCall($this->me->session->id)->hasId($message->thread)) {
+        $this->iq(to: $from, id: $id, type: 'result');
+
+        switch ($action) {
+            case 'session-initiate':
+                $this->pack($stanza, $from);
+                $this->deliver('jingle_sessioninitiate');
+                break;
+            case 'session-info':
+                if ($stanza->mute) {
+                    $this->pack($stanza, $from);
+                    $this->deliver(($stanza->{'jingle-participant'}
+                        && $stanza->{'jingle-participant'}->attributes()->xmlns == SDPtoJingle::JINGLE_PARTICIPANT_XMLNS)
+                        ? 'jingle_sessionmute_sfu'
+                        : 'jingle_sessionmute');
+                }
+                if ($stanza->unmute) {
+                    $this->pack($stanza, $from);
+                    $this->deliver(($stanza->{'jingle-participant'}
+                        && $stanza->{'jingle-participant'}->attributes()->xmlns == SDPtoJingle::JINGLE_PARTICIPANT_XMLNS)
+                        ? 'jingle_sessionunmute_sfu'
+                        : 'jingle_sessionunmute');
+                }
+                break;
+            case 'transport-info':
+                $this->pack($stanza, $from);
+                $this->deliver(($stanza->{'jingle-participant'}
+                    && $stanza->{'jingle-participant'}->attributes()->xmlns == SDPtoJingle::JINGLE_PARTICIPANT_XMLNS)
+                    ? 'jingle_transportinfo_sfu'
+                    : 'jingle_transportinfo');
+                break;
+            case 'session-terminate':
+                if (! $stanza->muji && linker($this->me->session->id)->currentCall->hasId($stanza->attributes()->sid)) {
+                    $message->type = 'jingle_end';
+                    $message->save();
+                    $this->pack($message);
+                    $this->deliver('jingle_message');
+                }
+
+                $this->pack((string) $stanza->attributes()->sid, $from);
+                $this->deliver('jingle_sessionterminate');
+                break;
+            case 'session-accept':
+                $this->pack($stanza, $from);
+                $this->deliver('jingle_sessionaccept');
+                break;
+            case 'content-add':
+                $this->pack($stanza, $from);
+                $this->deliver(($stanza->{'jingle-participant'}
+                    && $stanza->{'jingle-participant'}->attributes()->xmlns == SDPtoJingle::JINGLE_PARTICIPANT_XMLNS)
+                    ? 'jingle_contentadd_sfu'
+                    : 'jingle_contentadd');
+                break;
+            case 'content-modify':
+                $this->pack($stanza, $from);
+                $this->deliver('jingle_contentmodify');
+                break;
+            case 'content-remove':
+                $this->pack($stanza, $from);
+                $this->deliver(($stanza->{'jingle-participant'}
+                    && $stanza->{'jingle-participant'}->attributes()->xmlns == SDPtoJingle::JINGLE_PARTICIPANT_XMLNS)
+                    ? 'jingle_contentremove_sfu'
+                    : 'jingle_contentremove');
+                break;
+            case 'content-accept':
+                $this->pack($stanza, $from);
+                $this->deliver('jingle_contenctaccept');
+                break;
+        }
+        /*} else {
+            JingleStanza::unknownSession($from, $id);
+        }*/
+    }
+}

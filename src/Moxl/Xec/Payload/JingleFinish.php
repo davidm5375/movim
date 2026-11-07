@@ -1,0 +1,35 @@
+<?php
+
+namespace Moxl\Xec\Payload;
+
+use App\Message;
+
+class JingleFinish extends Payload
+{
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        // We can only reject the current session
+        if (! linker($this->me->session->id)->currentCall->hasId((string) $stanza->attributes()->id)) {
+            return;
+        }
+
+        $from = (string) $parent->attributes()->from;
+
+        if (! $stanza->muji) {
+            $message = Message::eventMessageFactory(
+                $this->me,
+                'jingle',
+                bareJid($from),
+                (string) $stanza->attributes()->id
+            );
+            $message->type = 'jingle_finish';
+            $message->save();
+
+            $this->pack($message);
+            $this->deliver('jingle_message');
+        }
+
+        $this->pack((string) $stanza->attributes()->id, (string) $parent->attributes()->from);
+        $this->deliver();
+    }
+}

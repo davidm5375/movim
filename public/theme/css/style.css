@@ -5,9 +5,6 @@
     font: inherit;
     vertical-align: baseline;
     list-style-type: none;
-}
-
-* {
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
@@ -16,7 +13,7 @@
 }
 
 html {
-    font-size: 8.25px;
+    font-size: 51%;
 }
 
 body {
@@ -31,11 +28,7 @@ body {
     clear: both;
 }
 
-.clear.padded {
-    height: 2rem;
-}
-
-body > * {
+body>* {
     display: block;
     height: 100%;
     box-sizing: border-box;
@@ -44,92 +37,108 @@ body > * {
     font-family: 'Roboto', sans-serif;
 }
 
-body > script {
+body>script {
     display: none;
 }
 
-a, a:link, a:visited {
+a,
+a:link,
+a:visited {
     text-decoration: none;
+}
+
+a:focus-visible:not(:hover) {
+    border-radius: 2px;
+    outline: 3px solid var(--movim-accent);
+    outline-offset: -2px;
+}
+
+a:link:hover,
+a:visited:hover {
+    text-decoration: underline;
+}
+
+/* Skip Main */
+#skip_main {
+    z-index: 1;
+    display: block;
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+}
+
+#skip_main:focus {
+    transform: translateY(0);
 }
 
 /* Navigation bar */
 
-body > nav {
-    width: 7rem;
-    max-width: 95%;
-    z-index: 2;
+body>nav {
+    display: flex;
+    flex-flow: column nowrap;
+    width: 6.5rem;
     position: absolute;
     overflow-y: auto;
-    left: 0;
     user-select: none;
+    padding: 1rem 0;
 }
 
-body > nav.active {
-    width: 45rem;
+body>nav hr {
+    margin: 0.5rem 0;
 }
 
-body > div.drawer:not(.empty) ~ main,
-body > div.drawer:not(.empty) ~ nav,
-body > div.dialog:not(:empty) ~ main,
-body > div.dialog:not(:empty) ~ nav,
-body > nav.active ~ main {
-    opacity: 0.3;
+body>div.drawer:not(:empty)~main,
+body>div.drawer:not(:empty)~nav,
+body>div.drawer:not(:empty)~#visio,
+body>div.dialog:not(:empty)~main,
+body>div.dialog:not(:empty)~nav,
+body>div.dialog:not(:empty)~#visio,
+body>nav.active~main {
+    opacity: 0.05;
     pointer-events: none;
 }
 
-body > nav.active ~ main {
+body>nav.active~main {
     transform: translateX(6rem);
 }
 
-body > nav li { /* Little hack for the navbar */
+body>nav li {
+    /* Little hack for the navbar */
     overflow: hidden;
 }
 
 @media screen and (max-width: 1024px) {
-    body > nav.active {
-        box-shadow: 0 0 1rem rgba(0, 0, 0, 0.1);
-    }
-
-    body > nav:not(.active) {
-        width: 45rem;
-        transform: translateX(-100%);
-    }
-
-    body > nav.moving {
-        transition: transform .25s var(--decelerate-easing);
-    }
-
-    body > nav.active.moving {
-        transition: transform .25s var(--accelerate-easing);
-        transform: translateX(0%);
+    body>nav {
+        padding: 0;
+        padding-bottom: 7rem;
     }
 }
 
 @media screen and (min-width: 1680px) {
-    body > nav,
-    body > nav:hover {
+
+    body>nav,
+    body>nav:hover {
         width: 15%;
     }
 
-    body > nav ~ main,
-    body > nav:hover ~ main {
+    body>nav~main,
+    body>nav:hover~main {
         width: 85%;
     }
 }
 
-body > nav.active:before {
+body>nav.active:before {
     display: none;
 }
 
 body:before {
     position: absolute;
     display: block;
-    background-color: rgb(var(--movim-main));
+    background: linear-gradient(90deg, var(--movim-accent) 0, transparent 50%, var(--movim-accent) 100%);
+    background-size: 200rem;
     width: 0;
     height: 0.25rem;
     content: '';
-    top: -0.25rem;
-    transition: width 4s ease-in-out, opacity 0.2s ease-in-out;
     opacity: 0;
     top: 0;
     left: 0;
@@ -137,27 +146,38 @@ body:before {
 }
 
 body.loading:before {
+    transition: width 4s ease-in-out, opacity 0.2s ease-in-out;
+    animation: loadingblink 3s linear infinite;
     width: 100%;
     opacity: 1;
 }
 
 body.finished:before {
-    transition: width 1s cubic-bezier(.68,0,0,1), opacity 1s ease-in-out;
+    transition: width 1s cubic-bezier(.68, 0, 0, 1), opacity 1s ease-in-out;
     width: 100%;
     opacity: 0;
+}
+
+@keyframes loadingblink {
+    from {
+        background-position: 0 0;
+    }
+
+    to {
+        background-position: 200rem 0;
+    }
 }
 
 /* Main */
 
 main {
-    width: 100%;
     position: absolute;
-    right: 0;
+    inset-inline-end: 0;
     top: 0;
     transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
     overflow-y: auto;
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch; /* Hack to have a non-blocking scrolling in iOS… */
+    width: 100%;
 
     display: flex;
     justify-content: center;
@@ -171,69 +191,62 @@ main {
     }
 }
 
-nav ~ main {
-    width: calc(100% - 7rem);
+nav~main {
+    width: calc(100% - 6.5rem);
     border-radius: 1rem 0 0 1rem;
 }
 
-main > div {
+main>div {
     width: 92rem;
     max-width: 100%;
 }
 
-main > div > * {
+main>div>* {
     max-width: 92rem;
     margin: 0 auto;
 }
 
-main > div.large {
+main>div.large {
     max-width: 130rem;
     width: 100%;
 }
 
-main > div.large > * {
+main>div.large>* {
     max-width: 100%;
 }
 
-main > aside {
+main>section#sidebar {
     width: 45rem;
 }
 
-main > aside + div {
+main>section#sidebar+div {
     width: 85rem;
-    padding-right: 1rem;
+    padding-inline-end: 1rem;
     box-sizing: border-box;
 }
 
-body[dir="rtl"] main > aside + div {
-    padding-left: 1rem;
-    padding-right: 0;
-}
-
 /* Two blocks */
-main > div:first-child:nth-last-child(2) {
-    width: 70%;
+main>div:first-child:nth-last-child(2) {
+    width: 75%;
 }
 
-main > div:first-child:nth-last-child(2) + div {
-    width: 30%;
+main>div:first-child:nth-last-child(2)+div {
+    width: 25%;
     overflow-y: auto;
-    box-shadow: 0 0 1rem rgba(0, 0, 0, 0.1);
+    overflow-x: hidden;
+    box-shadow: var(--elevation-2);
+    background-color: rgb(var(--movim-background));
 }
 
 @media screen and (max-width: 1024px) {
-    nav ~ main {
-        overflow-x: hidden;
+
+    nav.on_desktop~main,
+    nav~main.enabled {
         width: 100%;
-        border-radius: 0;
     }
 
-    nav ~ main.slide {
-        display: block;
-    }
-
-    main.slide > div:first-child:nth-last-child(2),
-    main.slide > div:first-child:nth-last-child(2) + div {
+    main.slide>div:first-child:nth-last-child(2),
+    main.slide>div:first-child:nth-last-child(2)+div {
         width: 100%;
         height: 100%;
         position: absolute;
@@ -241,117 +254,35 @@ main > div:first-child:nth-last-child(2) + div {
         left: 0;
     }
 
-    main.slide > div:first-child:nth-last-child(2) + div {
-        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    main.slide>div:first-child:nth-last-child(2)+div {
+        max-width: calc(100vw - 6.5rem);
     }
 
-    main.slide > div:first-child:nth-last-child(2) {
+    main.slide>div:first-child:nth-last-child(2) {
         z-index: 1;
-        box-shadow: 0 0 1.5rem rgba(0, 0, 0, 0.2);
+        box-shadow: var(--elevation-4);
         transform: translateX(100%);
     }
 
-    main.slide > div:first-child:nth-last-child(2).moving {
-        transition: transform .25s var(--decelerate-easing);
-        will-change: transform;
+    main.slide>div:first-child:nth-last-child(2).moving {
+        transition: transform .45s var(--decelerate-easing);
     }
 
-    main.slide.enabled > div:first-child:nth-last-child(2) {
+    main.slide.enabled>div:first-child:nth-last-child(2) {
         transform: translateX(0);
     }
 
-    main.slide.enabled > div:first-child:nth-last-child(2).moving {
-        transition: transform .25s var(--accelerate-easing);
-        will-change: transform;
+    main.slide.enabled>div:first-child:nth-last-child(2)+div {
+        margin-left: 6.5rem;
     }
 
-    main.slide.enabled > div:first-child:nth-last-child(2) + div {
-        opacity: 0.3;
-        transform: translateX(-2rem);
+    main>section#sidebar+div {
+        padding-inline-end: 0;
     }
 
-    main > aside + div {
-        padding-right: 0;
-    }
-
-    body[dir="rtl"] main > aside + div {
-        padding-left: 0;
-    }
-
-    main > aside {
+    main>section#sidebar {
         display: none;
     }
-}
-
-/* Actions bar */
-
-.actions {
-    padding-bottom: 7rem;
-}
-
-.actions > div:last-child {
-    width: 100%;
-    box-sizing: border-box;
-    text-align: right;
-    bottom: 0;
-    padding: 0.5rem;
-    position: absolute;
-    border-top: 1px solid rgba(var(--movim-font), 0.12);
-}
-
-.actions > div.no_bar:last-child {
-    border-top: none;
-}
-
-.actions.fixed > div:last-child {
-    position: fixed;
-    min-height: 7rem;
-    max-width: calc(100% - 5rem);
-    width: 100%;
-    padding: 0;
-}
-
-.actions > div:last-child form > div {
-    min-height: 0;
-    top: -0.5rem;
-}
-
-.actions > div:last-child form > div input {
-    margin: 0;
-    padding-top: 1.5rem;
-}
-
-.drawer.actions > div:last-child ul.tabs {
-    margin-top: -0.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 0;
-    overflow-x: auto;
-}
-
-.drawer.actions > div:last-child ul.tabs li {
-    height: 6.5rem;
-    border-top-width: 2px;
-    border-top-style: solid;
-    border-bottom-width: 0;
-    border-top-color: transparent;
-    border-radius: 0 0 1.25rem 1.25rem;
-}
-
-.drawer.actions > div:last-child ul.tabs li.active {
-    border-top-color: inherit;
-}
-
-.actions.scroll > section {
-    margin-bottom: 1rem;
-}
-
-.actions.scroll > section > article > section {
-    padding: 0;
-}
-
-.actions.fixed > div:last-child > * { /* Little hack to fake the 100% width that overflow the parent */
-    max-width: 92rem;
-    margin: 0 auto;
 }
 
 /* Hr */
@@ -368,7 +299,7 @@ hr.thick {
 /* Spin */
 
 .spin:empty {
-    background-image: url(../img/movim_cloud.svg);
+    background-image: url(../img/cloud_spinner.svg);
     background-repeat: no-repeat;
     background-position: center 33%;
     background-size: 9rem;
@@ -377,6 +308,28 @@ hr.thick {
 
 .spin:not(.list) {
     min-height: 80%;
+}
+
+/* Background loading */
+.shimmer {
+    background: linear-gradient(to right, rgba(var(--movim-font), 0), rgba(var(--movim-font), 0.05), rgba(var(--movim-font), 0));
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    animation-duration: 2s;
+    animation-fill-mode: forwards;
+    animation-iteration-count: infinite;
+    animation-name: placeHolderShimmer;
+    animation-timing-function: linear;
+}
+
+@keyframes placeHolderShimmer {
+    0% {
+        background-position: -800px 0
+    }
+
+    100% {
+        background-position: 800px 0
+    }
 }
 
 /* Avatar */
@@ -388,8 +341,13 @@ span.avatar {
     display: block;
     max-width: 100%;
     background-color: rgb(var(--movim-background-main));
-    animation: fadein 0.2s;
+    animation: fadeIn 0.2s;
     line-height: 100%;
+}
+
+img.avatar {
+    box-shadow: var(--elevation-1);
+    max-width: 210px;
 }
 
 span.avatar.icon {
@@ -398,7 +356,7 @@ span.avatar.icon {
     line-height: 25rem;
 }
 
-img.avatar:not([src=""]) + .placeholder {
+img.avatar:not([src=""])+.placeholder {
     display: none;
 }
 
@@ -413,38 +371,28 @@ img.avatar:not([src=""]) + .placeholder {
     box-sizing: border-box;
 }
 
-.placeholder > i:first-child {
+.placeholder>i:first-child {
     font-size: 14rem;
     opacity: 0.3;
 }
 
 .placeholder h1 {
-    color: #888;
+    opacity: 0.6;
     font-size: 2.5rem;
     line-height: 3rem;
     margin-bottom: 1rem;
 }
 
 .placeholder h4 {
-    color: #AAA;
+    opacity: 0.7;
 }
 
 .placeholder p {
     text-align: center;
 }
 
-/* Padded */
-
-@media screen and (max-width: 800px) {
-    .padded {
-        padding: 1rem;
-        box-sizing: border-box;
-    }
-
-    .padded_top_bottom {
-        padding: 0 1rem;
-        box-sizing: border-box;
-    }
+.placeholder ul.list p {
+    text-align: left;
 }
 
 /* Display/hide */
@@ -453,12 +401,18 @@ img.avatar:not([src=""]) + .placeholder {
     display: none !important;
 }
 
+.on_mobile_after:after {
+    display: none !important;
+}
+
 @media screen and (max-width: 1024px) {
-    .on_mobile {
-        display: inherit !important;
+
+    .on_mobile,
+    .on_mobile_after:after {
+        display: revert !important;
     }
 
-    .on_mobile.material-icons {
+    .on_mobile.material-symbols {
         display: inline !important;
     }
 
@@ -470,13 +424,14 @@ img.avatar:not([src=""]) + .placeholder {
 /* Tag */
 .tag {
     font-size: 1.5rem;
+    line-height: 1.5rem;
     padding: 0.2rem 0.5rem;
     border-radius: 0.25rem;
 }
 
 /* Disabled */
 
-.faded > * {
+.faded>* {
     -webkit-filter: grayscale(100%);
     filter: grayscale(100%);
     opacity: 0.5;
@@ -517,7 +472,8 @@ div#spinner {
 }
 
 ul.list li.hide,
-.hide {
+.hide,
+.button.hide {
     display: none;
 }
 
@@ -561,33 +517,140 @@ div.bubble .audio_player p {
 
 /* Animations */
 
-@keyframes fadein {
-    from { opacity: 0; }
-    to   { opacity: 1; }
+@keyframes slideUp {
+    0% {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-@keyframes fadetext {
-    0%,100% { color: transparent; }
-    25%,75% { color: white; } /* Enforce white for now as inherit is not applied correctly */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    25%,
+    75% {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeText {
+
+    0%,
+    100% {
+        color: transparent;
+    }
+
+    25%,
+    75% {
+        color: inherit;
+    }
+
+    /* Enforce white for now as inherit is not applied correctly */
 }
 
 @keyframes spin {
-    100% { transform:rotate(360deg); }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes shake {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    10% {
+        transform: rotate(-5deg);
+    }
+
+    20% {
+        transform: rotate(5deg);
+    }
+
+    30% {
+        transform: rotate(-10deg);
+    }
+
+    40% {
+        transform: rotate(10deg);
+    }
+
+    50% {
+        transform: rotate(-15deg);
+    }
+
+    60% {
+        transform: rotate(15deg);
+    }
+
+    70% {
+        transform: rotate(-20deg);
+    }
+
+    80% {
+        transform: rotate(20deg);
+    }
+
+    90% {
+        transform: rotate(0);
+    }
+
+    100% {
+        transform: rotate(0);
+    }
 }
 
 @keyframes zoom {
-    from { transform: scale(0.9); opacity: 0; }
-    to   { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
-@keyframes bottom-right {
-    from { transform: translate(10%, 20%); }
-    to   { transform: translate(0, 0); }
+@keyframes zoomOut {
+    from {
+        transform: scale(1.1);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
-@keyframes loadingopacity {
-    from { opacity: 0.2; }
-    to { opacity: 1; }
+@keyframes loadingOpacity {
+    from {
+        opacity: 0.2;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes ripple {
@@ -602,8 +665,28 @@ div.bubble .audio_player p {
     }
 }
 
+@keyframes shine {
+    to {
+        background-position-x: -200%;
+    }
+}
+
+@keyframes backgroundBlink {
+
+    0%,
+    50%,
+    100% {
+        opacity: 1;
+    }
+
+    25%,
+    75% {
+        opacity: 0.5;
+    }
+}
+
 body {
     --standard-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
-    --accelerate-easing: cubic-bezier(0.167, 0.167, 0, 1);
-    --decelerate-easing: cubic-bezier(1, 0, 0.833, 0.833);
+    --accelerate-easing: cubic-bezier(0.3, 0.0, 0.8, 0.15);
+    --decelerate-easing: cubic-bezier(0.05, 0.7, 0.1, 1.0);
 }

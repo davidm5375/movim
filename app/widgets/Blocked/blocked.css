@@ -1,3 +1,0 @@
-#blocked_widget_list:not(:empty) ~ .placeholder {
-    display: none;
-}

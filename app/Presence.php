@@ -2,59 +2,91 @@
 
 namespace App;
 
-use Movim\Model;
+use Awobaz\Compoships\Database\Eloquent\Model;
+use Carbon\Carbon;
 use Movim\Image;
-use Movim\Session;
+use Movim\ImageSize;
+use Movim\Jid;
 use Moxl\Xec\Action\Presence\Muc;
 
 class Presence extends Model
 {
-    protected $primaryKey = ['session_id', 'jid', 'resource'];
+    protected $primaryKey = ['session_id', 'jid', 'mucjid', 'resource'];
+    public bool $noMav = false;
     public $incrementing = false;
-
+    public $hatsToSave = [];
     protected $attributes = [
-        'session_id'    => SESSION_ID,
-        'muc'    => false
+        'mucjid' => '', // Required to use it in the primary key
+        'muc' => false,
     ];
-
     protected $fillable = [
         'session_id',
         'jid',
         'resource',
-        'mucjid'
+        'mucjid',
     ];
+    protected $with = ['hats'];
 
     public function roster()
     {
-        return $this->hasOne('App\Roster', 'jid', 'jid')
+        return $this->hasOne(Roster::class, 'jid', 'jid')
             ->where('session_id', $this->session_id);
     }
 
     public function capability()
     {
-        return $this->hasOne('App\Info', 'node', 'node')
+        return $this->hasOne(Info::class, 'node', 'node')
             ->whereNull('server');
     }
 
     public function contact()
     {
-        return $this->hasOne('App\Contact', 'id', 'jid');
+        return $this->hasOne(Contact::class, 'id', 'jid');
     }
 
-    public function getSeenAttribute()
+    public function hats()
     {
-        if ($this->value == 1) return;
+        return $this->hasMany(Hat::class, 'presence_id', 'id');
+    }
 
-        if ($this->resource == '' && $this->delay) {
+    public function getSeenAttribute(): ?string
+    {
+        if ($this->value == 1) {
+            return null;
+        }
+
+        // XEP-0319
+        if ($this->idle) {
+            return $this->idle;
+        }
+        // ...supersedes XEP-0256
+        elseif ($this->resource == '' && $this->delay) {
             $delay = strtotime($this->delay);
-            if ($this->last) $delay += $this->last;
+            if ($this->last) {
+                $delay += $this->last;
+            }
 
             return gmdate('Y-m-d H:i:s', $delay);
         } elseif ($this->delay) {
             return $this->delay;
-        } elseif ($this->idle) {
-            return $this->idle;
         }
+
+        return null;
+    }
+
+    /**
+     * Fallback case if we don't have a contact
+     */
+    public function getPicture(ImageSize $size = ImageSize::M): string
+    {
+        return getPicture($this->jid, $this->jid, $size);
+    }
+
+    public function getFullJidAttribute(): string
+    {
+        return ! empty($this->resource)
+            ? $this->jid . '/' . $this->resource
+            : $this->jid;
     }
 
     public function getPresencetextAttribute()
@@ -67,56 +99,146 @@ class Presence extends Model
         return getPresencesTxt()[$this->value];
     }
 
-    public function getConferencePictureAttribute()
+    public function getConferencePictureAttribute(): string
     {
-        return Image::getOrCreate($this->mucjid, 120);
+        return Image::getOrCreate($this->mucjid, width: 120) ?? avatarPlaceholder($this->resource);
     }
 
-    public function getConferenceColorAttribute()
+    public function getAffiliationTxtAttribute(): ?string
     {
-        return stringToColor(
-            $this->resource . 'groupchat'
-        );
+        if (array_key_exists($this->mucaffiliation, getPresenceAffiliations())) {
+            return getPresenceAffiliations()[$this->mucaffiliation];
+        }
+
+        return __('chatrooms.filter_connected');
     }
 
+    public function getConferenceColorAttribute(): string
+    {
+        return stringToColor($this->resource);
+    }
 
-    public static function findByStanza($stanza)
+    public function hasMuji(): bool
+    {
+        return (array_key_exists('muji_xml', $this->attributes) && $this->attributes['muji_xml'] != null)
+            || $this->muji_xml != null;
+    }
+
+    public function hasMujiScreenSharing(): bool
+    {
+        return $this->hasMuji() && str_contains($this->attributes['muji_xml'], 'name="slides"');
+    }
+
+    public function hasVideoMuji(): bool
+    {
+        // Simple string comparison, no need to parse the XML
+        foreach (explode('<content', $this->attributes['muji_xml']) as $content) {
+            if (str_contains($content, 'media="video"') && ! str_contains($content, 'name="slides"')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function hasSFU(): bool
+    {
+        return (array_key_exists('coin_xml', $this->attributes) && $this->attributes['coin_xml'] != null)
+            || $this->coin_xml != null;
+    }
+
+    public function getSFUUsersAttribute(): array
+    {
+        $users = [];
+
+        if ($this->hasSFU()) {
+            $xml = @simplexml_load_string($this->attributes['coin_xml'], options: LIBXML_NOERROR);
+
+            if ($xml !== false) {
+                foreach ($xml->users->user as $user) {
+                    $jid = substr((string) $user->attributes()->entity, 5);
+                    $users[$jid] = [
+                        'jid' => $jid,
+                    ];
+                }
+            }
+
+            $contacts = Contact::whereIn('id', array_keys($users))->get()->keyBy('id');
+
+            foreach ($users as $jid => $user) {
+                if ($contacts->has($jid)) {
+                    $user['name'] = $contacts->get($jid)->truename;
+                    $user['avatar'] = $contacts->get($jid)->getPicture(ImageSize::S);
+                    $users[$jid] = $user;
+                }
+            }
+        }
+
+        return $users;
+    }
+
+    public function getSFUUsersCountAttribute(): int
+    {
+        return count($this->getSFUUsersAttribute());
+    }
+
+    public function getSFUStartedAtAttribute(): ?Carbon
+    {
+        $startedAt = null;
+
+        if ($this->hasSFU()) {
+            $xml = simplexml_load_string($this->attributes['coin_xml'], options: LIBXML_NOERROR);
+
+            if ($xml !== false) {
+                if ($xml->{'conference-started-at'}) {
+                    $startedAt = Carbon::parse($xml->{'conference-started-at'}->attributes()->{'started-at'});
+                }
+            }
+        }
+
+        return $startedAt;
+    }
+
+    public static function findByStanza(User $user, \SimpleXMLElement $stanza): Presence
     {
         $temporary = new self;
-        $temporary->set($stanza);
+        $temporary->set($user, $stanza);
+
         return $temporary;
     }
 
-    public function set($stanza)
+    public function set(User $user, \SimpleXMLElement $stanza): bool
     {
-        $this->session_id = SESSION_ID;
-        $jid = explodeJid($stanza->attributes()->from);
-        $this->jid = $jid['jid'];
-        $this->resource = $jid['resource'] ?? '';
+        $this->session_id = $user->session->id;
+        $from = new Jid($stanza->attributes()->from);
+        $this->jid = $from->bareJid();
+        $this->resource = $from->resource ?? '';
+        $this->type = $stanza->attributes()->type ?? null;
 
-        if ($stanza->status && !empty((string)$stanza->status)) {
-            $this->status = (string)$stanza->status;
+        if ($stanza->status && ! empty((string) $stanza->status)) {
+            $this->status = (string) $stanza->status;
         }
 
         if ($stanza->c) {
-            $this->node = (string)$stanza->c->attributes()->node .
-                '#' . (string)$stanza->c->attributes()->ver;
+            $this->node = (string) $stanza->c->attributes()->xmlns == 'urn:xmpp:caps'
+                ? 'urn:xmpp:caps#' . (string) $stanza->c->hash->attributes()->algo . '.' . (string) $stanza->c->hash
+                : (string) $stanza->c->attributes()->node . '#' . (string) $stanza->c->attributes()->ver;
         }
 
-        $this->priority = ($stanza->priority) ? (int)$stanza->priority : 0;
+        $this->priority = ($stanza->priority) ? (int) $stanza->priority : 0;
 
-        if ((string)$stanza->attributes()->type == 'error') {
+        if ((string) $stanza->attributes()->type == 'error') {
             $this->value = 6;
         } elseif (
-            (string)$stanza->attributes()->type == 'unavailable'
-            || (string)$stanza->attributes()->type == 'unsubscribed'
+            (string) $stanza->attributes()->type == 'unavailable'
+            || (string) $stanza->attributes()->type == 'unsubscribed'
         ) {
             $this->value = 5;
-        } elseif ((string)$stanza->show == 'away') {
+        } elseif ((string) $stanza->show == 'away') {
             $this->value = 2;
-        } elseif ((string)$stanza->show == 'dnd') {
+        } elseif ((string) $stanza->show == 'dnd') {
             $this->value = 3;
-        } elseif ((string)$stanza->show == 'xa') {
+        } elseif ((string) $stanza->show == 'xa') {
             $this->value = 4;
         } else {
             $this->value = 1;
@@ -126,51 +248,67 @@ class Presence extends Model
         if ($stanza->x) {
             foreach ($stanza->children() as $name => $c) {
                 switch ($c->attributes()->xmlns) {
+                    case 'http://jabber.org/protocol/muc':
                     case 'http://jabber.org/protocol/muc#user':
-                        if (!isset($c->item)) {
+                        $this->muc = true;
+
+                        $session = linker($this->session_id)->session;
+
+                        if ($session->get(Muc::$mucId . (string) $stanza->attributes()->from)) {
+                            $this->mucjid = $user->id;
+                        }
+
+                        if (! isset($c->item)) {
                             break;
                         }
 
-                        $session = Session::start();
-
-                        $this->muc = true;
-
-                        /**
-                         * If we were trying to connect to that particular MUC
-                         * See Moxl\Xec\Action\Presence\Muc
-                         */
-                        if (
-                            $session->get(Muc::$mucId . (string)$stanza->attributes()->from)
-                            || (isset($c->status) && (int)$c->status->attributes()->code == 110)
-                        ) {
-                            $this->mucjid = \App\User::me()->id;
+                        if (! empty($c->xpath("//status[@code='110']"))) {
+                            $this->mucjid = $user->id;
                         } elseif ($c->item->attributes()->jid) {
-                            $this->mucjid = cleanJid((string)$c->item->attributes()->jid);
+                            $jid = new Jid((string) $c->item->attributes()->jid);
+                            $this->mucjid = $jid->bareJid();
+                            $this->mucjidresource = $jid->resource;
                         } else {
-                            $this->mucjid = (string)$stanza->attributes()->from;
+                            $this->mucjid = (string) $stanza->attributes()->from;
                         }
 
                         if ($c->item->attributes()->role) {
-                            $this->mucrole = (string)$c->item->attributes()->role;
+                            $this->mucrole = (string) $c->item->attributes()->role;
                         }
                         if ($c->item->attributes()->affiliation) {
-                            $this->mucaffiliation = (string)$c->item->attributes()->affiliation;
+                            $this->mucaffiliation = (string) $c->item->attributes()->affiliation;
                         }
+
+                        // XEP-0463: MUC Affiliations Versioning
+                        $this->noMav = (! $c->mav);
                         break;
                     case 'vcard-temp:x:update':
-                        if (!empty((string)$c->photo)) {
-                            $this->avatarhash = (string)$c->photo;
+                        // Ugly hack to fix https://xmpp.org/extensions/xep-0486.html#presence
+                        if ($user->session?->conferences()->where('conference', $this->jid)->exists()) {
+                            $this->muc = true;
+                        }
+
+                        if (! empty((string) $c->photo)) {
+                            $this->avatarhash = (string) $c->photo;
                         }
                         break;
                 }
             }
         }
 
+        if ($stanza->muji && $stanza->muji->attributes()->xmlns == 'urn:xmpp:jingle:muji:0') {
+            $this->muji_xml = $stanza->muji->asXML();
+        }
+
+        if ($stanza->{'conference-info'} && $stanza->{'conference-info'}->attributes()->xmlns == 'urn:ietf:params:xml:ns:conference-info') {
+            $this->coin_xml = $stanza->{'conference-info'}->asXML();
+        }
+
         if ($stanza->delay && $stanza->delay->attributes()->xmlns == 'urn:xmpp:delay') {
             $this->delay = gmdate(
                 'Y-m-d H:i:s',
                 strtotime(
-                    (string)$stanza->delay->attributes()->stamp
+                    (string) $stanza->delay->attributes()->stamp
                 )
             );
         }
@@ -179,24 +317,47 @@ class Presence extends Model
             $this->idle = gmdate(
                 'Y-m-d H:i:s',
                 strtotime(
-                    (string)$stanza->idle->attributes()->since
+                    (string) $stanza->idle->attributes()->since
                 )
             );
         }
 
         if ($stanza->query && $stanza->query->attributes()->xmlns == 'jabber:iq:last') {
-            $this->last = (int)$stanza->query->attributes()->seconds;
+            $this->last = (int) $stanza->query->attributes()->seconds;
         }
+
+        if ($stanza->hats && $stanza->hats->attributes()->xmlns == 'urn:xmpp:hats:0') {
+            foreach ($stanza->hats->hat as $hat) {
+                array_push($this->hatsToSave, new Hat([
+                    'uri' => (string) $hat->attributes()->uri,
+                    'title' => (string) $hat->attributes()->title,
+                    'hue' => $hat->attributes()->hue ? round((float) $hat->attributes()->hue, 2) : null,
+                ]));
+            }
+        }
+
+        if (
+            ($this->mucjid != null && ! validateJid($this->mucjid))
+            || ($this->mucjidresource != null && ! validateResource($this->mucjidresource))
+            || ! validateJid($this->jid)
+            || ($this->resource != '' && ! validateResource($this->resource))
+        ) {
+            return false;
+        }
+
+        return true;
     }
 
     public function toArray()
     {
-        $now = \Carbon\Carbon::now();
+        $now = Carbon::now();
+
         return [
             'session_id' => $this->attributes['session_id'] ?? null,
-            'jid' => $this->attributes['jid']  ?? null,
-            'resource' => $this->attributes['resource'] ?? null,
+            'jid' => $this->attributes['jid'] ?? null,
+            'resource' => $this->attributes['resource'] ?? '',
             'value' => $this->attributes['value'] ?? null,
+            'type' => $this->attributes['type'] ?? null,
             'priority' => $this->attributes['priority'] ?? null,
             'status' => $this->attributes['status'] ?? null,
             'node' => $this->attributes['node'] ?? null,
@@ -204,12 +365,15 @@ class Presence extends Model
             'last' => $this->attributes['last'] ?? null,
             'idle' => $this->attributes['idle'] ?? null,
             'muc' => $this->attributes['muc'] ?? null,
-            'mucjid' => $this->attributes['mucjid'] ?? null,
-            'mucaffiliation' => $this->attributes['mucaffiliation']  ?? null,
+            'mucjid' => $this->attributes['mucjid'] ?? '',
+            'mucjidresource' => $this->attributes['mucjidresource'] ?? null,
+            'mucaffiliation' => $this->attributes['mucaffiliation'] ?? null,
             'mucrole' => $this->attributes['mucrole'] ?? null,
             'created_at' => $this->attributes['created_at'] ?? $now,
             'updated_at' => $this->attributes['updated_at'] ?? $now,
             'avatarhash' => $this->attributes['avatarhash'] ?? null,
+            'muji_xml' => $this->attributes['muji_xml'] ?? null,
+            'coin_xml' => $this->attributes['coin_xml'] ?? null,
         ];
     }
 }

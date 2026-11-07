@@ -1,0 +1,21 @@
+<?php
+
+namespace Moxl\Xec\Action\BOB;
+
+use Moxl\Stanza\BOB;
+use Moxl\Xec\Action;
+
+class Answer extends Action
+{
+    protected $_to;
+    protected $_base64;
+    protected $_cid;
+    protected $_type;
+    protected $_id;
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(BOB::answer($this->_cid, $this->_type, $this->_base64), to: $this->_to, type: 'result', id: $this->_id);
+    }
+}

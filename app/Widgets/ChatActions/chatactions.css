@@ -1,0 +1,50 @@
+ul#message_preview {
+    background-color: rgb(var(--movim-background));
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem 0;
+}
+
+ul#message_preview li {
+    padding: 0.75rem;
+}
+
+ul#message_preview li > div.bubble::after {
+    white-space: nowrap;
+}
+
+ul#message_preview li div.bubble {
+    max-width: calc(100% - 2rem);
+    pointer-events: none;
+    background-color: rgb(var(--movim-background-main));
+}
+
+ul#message_preview.list li > div.bubble:not(.file)::before {
+    background-color: rgb(var(--movim-background-main));
+}
+
+ul#message_preview li div.bubble:not(.file) {
+    padding-right: 5rem;
+    margin-bottom: 0;
+    padding-bottom: 3rem;
+}
+
+ul#message_preview li.oppose {
+    flex-direction: row-reverse;
+}
+
+ul#message_preview li div.bubble div.message > p {
+    white-space: initial;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
+ul#message_preview li.reactions {
+    padding: 0 0.5rem;
+    padding-bottom: 0.75rem;
+}
+
+ul#message_preview li.reactions a.chip {
+    max-width: 100%;
+}

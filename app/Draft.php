@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Draft extends Model
 {
+    public const LENGTH_LIMIT = 16384; // ~64kb in UTF8 with 4 bytes per character
+
     protected $with = ['reply'];
     private $embeds = [];
 
@@ -17,30 +19,36 @@ class Draft extends Model
 
     public function user()
     {
-        return $this->belongsTo('App\User');
+        return $this->belongsTo(User::class);
     }
 
     public function embeds()
     {
-        return $this->hasMany('App\DraftEmbed');
+        return $this->hasMany(DraftEmbed::class);
     }
 
     public function reply()
     {
-        return $this->hasOne('App\Post', 'id', 'reply_id');
+        return $this->hasOne(Post::class, 'id', 'reply_id');
     }
 
     public function isNotEmpty()
     {
-        return !empty($this->title);
+        return ! empty($this->title);
+    }
+
+    public function isSmallEnough()
+    {
+        return mb_strlen($this->title) < self::LENGTH_LIMIT
+            && mb_strlen($this->content) < self::LENGTH_LIMIT;
     }
 
     public function tryFillPost()
     {
         $post = Post::where('server', $this->server)
-                    ->where('node', $this->node)
-                    ->where('nodeid', $this->nodeid)
-                    ->first();
+            ->where('node', $this->node)
+            ->where('nodeid', $this->nodeid)
+            ->first();
 
         if ($post) {
             $this->title = $post->title;
@@ -53,9 +61,11 @@ class Draft extends Model
             }
 
             foreach ($post->attachments()->whereIn('rel', ['enclosure', 'related'])->get() as $attachment) {
-                $embed = new DraftEmbed;
-                $embed->url = $attachment->href;
-                array_push($this->embeds, $embed);
+                if ($attachment->category != 'embed') {
+                    $embed = new DraftEmbed;
+                    $embed->url = $attachment->href;
+                    array_push($this->embeds, $embed);
+                }
             }
         }
     }

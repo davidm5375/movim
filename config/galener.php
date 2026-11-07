@@ -1,0 +1,13 @@
+<?php
+
+/**
+ * Movim Galener default values
+ */
+
+return [
+    'xmpp_ip' => env('GALENER_XMPP_IP', '127.0.0.1'),
+    'xmpp_port' => (int) env('GALENER_XMPP_PORT', 5347),
+    'xmpp_host' => env('GALENER_XMPP_HOST', null),
+    'xmpp_password' => env('GALENER_XMPP_PASSWORD', null),
+    'galene_path' => env('GALENER_GALENE_PATH', null),
+];

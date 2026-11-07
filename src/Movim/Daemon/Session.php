@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -7,113 +8,68 @@
 namespace Movim\Daemon;
 
 use Ratchet\ConnectionInterface;
-use App\Session as DBSession;
 
 class Session
 {
-    const DOWN_TIMER = 20;
-    protected $clients;       // Browser Websockets
-    public $timestamp;
-    protected $sid;           // Session id
-    protected $baseuri;
-    public $process;       // Linker
-    public $internalSocket; // Linker to Session Websocket
+    public const DOWN_TIMER = 10;
 
-    private $port;         // Daemon Websocket port
-    private $key;          // Daemon secure key
-
-    public $registered;
-    public $started;
-
+    private \SplObjectStorage $clients; // Browser Websockets
+    public int $timestamp;
+    public bool $registered = false;
+    public bool $started = false;
     private $state;
 
-    private $verbose;
-    private $debug;
-
-    private $language;
-    private $offset;
-
-    private $extensions = [
-        'pdo',
-        'mysqlnd',             // load first
-        'xml',
-        'imagick',
-        'curl',
-        'dom',
-        'mbstring',
-        'mysqli',
-        'pdo_mysql',
-        'pdo_pgsql',
-        'simplexml',
-        'json'
-    ];
-
     public function __construct(
-        $loop,
-        $sid,
-        $baseuri,
-        $port,
-        $key,
-        $language = false,
-        $offset = 0,
-        $verbose = false,
-        $debug = false
+        private SessionsWorker $worker,
+        public string $sid,
+        protected string $baseuri,
+        private string $language,
     ) {
-        $this->sid     = $sid;
-        $this->baseuri = $baseuri;
-        $this->language = $language;
-        $this->offset = $offset;
-
-        $this->port = $port;
-        $this->key = $key;
-
-        $this->verbose = $verbose;
-        $this->debug = $debug;
-
         $this->clients = new \SplObjectStorage;
-        $this->register($loop);
-
         $this->timestamp = time();
     }
 
     public function attach(ConnectionInterface $conn)
     {
-        $this->clients->attach($conn);
+        $this->clients->offsetSet($conn);
 
-        if ($this->verbose) {
-            echo colorize($this->sid, 'yellow') . " : " . colorize($conn->resourceId . " connected\n", 'green');
+        if (config('daemon.verbose')) {
+            echo colorize($this->sid, 'yellow') . ': ' . colorize($conn->resourceId . " connected\n", 'green');
         }
 
         if ($this->countClients() > 0) {
-            $this->stateOut('up');
+            $this->stateOut(state: 'up');
+            $this->pushEndpointState($conn, 'add');
         }
     }
 
-    public function attachInternal(ConnectionInterface $conn)
+    public function spawnLinker()
     {
-        $this->internalSocket = $conn;
-
-        if ($this->verbose) {
-            echo colorize($this->sid, 'yellow') . " : " . colorize($conn->resourceId . " internal connected\n", 'green');
-        }
+        $message = new \stdClass;
+        $message->func = 'new';
+        $message->sid = $this->sid;
+        $message->browserLocale = $this->language;
+        $this->worker->internalSocket->send(json_encode($message));
     }
 
     public function detach($loop, ConnectionInterface $conn)
     {
-        $this->clients->detach($conn);
+        $this->clients->offsetUnset($conn);
 
-        if ($this->verbose) {
-            echo colorize($this->sid, 'yellow') . " : " . colorize($conn->resourceId . " deconnected\n", 'red');
+        if (config('daemon.verbose')) {
+            echo colorize($this->sid, 'yellow') . ': ' . colorize($conn->resourceId . " deconnected\n", 'red');
         }
 
         if ($this->countClients() == 0) {
             $loop->addPeriodicTimer(Session::DOWN_TIMER, function ($timer) use ($loop) {
                 if ($this->countClients() == 0) {
-                    $this->stateOut('down');
+                    $this->stateOut(state: 'down');
                 }
                 $loop->cancelTimer($timer);
             });
         }
+
+        $this->pushEndpointState($conn, 'remove');
     }
 
     public function countClients()
@@ -121,103 +77,39 @@ class Session
         return $this->clients->count();
     }
 
-    private function register($loop)
-    {
-        // Only load the required extensions
-        $configuration = '-n ';
-
-        foreach ($this->extensions as $extension) {
-            $configuration .= '-dextension=' . $extension . '.so ';
-        }
-
-        // Enable Opcache
-        if (isOpcacheEnabled()) {
-            $configuration .= '-dzend_extension=opcache.so -dopcache.enable=1 -dopcache.enable_cli=1 ';
-        }
-
-        // Launching the linker
-        $this->process = new \React\ChildProcess\Process(
-            'exec php ' . $configuration . ' -d=memory_limit=512M linker.php ' . $this->sid,
-            null,
-            [
-                'sid'       => $this->sid,
-                'baseuri'   => $this->baseuri,
-                'language'  => $this->language,
-                'offset'    => $this->offset,
-                'verbose'   => $this->verbose,
-                'debug'     => $this->debug,
-                'key'       => $this->key,
-                'port'      => $this->port
-            ]
-        );
-        $this->process->start($loop);
-
-        // The linker died, we close properly the session
-        $this->process->on('exit', function ($output) {
-            if ($this->verbose) {
-                echo colorize($this->sid, 'yellow') . " : " . colorize("linker killed \n", 'red');
-            }
-
-            $this->process = null;
-            $this->closeAll();
-
-            $session = DBSession::find($this->sid);
-            if ($session) {
-                $session->delete();
-            }
-        });
-
-        $self = $this;
-
-        $this->process->stderr->on('data', function ($output) use ($self) {
-            if (strpos($output, 'registered') !== false) {
-                $self->registered = true;
-            } elseif (strpos($output, 'started') !== false) {
-                $self->started = true;
-            } else {
-                echo $output;
-            }
-        });
-    }
-
-    public function killLinker()
-    {
-        if (isset($this->process)) {
-            $this->process->terminate();
-            $this->process = null;
-        }
-    }
-
-    public function closeAll()
+    public function close()
     {
         foreach ($this->clients as $client) {
             $client->close();
         }
+
+        $this->worker->closeSession($this->sid);
     }
 
-    public function stateOut($state)
+    public function stateOut(string $state)
     {
         if ($this->state == $state) {
             return;
         }
 
-        if (isset($this->process)) {
+        if ($this->worker->internalSocket) {
             $this->state = $state;
-
-            if ($this->internalSocket) {
-                $msg = new \stdClass;
-                $msg->func = $this->state;
-                $msg = json_encode($msg);
-                $this->internalSocket->send($msg);
-            }
+            $msg = new \stdClass;
+            $msg->func = $this->state;
+            $msg->sid = $this->sid;
+            $this->worker->internalSocket->send(json_encode($msg));
         }
     }
 
-    public function messageIn($msg)
+    public function messageIn(string $msg)
     {
+        // Inject the session sid
+        $json = json_decode($msg);
+        $json->sid = $this->sid;
+
         $this->timestamp = time();
-        if ($this->internalSocket) {
-            $this->internalSocket->send($msg);
+        if ($this->worker->internalSocket) {
+            $this->worker->internalSocket->send(json_encode($json));
         }
         unset($msg);
     }
@@ -225,10 +117,22 @@ class Session
     public function messageOut($msg)
     {
         $this->timestamp = time();
-        if (!empty($msg)) {
+        if (! empty($msg)) {
             foreach ($this->clients as $client) {
                 $client->send($msg);
             }
+        }
+    }
+
+    public function pushEndpointState(ConnectionInterface $conn, string $state)
+    {
+        parse_str($conn->httpRequest->getUri()->getQuery(), $results);
+
+        if (isset($results['push']) && filter_var($results['push'], FILTER_VALIDATE_URL)) {
+            $message = new \stdClass;
+            $message->func = 'push_endpoint_' . $state;
+            $message->endpoint = $results['push'];
+            $this->messageIn(json_encode($message));
         }
     }
 }

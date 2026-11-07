@@ -1,20 +1,22 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+
 namespace Movim\Controller;
 
-use Movim\Route;
 use Movim\Cookie;
+use Movim\Route;
 use Movim\RPC;
 
 class Front extends Base
 {
-    public function handle($forcePage = null)
+    public function handle()
     {
-        $r = new Route;
-        $page = $r->find($forcePage);
+        $r = new Route($this->user);
+        $page = $r->find();
 
         if ($page === null) {
             $this->redirect($r->getRedirect());
@@ -23,98 +25,60 @@ class Front extends Base
         }
     }
 
-    /**
-     * Here we load, instanciate and execute the correct controller
-     */
     public function runRequest($request)
     {
         if ($request == 'ajax' || $request == 'ajaxd') {
-            $payload = json_decode(file_get_contents('php://input'));
+            $content = file_get_contents('php://input');
+
+            $payload = $request === 'ajax'
+                ? json_decode($content) // Simple ajax request to a Widget
+                : requestAPI('ajax', post: [ // Ajax request that is going to the daemon
+                    'sid' => $this->user->session->id,
+                    'json' => rawurlencode($content),
+                ]);
 
             if ($payload && $payload->b && $payload->b->c) {
                 $c = $this->loadController($payload->b->c);
-                if (is_callable([$c, 'load'])) $c->load();
+                $c->load();
 
-                $c->checkSession();
-                if ($c->name == 'login') {
+                if (($c->session_only && ! $this->user)
+                    || (! $c->session_only && ! in_array($payload->b->w, $c->listWidgets()))
+                ) {
                     header('HTTP/1.0 403 Forbidden');
                     exit;
                 }
-            } else {
-                header('HTTP/1.0 403 Forbidden');
-                exit;
             }
-        }
 
-        // Simple ajax request to a Widget
-        if ($request === 'ajax') {
-            $payload = json_decode(file_get_contents('php://input'));
-
-            if ($payload) {
-                $rpc = new RPC;
+            if (! empty($payload)) {
+                $rpc = new RPC(user: $this->user, sessionId: $this->user?->session?->id);
                 $rpc->handleJSON($payload->b);
                 $rpc->writeJSON();
             }
-            return;
-        }
 
-        // Ajax request that is going to the daemon
-        if ($request === 'ajaxd') {
-            requestAPI('ajax', 2, [
-                'sid' => SESSION_ID,
-                'json' => rawurlencode(file_get_contents('php://input'))
-            ]);
-
-            $rpc = new RPC;
-            $rpc->writeJSON();
             return;
         }
 
         $c = $this->loadController($request);
+        $c->load();
 
-        if (is_callable([$c, 'load'])) {
-
-            // Useful for the daemon
-            if (php_sapi_name() != 'cli' && $request == 'login') {
-                file_put_contents(CACHE_PATH.'baseuri', BASE_URI);
-            }
-
-            $c->name = $request;
-            $c->load();
-
-            if ($c->set_cookie) {
-                Cookie::refresh();
-            } else {
-                Cookie::clearCookieHeader();
-            }
-
-            $c->checkSession();
-            $c->dispatch();
-
-            // If the controller ask to display a different page
-            if ($request != $c->name) {
-                $this->redirect('login');
-            }
-
-            // We display the page!
-            $c->display();
+        if ($c->set_cookie) {
+            Cookie::set();
         } else {
-            \Utils::info('Could not call the load method on the current controller');
+            Cookie::clearCookieHeader();
         }
+
+        if ($c->session_only && ! $this->user) {
+            $this->redirect('login');
+        }
+
+        $c->dispatch();
+        $c->display();
     }
 
     public function loadController(string $page)
     {
-        $className = ucfirst($page).'Controller';
-        if (file_exists(APP_PATH . 'controllers/'.$className.'.php')) {
-            $controllerPath = APP_PATH . 'controllers/'.$className.'.php';
-        } else {
-            \Utils::error("Requested controller $className doesn't exist");
-            exit;
-        }
+        $className = 'App\\Controllers\\' . ucfirst($page) . 'Controller';
 
-        require_once $controllerPath;
-        return new $className();
+        return new $className($this->user);
     }
-
 }

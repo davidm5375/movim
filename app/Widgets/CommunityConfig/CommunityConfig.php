@@ -1,0 +1,126 @@
+<?php
+
+namespace App\Widgets\CommunityConfig;
+
+use App\Info;
+use Movim\Image;
+use Movim\Librairies\XMPPtoForm;
+use Movim\Widget\Base;
+use Moxl\Xec\Action\Avatar\Set as AvatarSet;
+use Moxl\Xec\Action\Pubsub\GetConfig;
+use Moxl\Xec\Action\Pubsub\SetConfig;
+use Moxl\Xec\Payload\Packet;
+
+class CommunityConfig extends Base
+{
+    public function load()
+    {
+        $this->registerEvent('pubsub_getconfig_handle', 'onConfig', 'community');
+        $this->registerEvent('pubsub_setconfig_handle', 'onConfigSaved', 'community');
+        $this->registerEvent('pubsub_setconfig_error', 'onConfigError', 'community');
+        $this->registerEvent('avatar_set_pubsub', 'onAvatarSet');
+    }
+
+    public function onConfig(Packet $packet)
+    {
+        [$config, $accessModel, $origin, $node, $advanced] = array_values($packet->content);
+
+        $view = $this->tpl();
+
+        $xml = new XMPPtoForm($this->me);
+        $form = $xml->getHTML($config->x);
+
+        $view->assign('form', $form);
+        $view->assign('server', $origin);
+        $view->assign('node', $node);
+        $view->assign('config', ($advanced) ? false : $xml->getArray($config->x));
+
+        $this->drawer('community_config', $view->draw('_communityconfig'), tiny: true);
+    }
+
+    public function onAvatarSet(Packet $packet)
+    {
+        $this->rpc('Dialog_ajaxClear');
+        $this->toast($this->__('avatar.updated'));
+    }
+
+    public function onConfigSaved()
+    {
+        $this->toast($this->__('communityaffiliation.config_saved'));
+    }
+
+    public function onConfigError(Packet $packet)
+    {
+        $this->toast(
+            $packet->content ??
+                $this->__('communityaffiliation.config_error')
+        );
+    }
+
+    public function ajaxGetAvatar($origin, $node)
+    {
+        if (! validateServerNode($origin, $node)) {
+            return;
+        }
+
+        $view = $this->tpl();
+        $view->assign('info', Info::where('server', $origin)
+            ->where('node', $node)
+            ->first());
+
+        $this->dialog($view->draw('_communityconfig_avatar'));
+    }
+
+    public function ajaxSetAvatar($origin, $node, $form)
+    {
+        if (! validateServerNode($origin, $node)) {
+            return;
+        }
+
+        $key = $origin . $node . 'avatar';
+
+        $image = new Image;
+        $image->fromBase64($form->photobin->value);
+        $image->setKey($key);
+        $image->save(format: 'jpeg', quality: 60, directory: IMAGES_DIR);
+
+        $image->load('jpeg', directory: IMAGES_DIR);
+
+        $r = $this->xmpp(new AvatarSet);
+        $r->setTo($origin)
+            ->setNode($node)
+            ->setUrl(Image::getOrCreate($key, format: 'jpeg', noTime: true, directory: IMAGES_DIR))
+            ->setData($image->toBase())
+            ->request();
+    }
+
+    public function ajaxGetConfig($origin, $node, $advanced = false)
+    {
+        if (! validateServerNode($origin, $node)) {
+            return;
+        }
+
+        $r = $this->xmpp(new GetConfig);
+        $r->setTo($origin)
+            ->setNode($node);
+
+        if ($advanced) {
+            $r->enableAdvanced();
+        }
+
+        $r->request();
+    }
+
+    public function ajaxSetConfig(\stdClass $data, $origin, $node)
+    {
+        if (! validateServerNode($origin, $node)) {
+            return;
+        }
+
+        $r = $this->xmpp(new SetConfig);
+        $r->setTo($origin)
+            ->setNode($node)
+            ->setData(formToArray($data))
+            ->request();
+    }
+}

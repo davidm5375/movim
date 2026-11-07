@@ -9,11 +9,10 @@ class Reported extends Model
     public $incrementing = false;
     protected $keyType = 'string';
     protected $table = 'reported';
-
     public $fillable = ['id'];
 
     public function users()
     {
-        return $this->belongsToMany('App\User')->withTimestamps();
+        return $this->belongsToMany(User::class)->withTimestamps();
     }
 }

@@ -4,130 +4,109 @@ input {
     filter: none;
 }
 
-li > form {
+li>form {
     display: block;
 }
 
-form > div:not(.clear):not(.control) {
+form>div:not(.clear):not(.control) {
     min-height: 9rem;
     position: relative;
     box-sizing: border-box;
 }
 
-form > div.compact:not(.clear):not(.control) {
+form>div.compact:not(.clear):not(.control) {
     min-height: 0;
 }
 
-li > form > div:not(.control) { /* If we put the form in a list */
-    min-height: 0;
-    padding-top: 0rem;
-    top: -1.5rem;
-}
-
-form > div label {
+form>div label {
     position: absolute;
     top: 1.5rem;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    max-width: 100%;
+    max-width: calc(100% - 3rem);
     user-select: none;
-    /*left: 0;*/ /* We force the left align */
 }
 
-form > div textarea[required] + label:after,
-form > div input[required] + label:after {
+form>div textarea[required]+label:after,
+form>div input[required]:not([type=checkbox])+label:after {
     content: '✱';
     margin-left: 0.5rem;
 }
 
-form > div.icon {
+form>div.icon {
     padding-left: 9rem;
 }
 
-form > div textarea,
-#hiddendiv {
+form>div textarea {
+    field-sizing: content;
     border: none;
     resize: none;
     line-height: 3rem;
     box-sizing: border-box;
 }
 
-form > div .select:not(.multi):after {
-    font-family: 'Material Icons';
+form>div .select:has(option:nth-child(2)):after {
+    font-family: 'Material Symbols';
     content: "\e5c5";
     display: block;
     font-size: 4rem;
-    color: #999;
+    color: rgba(var(--movim-font), 0.75);
     position: absolute;
-    right: 0rem;
     bottom: 0rem;
     pointer-events: none;
+    inset-inline-end: 0;
 }
 
-*[dir="rtl"] form > div .select::after {
-    left: 1.25rem;
-    right: auto;
+form>div .select:hover:after {
+    color: rgba(var(--movim-font), 0.6);
 }
 
-form > div .select:hover:after {
-    color: #555;
-}
-
-form > div .select select {
+form>div .select select {
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     width: 100%;
-    background-color: rgb(var(--movim-background-main));
+    background-color: transparent;
     background-image: none;
     padding-bottom: 1rem;
+    mask-image: linear-gradient(to right, black calc(100% - 15rem), transparent);
 }
 
-main > header form > div:not(.clear):not(.control) {
-    min-height: 0;
+*[dir="rtl"] form>div .select select {
+    mask-image: linear-gradient(to left, black calc(100% - 15rem), transparent);
 }
 
-main > header li > form > div:not(.clear):not(.control) {
-    top: 1rem;
-}
-
-main > header form > div:not(.clear):not(.control) > input,
-main > header form > div:not(.clear):not(.control) > .select {
-    padding-top: 0;
-}
-
-main > header form > div:not(.clear):not(.control) > .select option {
-    background-color: white;
-    color: initial;
-}
-
-main > header form > div:not(.clear):not(.control) > input,
-main > header form > div:not(.clear):not(.control) > .select:after,
-main > header form > div:not(.clear):not(.control) > .select select {
-    color: white;
+form>div .select:not(:has(option:nth-child(2))) {
+    pointer-events: none;
 }
 
 /* Placeholders to mimic FF */
 
-::-webkit-input-placeholder, /* WebKit browsers */
-:-ms-input-placeholder { /* Internet Explorer 10+ */
-    color: #fff;
-    opacity: 0.5;
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    transition: background-color 0s 50000s;
+    -webkit-text-fill-color: rgba(var(--movim-font), 0.87) !important;
 }
 
 /* Webkit weird CSS, sic */
 
-form > div .select select,
-form > div input:not([type=submit]),
-form > div textarea {
+form>div .select select,
+form>div input:not([type=submit]),
+form>div textarea {
     outline-width: 0;
 }
 
-form > div .labeled,
-form > div .select,
-form > div input:not([type=submit]),
-form > div textarea {
+form>div .select select option,
+form>div .select select optgroup {
+    background-color: rgb(var(--movim-background-main));
+}
+
+form>div .select,
+form>div input:not([type=submit]),
+form>div textarea {
     display: block;
     padding: 1rem 0;
     padding-top: 4rem;
@@ -135,41 +114,58 @@ form > div textarea {
     background-color: transparent;
     margin-bottom: 1rem;
 
-    -webkit-appearance: none; /* iOS */
-    border-radius: 0; /* iOS */
-    overflow: hidden; /* Fixme */
+    -webkit-appearance: none;
+    /* iOS */
+    border-radius: 0;
+    /* iOS */
+    overflow: hidden;
+    /* Fixme */
+
+    position: relative;
+    z-index: 1;
 }
 
-form > div .select,
-form > div input:not([type=submit]),
-form > div textarea {
+form>div .select,
+form>div input:not([type=submit]),
+form>div textarea {
     box-shadow: 0px 1px 0px rgba(var(--movim-font), 0.12);
 }
 
-form > div > img,
-form > div > p {
+form>div>img,
+form>div>p {
     padding-top: 1.5rem;
 }
 
-form > div .select {
+form>div .select {
     position: relative;
     padding-top: 4rem;
     padding-bottom: 0;
 }
 
-form > div.compact > .select,
-form > div.compact > input:not([type=submit]),
-form > div.compact > textarea {
+form>div.compact>.select,
+form>div.compact>input:not([type=submit]),
+form>div.compact>textarea {
     padding-top: 2.5rem;
 }
 
-/* Webkit hack */
-form > div input:not([type=submit]):-webkit-autofill {
-    -webkit-box-shadow: 0 0 0 50px white inset;
+/* Supporting text */
+ul.list li div span.supporting,
+form div>span.supporting {
+    line-height: 2.25rem;
+    font-size: 1.5rem;
+    color: rgba(var(--movim-font), 0.60);
+    display: inline-block;
+    margin-bottom: 1rem;
 }
-form > div input:not([type=submit]):-webkit-autofill:focus {
-    box-shadow: 0;
-    -webkit-text-fill-color: #333;
+
+/* Webkit hack */
+form>div input:not([type=submit]):-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 50px transparent inset;
+}
+
+form>div input:not([type=submit]):-webkit-autofill:focus {
+    box-shadow: none;
+    -webkit-text-fill-color: rgba(var(--movim-font), 0.87);
 }
 
 /* File */
@@ -181,23 +177,28 @@ input[type=file] {
 
 /* Checkbox element */
 
-form > div .checkbox > input[type="checkbox"],
-form > div .radio > input[type="radio"] {
-    display: none;
+form>div .checkbox>input[type="checkbox"],
+form>div .radio>input[type="radio"] {
     display: inline;
     width: 0;
     height: 0;
+    position: initial;
 }
 
-form > div .checkbox {
+form>div .checkbox {
     position: relative;
     width: 6rem;
     height: 4rem;
     margin-top: calc(50% - 2rem);
     direction: ltr;
+    left: -1rem;
 }
 
-form > div .checkbox > input[type="checkbox"]:before {
+form>div ul.list .control .checkbox {
+    left: 0;
+}
+
+form>div .checkbox>input[type="checkbox"]:before {
     content: '';
     display: block;
     position: absolute;
@@ -207,14 +208,19 @@ form > div .checkbox > input[type="checkbox"]:before {
     background-color: rgba(var(--movim-font), 0.12);
     box-sizing: border-box;
     transition: background-color 0.3s ease;
+    top: 0;
 }
 
-form > div .checkbox > input[type="checkbox"]:before {
+form>div .checkbox>input[type="checkbox"]:before {
     border-radius: 4rem;
-
 }
 
-form > div .checkbox > input[type="checkbox"] + label {
+form>div .checkbox>input[type="checkbox"]:focus:before {
+    outline: 3px solid var(--movim-accent);
+    outline-offset: 2px;
+}
+
+form>div .checkbox>input[type="checkbox"]+label {
     z-index: 1;
     display: block;
     background-color: rgba(var(--movim-font), 0.2);
@@ -223,31 +229,26 @@ form > div .checkbox > input[type="checkbox"] + label {
     border-radius: 2rem;
     top: 1rem;
     left: 1rem;
-    position: relative;
+    position: absolute;
     font-size: 2rem;
     text-align: center;
     line-height: normal;
-
     transition: left 0.3s ease, top 0.2s ease, width 0.2s ease, height 0.2s ease, box-shadow 0.1s ease;
 }
 
-form > div .checkbox > input[type="checkbox"] + label i {
+form>div .checkbox>input[type="checkbox"]+label i {
     vertical-align: middle;
     color: rgba(var(--movim-font), 0.5);
-    line-height: 1.5em;
+    line-height: 1.75em;
+    font-size: 1.75rem;
 }
 
-form > div .checkbox:hover > input[type="checkbox"] + label {
+form>div .checkbox:hover>input[type="checkbox"]+label {
     cursor: pointer;
     box-shadow: 0 0 0 1.75rem rgba(var(--movim-font), 0.05);
 }
 
-form > div .checkbox > input[type="checkbox"]:checked:before {
-    background-color: rgb(var(--movim-main));
-    border-color: rgb(var(--movim-main));
-}
-
-form > div .checkbox > input[type="checkbox"]:checked + label {
+form>div .checkbox>input[type="checkbox"]:checked+label {
     color: white;
     width: 3rem;
     height: 3rem;
@@ -256,13 +257,13 @@ form > div .checkbox > input[type="checkbox"]:checked + label {
     background-color: white;
 }
 
-form > div .checkbox > input[type="checkbox"]:checked + label i {
-    color: rgb(var(--movim-main));
+form>div .checkbox>input[type="checkbox"]:checked+label i {
+    color: var(--movim-accent);
 }
 
 /* Radio */
 
-form > div .radio > input[type="radio"] + label {
+form>div .radio>input[type="radio"]+label {
     display: inline-block;
     width: 2rem;
     height: 2rem;
@@ -275,69 +276,81 @@ form > div .radio > input[type="radio"] + label {
     margin-bottom: 0;
 }
 
-form > div .radio > input[type="radio"] + label:hover {
+form>div .radio>input[type="radio"]:focus+label {
+    outline: 3px solid var(--movim-accent);
+    outline-offset: 2px;
+}
+
+form>div .radio>input[type="radio"]+label:hover {
     cursor: pointer;
     background-color: rgba(var(--movim-font), 0.1);
     box-shadow: 0 0 0 1.5rem rgba(var(--movim-font), 0.1);
 }
 
-form > div .radio > input[type="radio"]:checked + label {
-    background-color: blue;
-    background-color: #009688;
-    border-color: #009688;
+form>div .radio>input[type="radio"]:checked+label {
     box-shadow: inset 0 0 0 0.4rem rgb(var(--movim-background-main));
 
 }
 
-form > div .radio > input[type="radio"]:checked + label:hover {
+form>div .radio>input[type="radio"]:checked+label:hover {
     box-shadow: inset 0 0 0rem 0.4rem rgb(var(--movim-background-main)), 0 0 0 1.55rem rgba(var(--movim-font), 0.05);
 }
 
 /* Disabled */
 
-form > div input:disabled,
-form > div input:disabled + label {
+form>div input:disabled,
+form>div input:disabled+label,
+form>div select:disabled,
+form>div select:disabled+label,
+form>div textarea:disabled,
+form>div textarea:disabled+label {
     opacity: 0.5;
 }
 
 /* Readonly */
 
-form > div input[readonly] {
+form>div input[readonly],
+form>div textarea[readonly] {
     opacity: 0.75;
 }
 
 /* Button */
 
 .button.oppose {
-    float: right;
-}
-
-*[dir="rtl"] .button.oppose {
-    float: left;
+    float: inline-end;
 }
 
 .button:disabled,
 .button.inactive {
     opacity: 0.6;
-    pointer-events:none;
+    pointer-events: none;
+}
+
+.button:focus-visible {
+    outline: 3px solid var(--movim-accent);
+    outline-offset: 2px;
 }
 
 .button,
 input[type=button] {
-    -webkit-appearance:none; /* iOS */
+    -webkit-appearance: none;
+    /* iOS */
     min-width: 5rem;
     text-align: center;
     display: inline-block;
     box-sizing: border-box;
     font-size: 2rem;
-    font-weight: 700;
+    font-weight: 500;
     line-height: 5rem;
     height: 5rem;
     margin: 0.75rem 0.25rem;
     border-radius: 3rem;
     padding: 0 2rem;
     border: 0;
-    transition: background 0.3s ease, box-shadow 0.3s ease;
+    transition: background 0.3s ease,
+        box-shadow 0.3s ease,
+        border-radius 0.2s var(--standard-easing),
+        filter 0.2s var(--standard-easing);
     background-image: none;
     user-select: none;
 }
@@ -350,8 +363,8 @@ input[type=button] {
     box-shadow: var(--elevation-2);
 }
 
-p > .button,
-p> input[type=button] {
+p>.button,
+p>input[type=button] {
     margin: 0.75rem 0;
 }
 
@@ -364,7 +377,9 @@ input[type=button]:not(.color) {
     background-color: white;
 }
 
-.button:active {
+.button:active,
+input[type=button]:active {
+    filter: saturate(0.8) brightness(0.9);
     box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.23), 0 0.5rem 1.25rem rgba(0, 0, 0, 0.16);
 }
 
@@ -376,14 +391,17 @@ input[type=button].flat {
 }
 
 .button:hover,
-ul.list.actions > li:hover,
+a.button:link:hover,
+a.button:visited:hover,
 input[type=button]:hover {
     cursor: pointer;
+    text-decoration: none;
+    border-radius: 1rem;
 }
 
-.button.flat:hover,
-.button.flat.on,
-input[type=button].flat:hover {
+.button.flat:not(.color):hover,
+.button.flat:not(.color).on,
+input[type=button].flat:not(.color):hover {
     background-color: rgba(var(--movim-element-action), 0.2);
 }
 
@@ -392,9 +410,10 @@ input[type=button]:focus {
     border: 0;
 }
 
-.button.flat:focus,
-input[type=button].flat:focus {
+.button.flat:not(.color):focus,
+input[type=button].flat:not(.color):focus {
     background-color: rgba(var(--movim-element-action), 0.4);
+    font-variation-settings: 'FILL' 1;
 }
 
 .button.action {
@@ -410,7 +429,7 @@ input[type=button].flat:focus {
     font-size: 3.5rem;
     animation: zoom 0.3s;
     padding: 0;
-    border-radius: 2rem;
+    border-radius: 2.5rem;
     margin: 0;
 }
 
@@ -420,31 +439,32 @@ input[type=button].flat:focus {
     line-height: 5rem;
 }
 
-body > nav.active ~ main .button.action,
-body > div.dialog:not(:empty) ~ main .button.action,
-body > div.drawer:not(:empty):not(.empty) ~ main .button.action {
+body>nav.active~main .button.action,
+body>div.dialog:not(:empty)~main .button.action,
+body>div.drawer:not(:empty):not(.empty)~main .button.action {
     transform: scale(0.9);
     opacity: 0;
 }
 
-.button.action,
-ul.list.actions > li > p {
+.button.action {
     box-shadow: var(--elevation-3);
 }
 
-ul.list.actions > li:hover .button.action,
-ul.list.actions > li:hover p,
 .button.action:hover {
     box-shadow: var(--elevation-4);
 }
 
 .button.action,
-.button.action > i {
-    transition: all 0.15s ease 0s;
+.button.action>i {
+    transition: all 0.4s ease 0s;
 }
 
-.button.action.active > i {
+.button.action.active>i {
     transform: rotate(45deg);
+}
+
+ul.list li div>.button {
+    margin: 0.25rem;
 }
 
 li.action div.action .button {
@@ -457,50 +477,36 @@ li.action div.action .button {
     margin: 0 0.25rem;
 }
 
-.snackbar#status_websocket:not(.hide) ~ main > aside ~ * .button.action {
+.snackbar#status_websocket:not(.hide)~main>section#sidebar~* .button.action {
     display: none;
 }
 
 @media screen and (min-width: 1025px) {
-    main > div:first-child:nth-last-child(2) + div .button.action {
-        right: calc(70% - 3rem);
+    main>div:first-child:nth-last-child(2)+div .button.action {
+        right: calc(75% - 3rem);
     }
 
-    *[dir="rtl"] main > div:first-child:nth-last-child(2) + div .button.action {
+    *[dir="rtl"] main>div:first-child:nth-last-child(2)+div .button.action {
         right: auto;
-        left: calc(70% + 2rem);
+        left: calc(75% - 3rem);
     }
 
-    aside ~ * .button.action {
+    section#sidebar~* .button.action {
         right: calc(50% - 21rem);
     }
 
-    *[dir="rtl"] aside ~ * .button.action {
+    *[dir="rtl"] section#sidebar~* .button.action {
         right: auto;
-        left: calc(50% - 14rem);
+        left: calc(50% - 21rem);
     }
 }
 
 @media screen and (min-width: 1680px) {
-    main > div:first-child:nth-last-child(2) + div .button.action {
-        right: calc(59.5% + 2rem);
+    main>div:first-child:nth-last-child(2)+div .button.action {
+        right: calc(63.75% + 2rem);
     }
 
-    aside ~ * .button.action {
+    section#sidebar~* .button.action {
         right: calc(42.5% - 17rem);
     }
-}
-
-/* The textarea hidden div */
-
-#hiddendiv {
-    position: fixed;
-    display: block;
-    z-index: -1;
-    opacity: 0;
-    height: auto;
-    overflow: hidden;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: break-word; /* future version of deprecated 'word-wrap' */
 }

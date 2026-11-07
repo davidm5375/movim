@@ -1,1 +1,0 @@
-<i class="material-icons icon yellow">star</i> {$c->__('chat.muc_admin', $message->thread)}

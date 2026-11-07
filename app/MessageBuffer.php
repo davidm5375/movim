@@ -4,8 +4,6 @@ namespace App;
 
 use Illuminate\Database\Capsule\Manager as DB;
 
-use App\Message;
-
 class MessageBuffer
 {
     protected static $instance;
@@ -14,8 +12,8 @@ class MessageBuffer
 
     public static function getInstance()
     {
-        if (!isset(self::$instance)) {
-            self::$instance = new self();
+        if (! isset(self::$instance)) {
+            self::$instance = new self;
         }
 
         return self::$instance;
@@ -36,18 +34,18 @@ class MessageBuffer
                 // We delete all the messages that might already be there
                 $table = DB::table('messages');
                 $first = $this->_models->first();
-                $table = $table->where([
-                    ['user_id', $first['user_id']],
-                    ['jidfrom', $first['jidfrom']],
-                    ['id', $first['id']],
-                ]);
+                $table = $table->where(function ($query) use ($first) {
+                    $query->where('user_id', $first['user_id'])
+                        ->where('jidfrom', $first['jidfrom'])
+                        ->where('id', $first['id']);
+                });
 
                 $this->_models->skip(1)->each(function ($message) use ($table) {
-                    $table->orWhere([
-                        ['user_id', $message['user_id']],
-                        ['jidfrom', $message['jidfrom']],
-                        ['id', $message['id']],
-                    ]);
+                    $table->orWhere(function ($query) use ($message) {
+                        $query->where('user_id', $message['user_id'])
+                            ->where('jidfrom', $message['jidfrom'])
+                            ->where('id', $message['id']);
+                    });
                 });
                 $table->delete();
 
@@ -68,9 +66,9 @@ class MessageBuffer
 
     public function append(Message $message, $call)
     {
-        //if (empty($message->mid)) {
-            $this->_models[$message->user_id.$message->jidfrom.$message->id] = $message->toRawArray();
-            $this->_calls->push($call);
+        // if (empty($message->mid)) {
+        $this->_models[$message->user_id . $message->jidfrom . $message->id] = $message->toRawArray();
+        $this->_calls->push($call);
         /*} else {
             $message->save();
             $call();

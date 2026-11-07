@@ -1,0 +1,47 @@
+<?php if ($this->js_check) { ?>
+<noscript>
+    <style type="text/css">main {display: none;}</style>
+    <ul class="list thick">
+        <li>
+            <span class="primary icon red">
+                <i class="material-symbols">info</i>
+            </span>
+            <div>
+                <p><?php echo __('global.no_js'); ?></p>
+            </div>
+        </li>
+    </ul>
+</noscript>
+<?php } ?>
+
+<div role="status" id="snackbar" class="snackbar"></div>
+<div role="status" id="status_websocket" class="snackbar hide">
+    <ul class="list thick active">
+        <li onclick="MovimWebsocket.init()">
+            <span class="primary icon gray spin">
+                <i class="material-symbols">progress_activity</i>
+            </span>
+            <span class="primary icon gray">
+                <i class="material-symbols">cloud_sync</i>
+            </span>
+            <div>
+                <p class="line two">
+                    <?php echo __('error.websocket_connect'); ?>
+                </p>
+                <p class="line two">
+                    <?php echo __('error.websocket'); ?>
+                </p>
+            </div>
+        </li>
+    </ul>
+</div>
+<?php $this->widget('Dialog');?>
+<?php $this->widget('Drawer');?>
+<?php $this->widget('Confirm');?>
+<?php $this->widget('Preview');?>
+<?php $this->widget('Notif');?>
+<?php $this->widget('Toast');?>
+<?php if ($this->user) { ?>
+    <?php $this->widget('Visio');?>
+<?php } ?>
+<div id="endcommon" class="hide"></div>

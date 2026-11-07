@@ -1,0 +1,33 @@
+<?php
+
+namespace Moxl\Xec\Action\Roster;
+
+use App\Roster as DBRoster;
+use Moxl\Stanza\Roster;
+use Moxl\Xec\Action;
+
+class AddItem extends Action
+{
+    protected $_to;
+    protected $_name;
+    protected $_group;
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(Roster::add($this->_to, $this->_name, $this->_group), type: 'set');
+    }
+
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        $roster = new DBRoster;
+        $roster->session_id = $this->sessionId;
+        $roster->jid = $this->_to;
+        $roster->group = $this->_group;
+        $roster->name = $this->_name;
+        $roster->upsert();
+
+        $this->pack($this->_to);
+        $this->deliver();
+    }
+}

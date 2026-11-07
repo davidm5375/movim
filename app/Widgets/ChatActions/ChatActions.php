@@ -1,0 +1,291 @@
+<?php
+
+namespace App\Widgets\ChatActions;
+
+use App\Message;
+use App\Url;
+use App\Widgets\Chat\Chat;
+use App\Widgets\ContactActions\ContactActions;
+use Illuminate\Database\Capsule\Manager as DB;
+use Movim\Widget\Base;
+use Moxl\Xec\Action\Blocking\Block;
+use Moxl\Xec\Action\Blocking\Unblock;
+use Moxl\Xec\Action\Message\Moderate;
+use Moxl\Xec\Action\Message\Retract;
+use Moxl\Xec\Payload\Packet;
+
+class ChatActions extends Base
+{
+    public function load()
+    {
+        $this->addjs('chatactions.js');
+        $this->addcss('chatactions.css');
+
+        $this->registerEvent('blocking_block_handle', 'onBlock');
+        $this->registerEvent('blocking_unblock_handle', 'onUnblock');
+    }
+
+    public function onBlock(Packet $packet)
+    {
+        $this->toast($this->__('blocked.account_blocked'));
+        $this->rpc('Chat_ajaxGet', $packet->content);
+    }
+
+    public function onUnblock(Packet $packet)
+    {
+        $this->toast($this->__('blocked.account_unblocked'));
+        $this->rpc('Chat_ajaxGet', $packet->content);
+    }
+
+    /**
+     * @brief Get a Drawer view of a contact
+     */
+    public function ajaxGetContact(string $jid)
+    {
+        $c = new ContactActions($this->me, sessionId: $this->sessionId);
+        $c->ajaxGetDrawer($jid);
+    }
+
+    /**
+     * @brief Block the contact
+     */
+    public function ajaxBlock(string $jid)
+    {
+        $block = $this->xmpp(new Block);
+        $block->setJid($jid);
+        $block->request();
+    }
+
+    /**
+     * @brief Unblock the contact
+     */
+    public function ajaxUnblock(string $jid)
+    {
+        $unblock = $this->xmpp(new Unblock);
+        $unblock->setJid($jid);
+        $unblock->request();
+    }
+
+    /**
+     * @brief Display the message dialog
+     */
+    public function ajaxShowMessageDialog(string $mid)
+    {
+        $message = $this->me->messages()
+            ->where('mid', $mid)
+            ->with('reactions.contact')
+            ->first();
+
+        if ($message && $message->isClassic() && ! $message->retracted) {
+            $view = $this->tpl();
+
+            $message->body = $message->inlinedBody;
+
+            $view->assign('message', $message);
+
+            if ($message->isMuc()) {
+                $view->assign('conference', $this->me->session->conferences()
+                    ->where('conference', $message->jidfrom)
+                    ->with('info')
+                    ->first());
+            } else {
+                $view->assign('conference', null);
+            }
+
+            $this->rpc('ChatActions.setMessage', $message);
+            $this->dialog($view->draw('_chatactions_message_dialog'));
+        }
+    }
+
+    /**
+     * @brief Display the search dialog
+     */
+    public function ajaxShowSearchDialog(string $jid, ?bool $muc = false)
+    {
+        if (DB::getDriverName() != 'pgsql') {
+            return;
+        }
+
+        $view = $this->tpl();
+        $view->assign('jid', $jid);
+        $view->assign('muc', $muc);
+
+        $this->drawer('chat_search', $view->draw('_chatactions_search'));
+
+        $this->rpc('ChatActions.focusSearch');
+    }
+
+    public function ajaxSearchMessages(string $jid, string $keywords, ?bool $muc = false)
+    {
+        if (DB::getDriverName() != 'pgsql') {
+            return;
+        }
+        if (! validateJid($jid)) {
+            return;
+        }
+
+        if (! empty($keywords)) {
+            $keywords = str_replace(' ', ' & ', trim($keywords));
+
+            $messagesQuery = Message::jid($this->me, $jid)
+                ->selectRaw('*, ts_headline(\'simple\', body, plainto_tsquery(\'simple\', ?), \'StartSel=<mark>,StopSel=</mark>\') AS headline', [$keywords])
+                ->whereRaw('to_tsvector(\'simple\', body) @@ to_tsquery(\'simple\', ?)', [$keywords])
+                ->orderBy('published', 'desc')
+                ->where('encrypted', false)
+                ->where('retracted', false)
+                ->take(20);
+
+            $messagesQuery = $muc
+                ? $messagesQuery->whereIn('type', Message::MESSAGE_TYPE_MUC)->whereNull('subject')
+                : $messagesQuery->whereIn('type', Message::MESSAGE_TYPE);
+
+            $messages = $messagesQuery->get();
+
+            $view = $this->tpl();
+            $view->assign('messages', $messages);
+            $this->rpc('MovimTpl.fill', '#chat_search', $view->draw('_chatactions_search_result'));
+        } else {
+            $this->rpc('MovimTpl.fill', '#chat_search', $this->prepareSearchPlaceholder());
+        }
+    }
+
+    public function prepareMessage(Message $message, ?bool $search = false)
+    {
+        $view = $this->tpl();
+        $view->assign('message', $message);
+        $view->assign('search', $search);
+
+        return $view->draw('_chatactions_message');
+    }
+
+    public function prepareSearchPlaceholder()
+    {
+        $view = $this->tpl();
+
+        return $view->draw('_chatactions_search_placeholder');
+    }
+
+    public function ajaxCopiedMessageText()
+    {
+        $this->toast($this->__('chatactions.copied_text'));
+    }
+
+    public function ajaxEnableWideConferenceCall(string $conference)
+    {
+        $conference = $this->me->session->conferences()->where('conference', $conference)->with('members')->first();
+
+        if ($sfu = $conference->hasRelatedSFUService()) {
+            $this->dialog($this->view('_chatactions_enable_wide_conference_call', [
+                'conference' => $conference,
+                'sfu' => $sfu,
+            ]));
+        }
+    }
+
+    /**
+     * @brief Edit a message
+     */
+    /*public function ajaxEditMessage($mid)
+    {
+        $this->rpc('Dialog.clear');
+        $this->rpc('Chat.editMessage', $mid);
+    }*/
+
+    /**
+     * @brief Retract a message
+     *
+     * @param  string  $mid
+     * @return void
+     */
+    public function ajaxHttpDaemonRetract($mid)
+    {
+        $retract = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        if ($retract && ($retract->stanzaid || $retract->originid)) {
+            $this->rpc('Dialog.clear');
+
+            $r = $this->xmpp(new Retract);
+            $r->setTo($retract->isMuc() ? $retract->jidfrom : $retract->jidto)
+                ->setType($retract->type)
+                ->setId($retract->stanzaid ?? $retract->originid)
+                ->request();
+
+            if (! $retract->isMuc()) {
+                $retract->retract();
+                $retract->save();
+            }
+
+            $packet = new Packet;
+            $packet->content = $retract;
+
+            $c = new Chat($this->me, sessionId: $this->sessionId);
+            $c->onMessage($packet, false, true);
+        }
+    }
+
+    /**
+     * @brief Moderate a message
+     *
+     * @param  string  $mid
+     * @return void
+     */
+    public function ajaxHttpDaemonModerate($mid)
+    {
+        $retract = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        if ($retract && $retract->stanzaid) {
+            $this->rpc('Dialog.clear');
+
+            $r = $this->xmpp(new Moderate);
+            $r->setTo($retract->jidfrom)
+                ->setStanzaid($retract->stanzaid)
+                ->request();
+        }
+    }
+
+    /**
+     * @brief Try to resolve a message URL
+     */
+    public function ajaxResolveMessage(string|int $mid)
+    {
+        $message = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        if ($message && $message->resolved == false) {
+            Url::resolve(htmlspecialchars_decode(trim($message->body)))->then(function (Url $url) use ($message) {
+                $message->urlid = $url->id;
+
+                if ($url->messageFile) {
+                    $messageFile = $url->messageFile;
+                    $messageFile->message_mid = $message->mid;
+                    $messageFile->save();
+                }
+
+                $message->resolved = true;
+                $message->save();
+
+                $this->rpc('Chat.refreshMessage', $message->mid);
+            });
+        }
+    }
+
+    /**
+     * @brief Resolve a URL
+     */
+    public function ajaxResolveUrl(string $url)
+    {
+        Url::resolve(trim($url), timeout: 5)->then(function (Url $url) {
+            $this->rpc('MovimTpl.fill', '#embed', (new Chat($this->me, sessionId: $this->sessionId))->prepareEmbed($url));
+            $this->rpc('Chat.finishedSending');
+            $this->rpc('Chat.disableSending');
+        }, function () {
+            $this->rpc('Chat.finishedSending');
+            $this->rpc('Chat.disableSending');
+        });
+    }
+}

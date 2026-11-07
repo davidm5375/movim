@@ -1,0 +1,124 @@
+#rooms {
+    animation: fadeIn 0.5s;
+    display: flex;
+    flex-direction: column;
+}
+
+#rooms[data-scroll] li.subheader:first-child {
+    animation: backgroundBlink 1s;
+}
+
+#rooms>ul.list>li i.call {
+    margin-right: 0.75rem;
+}
+
+#rooms>ul.list {
+    order: 1;
+}
+
+#rooms>ul.list.head {
+    order: 0;
+}
+
+#rooms ul li.room {
+    white-space: nowrap;
+    overflow-x: hidden;
+}
+
+#gateway_rooms:empty {
+    min-height: 0;
+}
+
+#gateway_rooms:not(:empty)+div {
+    display: none;
+}
+
+#rooms ul.list.rooms li:not(.connecting) li span.control.connecting {
+    display: none;
+}
+
+#rooms ul.list.rooms li span.control.edition {
+    position: absolute;
+    display: block;
+    right: -7rem;
+    margin: 0;
+    width: 5.5rem;
+    background-color: rgb(var(--movim-background));
+    top: 0;
+    height: 5.25rem;
+    line-height: 5.25rem;
+    box-shadow: var(--elevation-1);
+    transition: right 0.2s var(--accelerate-easing);
+}
+
+#rooms ul.list.rooms li:hover span.control.edition {
+    right: 0;
+    transition: right 0.2s var(--decelerate-easing) 0.75s;
+}
+
+#rooms ul.list.rooms {
+    display: flex;
+    flex-direction: column;
+}
+
+#rooms ul.list.rooms>li:not(.connected) span.primary {
+    opacity: 0.25;
+    filter: grayscale(0.5);
+}
+
+#rooms ul.toggle_show li div>p:first-child {
+    line-height: initial;
+}
+
+#rooms ul.toggle_show li div>p {
+    line-height: 2.5rem;
+    font-size: 1.75rem;
+    color: rgba(var(--movim-font), 0.6);
+}
+
+#rooms ul.list.rooms:empty~ul.toggle_show,
+#rooms ul.list.rooms:not(:empty):not(.all)~ul.toggle_show>li span.primary i:first-child,
+#rooms ul.list.rooms:not(:empty).all~ul.toggle_show>li span.primary i:last-child,
+#rooms ul.list.rooms:not(:empty):not(.all)~ul.list.head>li span.control.toggle_show i:first-child,
+#rooms ul.list.rooms:not(:empty).all~ul.list.head>li span.control.toggle_show i:last-child,
+#rooms ul.list.rooms:not(:empty):not(.all)~ul.toggle_show>li div>p:first-child,
+#rooms ul.list.rooms:not(:empty).all~ul.toggle_show>li div>p:last-child,
+#rooms ul.list.rooms:not(:empty)~ul.empty,
+#rooms ul.list.rooms:not(.different_states)~ul.toggle_show,
+#rooms ul.list.rooms:not(.all)>li:not(.connected) {
+    display: none;
+}
+
+/* Rooms order */
+
+#rooms>ul.list.rooms>li {
+    order: 4;
+}
+
+#rooms>ul.list.rooms>li.groupchat {
+    order: 3;
+}
+
+#rooms>ul.list.rooms>li.pinned {
+    order: 2;
+}
+
+#rooms>ul.list.rooms>li.unread {
+    order: 1;
+}
+
+#rooms>ul.list.rooms>li.connected {
+    order: 0;
+}
+
+#rooms>ul.list.rooms>li.connected.groupchat {
+    order: -1;
+}
+
+#rooms>ul.list.rooms>li.connected.pinned {
+    order: -2;
+}
+
+#rooms>ul.list.rooms>li.connected.unread {
+    order: -3;
+}

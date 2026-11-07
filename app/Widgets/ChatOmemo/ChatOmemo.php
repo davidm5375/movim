@@ -1,0 +1,149 @@
+<?php
+
+namespace App\Widgets\ChatOmemo;
+
+use Movim\Widget\Base;
+use Moxl\Xec\Action\OMEMO\AnnounceBundle;
+use Moxl\Xec\Action\OMEMO\CleanDevicesList;
+use Moxl\Xec\Action\OMEMO\GetBundle;
+use Moxl\Xec\Action\OMEMO\GetDevicesList;
+use Moxl\Xec\Action\OMEMO\SetDevicesList;
+use Moxl\Xec\Payload\Packet;
+
+class ChatOmemo extends Base
+{
+    public function load()
+    {
+        $this->registerEvent('omemo_getbundle_handle', 'onBundle');
+        $this->registerEvent('omemo_getbundle_last', 'onLastBundle');
+        $this->registerEvent('omemodevices', 'onDevices');
+        $this->registerEvent('omemo_getdeviceslist_handle', 'onDevicesList');
+        $this->registerEvent('omemo_getdeviceslist_error', 'onDeviceListError');
+
+        $this->addjs('chatomemo.js');
+        $this->addjs('chatomemo_storage.js');
+        $this->addjs('chatomemo_db.js');
+    }
+
+    public function onDevicesList(Packet $packet)
+    {
+        [$from, $devices] = array_values($packet->content);
+
+        if ($from == $this->me->id) {
+            $this->rpc('ChatOmemo.ownDevicesReceived', $from, $devices);
+        }
+    }
+
+    public function onDevices(Packet $packet)
+    {
+        [$from, $devices] = array_values($packet->content);
+
+        $this->rpc(
+            $from == $this->me->id
+                ? 'ChatOmemo.ownDevicesReceived'
+                : 'ChatOmemo.devicesReceived',
+            $from,
+            $devices
+        );
+    }
+
+    public function onBundle(Packet $packet)
+    {
+        $bundle = $packet->content;
+        $prekey = $bundle->extractPreKey();
+
+        if ($prekey) {
+            $this->rpc('ChatOmemo.handlePreKey', $bundle->jid, $bundle->bundleid, $prekey);
+        }
+    }
+
+    public function onLastBundle(Packet $packet)
+    {
+        $this->rpc('ChatOmemo.bundlesRefreshed', $packet->content);
+    }
+
+    public function onDeviceListError(Packet $packet)
+    {
+        if ($packet->content == $this->me->id) {
+            $this->rpc('ChatOmemo.initiateBundle', []);
+        }
+
+        $this->rpc('ChatOmemo.bundlesRefreshError', $packet->content);
+    }
+
+    public function ajaxGetBundle(string $jid, string $bundleId)
+    {
+        $gb = $this->xmpp(new GetBundle);
+        $gb->setTo($jid)
+            ->setId($bundleId)
+            ->request();
+    }
+
+    /**
+     * For debug purpose
+     */
+    public function ajaxCleanDevicesList(array $devicesIds)
+    {
+        $cdl = $this->xmpp(new CleanDevicesList);
+        $cdl->setCurrentList($devicesIds)
+            ->request();
+    }
+
+    public function ajaxEnableContactState()
+    {
+        $this->toast($this->__('omemo.enable_contact'));
+    }
+
+    public function ajaxEnableRoomState()
+    {
+        $this->toast($this->__('omemo.enable_room'));
+    }
+
+    public function ajaxDisableContactState()
+    {
+        $this->toast($this->__('omemo.disable_contact'));
+    }
+
+    public function ajaxDisableRoomState()
+    {
+        $this->toast($this->__('omemo.disable_room'));
+    }
+
+    public function ajaxNotifyGeneratedBundle()
+    {
+        $this->toast($this->__('omemo.generated_bundle'));
+    }
+
+    public function ajaxGetDevicesList(string $to)
+    {
+        $this->toast($this->__('omemo.resolving_devices'));
+
+        $gdl = $this->xmpp(new GetDevicesList);
+        $gdl->setTo($to)
+            ->request();
+    }
+
+    public function ajaxAnnounceBundle($bundle, array $devicesIds)
+    {
+        if (! array_key_exists($bundle->deviceId, $devicesIds)) {
+            array_push($devicesIds, $bundle->deviceId);
+        }
+
+        $preKeys = [];
+        foreach ($bundle->preKeys as $preKey) {
+            array_push($preKeys, (string) $preKey->key);
+        }
+
+        $ab = $this->xmpp(new AnnounceBundle);
+        $ab->setId($bundle->deviceId)
+            ->setSignedPreKeyPublic($bundle->signedPreKey->publicKey)
+            ->setSignedPreKeySignature($bundle->signedPreKey->signature)
+            ->setIdentityKey($bundle->identityKey)
+            ->setPreKeys($preKeys)
+            ->request();
+
+        $sdl = $this->xmpp(new SetDevicesList);
+        $sdl->setList($devicesIds)
+            ->request();
+    }
+}

@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,64 +7,88 @@
 
 namespace Movim\Console;
 
+use App\User;
+use Movim\Daemon\Api;
+use Movim\Daemon\Core;
+use Movim\Daemon\GalenerManager;
+use Phinx\Config\Config;
+use Phinx\Migration\Manager;
+use Ratchet\Http\HttpServer;
+use Ratchet\Server\IoServer;
+use Ratchet\WebSocket\WsServer;
+use React\ChildProcess\Process;
+use React\EventLoop\Loop;
+use React\Socket\SocketServer;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
-
-use Respect\Validation\Validator;
-
-use Ratchet\Server\IoServer;
-use Ratchet\Http\HttpServer;
-use Ratchet\WebSocket\WsServer;
-
-use Movim\Daemon\Core;
-use Movim\Daemon\Api;
-use App\User;
-
-use Phinx\Migration\Manager;
-use Phinx\Config\Config;
 use Symfony\Component\Console\Output\NullOutput;
-
-use React\EventLoop\Loop;
-use React\Socket\SocketServer;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class DaemonCommand extends Command
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('start')
             ->setDescription('Start the daemon')
             ->addOption(
-                'debug',
-                'd',
-                InputOption::VALUE_NONE,
-                'Output XMPP logs'
+                name: 'debug',
+                shortcut: 'd',
+                mode: InputOption::VALUE_NONE,
+                description: 'Output XMPP logs'
             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $config = new Config(require(DOCUMENT_ROOT . '/phinx.php'));
+        $config = new Config(require DOCUMENT_ROOT . '/phinx.php');
         $manager = new Manager($config, $input, new NullOutput);
 
         if ($manager->printStatus('movim')['hasDownMigration']) {
             $output->writeln('<comment>The database needs to be migrated before running the daemon</comment>');
             $output->writeln('<info>To migrate the database run</info>');
-            $output->writeln('<info>php vendor/bin/phinx migrate</info>');
+            $output->writeln('<info>composer movim:migrate</info>');
             exit;
+        }
+
+        foreach (requiredExtensions() as $extension) {
+            if (! extension_loaded($extension)) {
+                $output->writeln('<comment>The following PHP extension is missing: ' . $extension . '</comment>');
+
+                return Command::FAILURE;
+            }
         }
 
         $loop = Loop::get();
 
-        if (config('daemon.url') && Validator::url()->notEmpty()->validate(config('daemon.url'))) {
-            $baseuri = rtrim(config('daemon.url'), '/') . '/';
-        } elseif (file_exists(CACHE_PATH . 'baseuri')) {
-            $baseuri = file_get_contents(CACHE_PATH . 'baseuri');
+        if (config('daemon.url')) {
+            // Underlying `Validator`, URL validation is done via
+            // FILTER_VALIDATE_URL, where the FILTER_FLAG_SCHEME_REQUIRED was
+            // deprecated & then removed in later PHP versions now *reqiring* a
+            // scheme. Base URIs are allowed to be scheme-less which helps users
+            // looking to support both HTTP & HTTPS (either for testing purposes
+            // or otherwise). As such, we can append a missing scheme in order
+            // satisfy this validator requirement, but still use the scheme-less
+            // URI in practice.
+            $schemeEnforcedURL = parse_url(config('daemon.url'), PHP_URL_SCHEME)
+                ? config('daemon.url')
+                : 'https://' . ltrim(config('daemon.url'), '/');
+            if (filter_var($schemeEnforcedURL, FILTER_VALIDATE_URL)) {
+                $baseuri = rtrim(config('daemon.url'), '/') . '/';
+            }
         } else {
-            $output->writeln('<comment>Please load the login page once before starting the daemon to cache the public URL</comment>');
-            $output->writeln('<comment>or configure DAEMON_URL in .env</comment>');
+            $output->writeln('<comment>Please configure DAEMON_URL in .env</comment>');
+            exit;
+        }
+
+        if ($paths = $this->checkDirectories()) {
+            foreach ($paths as $path) {
+                $output->writeln('<error>Can’t create ' . $path . ' directory</error>');
+            }
+
+            $output->writeln('<info>You can create them yourself or let the daemon create them for you.</info>');
+            $output->writeln('<info>In both case they should be writable by the same system user that is running the daemon.</info>');
             exit;
         }
 
@@ -74,11 +99,15 @@ class DaemonCommand extends Command
             $output->writeln('<info>php daemon.php setAdmin {jid}</info>' . "\n");
         }
 
-        $compileLanguages = new \React\ChildProcess\Process('exec php daemon.php compileLanguages');
-        $compileLanguages->start($loop);
-        $compileLanguages->on('exit', fn ($out) => $output->writeln('<info>Compiled po files</info>'));
+        $clearTemplatesCache = new Process('exec ' . PHP_BINARY . ' ' . DOCUMENT_ROOT . '/daemon.php clearTemplatesCache');
+        $clearTemplatesCache->start($loop);
+        $clearTemplatesCache->on('exit', fn ($out) => $output->writeln('<info>Templates cache cleared</info>'));
 
-        $compileStickers = new \React\ChildProcess\Process('exec php daemon.php compileStickers');
+        $compileLanguages = new Process('exec ' . PHP_BINARY . ' ' . DOCUMENT_ROOT . '/daemon.php compileLanguages');
+        $compileLanguages->start($loop);
+        $compileLanguages->on('exit', fn ($out) => $output->writeln('<info>po files compiled</info>'));
+
+        $compileStickers = new Process('exec ' . PHP_BINARY . ' ' . DOCUMENT_ROOT . '/daemon.php compileStickers');
         $compileStickers->start($loop);
         $compileStickers->on('exit', fn ($out) => $output->writeln('<info>Stickers compiled</info>'));
 
@@ -90,7 +119,7 @@ class DaemonCommand extends Command
         }
 
         if (isOpcacheEnabled()) {
-            $compileOpcache = new \React\ChildProcess\Process('exec php daemon.php compileOpcache');
+            $compileOpcache = new Process('exec ' . PHP_BINARY . ' ' . DOCUMENT_ROOT . '/daemon.php compileOpcache');
             $compileOpcache->start($loop);
             $compileOpcache->on('exit', fn ($out) => $output->writeln('<info>Files compiled in Opcache</info>'));
         } else {
@@ -98,9 +127,8 @@ class DaemonCommand extends Command
             $output->writeln('Set opcache.enable=1 and opcache.enable_cli=1 in the PHP CLI ini file');
         }
 
-
         $core = new Core($loop, $baseuri);
-        $app  = new HttpServer(new WsServer($core));
+        $app = new HttpServer(new WsServer($core));
 
         $socket = new SocketServer(
             config('daemon.interface') . ':' . config('daemon.port')
@@ -109,8 +137,54 @@ class DaemonCommand extends Command
         $socketApi = new SocketServer('unix://' . API_SOCKET);
         new Api($socketApi, $core);
 
+        // Avatar Handler
+
+        $avatarHandler = new Process('exec ' . PHP_BINARY . ' avatarhandler.php', cwd: WORKERS_PATH);
+        $avatarHandler->start($loop);
+        $avatarHandler->on('exit', fn () => $output->writeln('<error>Avatar Handler Worker crashed</error>'));
+        $output->writeln('<info>😋 Avatar Handler Worker launched</info>');
+
+        // Resolver
+
+        $resolverWorker = new Process('exec ' . PHP_BINARY . ' resolver.php', cwd: WORKERS_PATH);
+        $resolverWorker->start($loop);
+        $resolverWorker->on('exit', fn () => $output->writeln('<error>Resolver Worker crashed</error>'));
+        $output->writeln('<info>🌍 Resolver Worker launched</info>');
+
+        // Pusher
+
+        $pusherWorker = new Process('exec ' . PHP_BINARY . ' pusher.php', cwd: WORKERS_PATH);
+        $pusherWorker->start($loop);
+        $pusherWorker->on('exit', fn () => $output->writeln('<error>Pusher Worker crashed</error>'));
+        $output->writeln('<info>🔔 Pusher Worker launched</info>');
+
+        // Galene wrapper
+
+        $galenerManager = new GalenerManager(loop: $loop, output: $output);
+        $galenerManager->start();
+        $core->setGalenerManager($galenerManager);
+
         (new IoServer($app, $socket, $loop))->run();
 
-        return 0;
+        return Command::SUCCESS;
+    }
+
+    private function checkDirectories(): ?array
+    {
+        $paths = [
+            CACHE_PATH,
+            PUBLIC_CACHE_PATH,
+            PUBLIC_IMAGES_PATH,
+            config('paths.log'),
+        ];
+        $errors = [];
+
+        foreach ($paths as $path) {
+            if (! file_exists($path) && ! @mkdir($path)) {
+                array_push($errors, $path);
+            }
+        }
+
+        return ! empty($errors) ? $errors : null;
     }
 }

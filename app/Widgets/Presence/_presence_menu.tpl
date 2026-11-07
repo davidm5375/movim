@@ -1,0 +1,121 @@
+<section>
+    <header class="big color {$contact->color}"
+        style="background-image: linear-gradient(to bottom, rgba(23,23,23,0.8) 0%, rgba(23,23,23,0.5) 100%), url('{$contact->getBanner(\Movim\ImageSize::XXL)}');"
+        >
+        <ul class="list thick">
+            <li>
+                <span class="primary icon bubble status
+                    {if="$presence->value != null"}{$presencetxt[$presence->value]}{/if}
+                " aria-hidden="true">
+                    <img src="{$contact->getPicture()}">
+                </span>
+
+                <span class="control icon active white divided" onclick="Presence_ajaxAskLogout(); Drawer.clear('menu')"
+                    title="{$c->__('status.disconnect')}">
+                    <a href="#" onclick="listIconClick(event);">
+                        <i class="material-symbols">exit_to_app</i>
+                    </a>
+                </span>
+                <div>
+                    <p class="line">{$contact->truename}</p>
+                    <p class="line">{$contact->id}</p>
+                </div>
+            </li>
+        </ul>
+    </header>
+
+    <ul class="list active">
+        <li title="{$c->__('status.visit_blog')}"
+            onclick="MovimUtils.reload('{$c->route('contact', $c->me->id)}')"
+        >
+            <span class="primary icon gray">
+                <a href="#" onclick="listIconClick(event);">
+                    <i class="material-symbols">news</i>
+                </a>
+            </span>
+            <span class="control icon gray" aria-hidden="true">
+                <i class="material-symbols">chevron_right</i>
+            </span>
+            <div>
+                <p class="line">{$c->__('status.visit_blog')}</p>
+            </div>
+        </li>
+        {if="$c->me->hasPubsub()"}
+            <li onclick="MovimUtils.reload('{$c->route('subscriptions')}')"
+                title="{$c->__('communityaffiliation.subscriptions')}"
+            >
+                <span class="primary icon gray">
+                    <a href="#" onclick="listIconClick(event);">
+                        <i class="material-symbols">bookmarks</i>
+                    </a>
+                </span>
+                <span class="control icon gray" aria-hidden="true">
+                    <i class="material-symbols">chevron_right</i>
+                </span>
+                <div>
+                    <p>{$c->__('communityaffiliation.subscriptions')}</p>
+                </div>
+            </li>
+        {/if}
+
+        <hr />
+
+        <li onclick="MovimUtils.reload('{$c->route('configuration')}')"
+            title="{$c->__('page.configuration')}">
+            <span class="primary icon gray">
+                <a href="#" onclick="listIconClick(event);">
+                    <i class="material-symbols">tune</i>
+                </a>
+            </span>
+            <span class="control icon gray" aria-hidden="true">
+                <i class="material-symbols">chevron_right</i>
+            </span>
+            <div>
+                <p class="line">{$c->__('page.configuration')}</p>
+            </div>
+        </li>
+        {if="$c->me->admin"}
+            <li onclick="MovimUtils.reload('{$c->route('admin')}')"
+                title="{$c->__('page.administration')}">
+                <span class="primary icon gray">
+                    <a href="#" onclick="listIconClick(event);">
+                        <i class="material-symbols">manage_accounts</i>
+                    </a>
+                </span>
+                <span class="control icon gray" aria-hidden="true">
+                    <i class="material-symbols">chevron_right</i>
+                </span>
+                <div>
+                    <p class="line">{$c->__('page.administration')}</p>
+                </div>
+            </li>
+        {/if}
+
+        <li onclick="MovimUtils.reload('{$c->route('help')}')"
+            title="{$c->__('page.help')}"
+        >
+            <span class="primary icon gray">
+                <a href="#" onclick="listIconClick(event);">
+                    <i class="material-symbols">help</i>
+                </a>
+            </span>
+            <span class="control icon gray" aria-hidden="true">
+                <i class="material-symbols">chevron_right</i>
+            </span>
+            <div>
+                <p class="line">{$c->__('page.help')}</p>
+            </div>
+        </li>
+    </ul>
+
+    <ul class="list thick">
+        <li>
+            <div>
+                <p class="center">
+                    <i class="material-symbols" style="margin-right: 1rem;">cloud_queue</i>
+                    Powered by <a target="_blank" href="https://movim.eu">Movim</a></a>
+                </p>
+            </div>
+        </li>
+    </ul>
+</section>

@@ -13,22 +13,22 @@ class Invite extends Model
 
     public function user()
     {
-        return $this->belongsTo('App\User');
+        return $this->belongsTo(User::class);
     }
 
     public function room()
     {
-        return $this->hasOne('App\Contact', 'id', 'resource');
+        return $this->hasOne(Contact::class, 'id', 'resource');
     }
 
     public static function set($jid, $resource)
     {
-        $invitation = \App\Invite::where('user_id', $jid)
-                                 ->where('resource', $resource)
-                                 ->first();
+        $invitation = Invite::where('user_id', $jid)
+            ->where('resource', $resource)
+            ->first();
 
-        if (!$invitation) {
-            $invitation = new \App\Invite;
+        if (! $invitation) {
+            $invitation = new Invite;
             $invitation->code = generateKey(8);
             $invitation->user_id = $jid;
             $invitation->resource = $resource;

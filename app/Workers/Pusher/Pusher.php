@@ -1,0 +1,71 @@
+<?php
+
+namespace App\Workers\Pusher;
+
+use App\PushSubscription;
+use Minishlink\WebPush\Subscription;
+use Minishlink\WebPush\WebPush;
+
+class Pusher
+{
+    private WebPush $webPush;
+
+    public function __construct()
+    {
+        $keys = json_decode(file_get_contents(CACHE_PATH . 'vapid_keys.json'));
+
+        $this->webPush = new WebPush(auth: [
+            'VAPID' => [
+                'subject' => 'https://movim.eu',
+                'publicKey' => $keys->publicKey,
+                'privateKey' => $keys->privateKey,
+            ],
+        ]);
+    }
+
+    public function send(
+        string $userId,
+        array $linkerPushEndpoints,
+        string $tag,
+        string $title,
+        string $body,
+        ?string $picture = null,
+        ?array $actions = [],
+        ?array $data = [],
+    ): void {
+        foreach (
+            PushSubscription::where('user_id', $userId)
+                ->where('enabled', true)
+                ->whereNotIn('endpoint', $linkerPushEndpoints)
+                ->whereNotNull('activity_at')->get() as $pushSubscription
+        ) {
+            $this->webPush->queueNotification(
+                Subscription::create([
+                    'endpoint' => $pushSubscription->endpoint,
+                    'contentEncoding' => 'aesgcm',
+                    'keys' => [
+                        'auth' => $pushSubscription->auth,
+                        'p256dh' => $pushSubscription->p256dh,
+                    ],
+                ]),
+                json_encode([
+                    'tag' => $tag,
+                    'title' => $title,
+                    'body' => $body,
+                    'picture' => $picture,
+                    'actions' => $actions,
+                    'data' => $data,
+                    'timestamp' => time(),
+                ])
+            );
+        }
+
+        foreach ($this->webPush->flush() as $report) {
+            if ($report->isSubscriptionExpired()) {
+                PushSubscription::where('user_id', $userId)
+                    ->where('endpoint', $report->getEndpoint())
+                    ->delete();
+            }
+        }
+    }
+}

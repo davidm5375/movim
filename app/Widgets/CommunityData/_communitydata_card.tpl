@@ -1,0 +1,63 @@
+<ul class="list thin">
+    <li class="block large">
+        <div>
+            <p class="center all">
+                <img class="avatar" src="{$info->getPicture(\Movim\ImageSize::L)}"/>
+            </p>
+        </div>
+    </li>
+</ul>
+
+<ul class="list middle flex">
+    <li class="block large">
+        <div>
+            <p class="center line" title="{$info->name}">
+                {if="$info->name"}
+                    {$info->name}
+                {else}
+                    {$info->node}
+                {/if}
+            </p>
+            <p class="center all">
+                {if="$info->description != null && trim($info->description) != ''"}
+                    {autoescape="off"}
+                        {$info->description|trim|nl2br|addEmojis|linkify:true}
+                    {/autoescape}
+                    <br />
+                {/if}
+
+                {if="$info->created"}
+                    <br />
+                    <i class="material-symbols icon-text" aria-hidden="true">calendar</i>
+                    {$c->prepareDate($info->created, true)}
+                {/if}
+
+                <br />
+                <i class="material-symbols icon-text" aria-hidden="true">article</i>
+                {$c->__('communitydata.num', $num)}
+                •
+                <i class="material-symbols icon-text" aria-hidden="true">people</i>
+                {$c->__('communitydata.sub', $info->occupants)}
+
+                {if="$info->pubsubpublishmodel == 'publishers'"}
+                    <br />
+                    <i class="material-symbols icon-text" aria-hidden="true">assignment_ind</i>
+                    {$c->__('communitydata.publishmodel_publishers')}
+                {/if}
+                {if="$info->pubsubpublishmodel == 'subscribers'"}
+                    <br />
+                    <i class="material-symbols icon-text" aria-hidden="true">assignment_turned_in</i>
+                    {$c->__('communitydata.publishmodel_subscribers')}
+                {/if}
+                {if="$info->isGallery()"}
+                    <br />
+                    <i class="material-symbols icon-text" aria-hidden="true">grid_view</i>
+                    {$c->__('communityconfig.type_gallery_title')}
+                {/if}
+
+            </p>
+        </div>
+    </li>
+</ul>
+
+<br />

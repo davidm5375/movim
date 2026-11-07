@@ -1,0 +1,16 @@
+#search form > div > input:not([type="submit"]) {
+    padding-top: 3.7rem;
+    margin-bottom: 0;
+}
+
+#search form > div:not(.control) {
+    top: -1rem;
+}
+
+#search ul#roster li:not(.found) {
+    display: none;
+}
+
+#search ul#roster li.showall {
+    margin-top: 1rem;
+}

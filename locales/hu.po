@@ -6,129 +6,137 @@
 # Simon Ede <vargamarci64@gmail.com>, 2015
 # 386902c248cb697d9d6d058103e08443_c36ce9b <3e1ab06cc760e2987b063fda7f345e3f_237544>, 2018
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/About/locales.ini
+#. extracted from ../app/Widgets/About/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Account/locales.ini
+#. extracted from ../app/Widgets/Account/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/AccountNext/locales.ini
+#. extracted from ../app/Widgets/AdHoc/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/AdHoc/locales.ini
+#. extracted from ../app/Widgets/AdminMain/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/AdminMain/locales.ini
+#. extracted from ../app/Widgets/AdminReported/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/AdminReported/locales.ini
+#. extracted from ../app/Widgets/AdminSessions/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/AdminSessions/locales.ini
+#. extracted from ../app/Widgets/Avatar/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Avatar/locales.ini
+#. extracted from ../app/Widgets/Blocked/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Blocked/locales.ini
+#. extracted from ../app/Widgets/Blog/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Blog/locales.ini
+#. extracted from ../app/Widgets/Chat/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Chat/locales.ini
+#. extracted from ../app/Widgets/ChatActions/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/ChatOmemo/locales.ini
+#. extracted from ../app/Widgets/ChatOmemo/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Chats/locales.ini
+#. extracted from ../app/Widgets/Chats/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Communities/locales.ini
+#. extracted from ../app/Widgets/Communities/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunitiesInteresting/locales.ini
+#. extracted from ../app/Widgets/CommunitiesInteresting/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunitiesServer/locales.ini
+#. extracted from ../app/Widgets/CommunitiesServer/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunitiesServers/locales.ini
+#. extracted from ../app/Widgets/CommunitiesServers/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunityAffiliations/locales.ini
+#. extracted from ../app/Widgets/CommunityAffiliations/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunityConfig/locales.ini
+#. extracted from ../app/Widgets/CommunityConfig/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunityData/locales.ini
+#. extracted from ../app/Widgets/CommunityData/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunityHeader/locales.ini
+#. extracted from ../app/Widgets/CommunityHeader/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunityPosts/locales.ini
+#. extracted from ../app/Widgets/CommunityPosts/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/CommunitySubscriptions/locales.ini
+#. extracted from ../app/Widgets/CommunitySubscriptions/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Config/locales.ini
+#. extracted from ../app/Widgets/Config/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Confirm/locales.ini
+#. extracted from ../app/Widgets/Confirm/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/ContactActions/locales.ini
+#. extracted from ../app/Widgets/ContactActions/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/ContactData/locales.ini
+#. extracted from ../app/Widgets/ContactData/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/ContactDataPublic/locales.ini
+#. extracted from ../app/Widgets/ContactsSuggestions/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Draw/locales.ini
+#. extracted from ../app/Widgets/Dictaphone/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Help/locales.ini
+#. extracted from ../app/Widgets/Draw/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Location/locales.ini
+#. extracted from ../app/Widgets/EmojisConfig/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Login/locales.ini
+#. extracted from ../app/Widgets/Help/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/LoginAnonymous/locales.ini
+#. extracted from ../app/Widgets/Login/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Menu/locales.ini
+#. extracted from ../app/Widgets/Menu/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Notification/locales.ini
+#. extracted from ../app/Widgets/Notif/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/NotificationConfig/locales.ini
+#. extracted from ../app/Widgets/NotificationConfig/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Notifications/locales.ini
+#. extracted from ../app/Widgets/Notifications/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Onboarding/locales.ini
+#. extracted from ../app/Widgets/Onboarding/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Post/locales.ini
+#. extracted from ../app/Widgets/Post/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Presence/locales.ini
+#. extracted from ../app/Widgets/Presence/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Preview/locales.ini
+#. extracted from ../app/Widgets/Preview/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Publish/locales.ini
+#. extracted from ../app/Widgets/Publish/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/PublishHelp/locales.ini
+#. extracted from ../app/Widgets/PublishHelp/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Rooms/locales.ini
+#. extracted from ../app/Widgets/PublishStories/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/RoomsExplore/locales.ini
+#. extracted from ../app/Widgets/Register/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Search/locales.ini
+#. extracted from ../app/Widgets/Rooms/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/SendTo/locales.ini
+#. extracted from ../app/Widgets/RoomsExplore/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Stickers/locales.ini
+#. extracted from ../app/Widgets/Search/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Subscribe/locales.ini
+#. extracted from ../app/Widgets/SendTo/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Syndication/locales.ini
+#. extracted from ../app/Widgets/SpaceInfo/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Upload/locales.ini
+#. extracted from ../app/Widgets/SpacesMenu/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Vcard4/locales.ini
+#. extracted from ../app/Widgets/Stickers/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/Visio/locales.ini
+#. extracted from ../app/Widgets/Stories/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
-#. extracted from ../app/widgets/VisioConfig/locales.ini
+#. extracted from ../app/Widgets/Subscribe/locales.ini
+#. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
+#. extracted from ../app/Widgets/Syndication/locales.ini
+#. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
+#. extracted from ../app/Widgets/Upload/locales.ini
+#. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
+#. extracted from ../app/Widgets/Vcard4/locales.ini
+#. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
+#. extracted from ../app/Widgets/Visio/locales.ini
 #. #-#-#-#-#  locales.po (PACKAGE VERSION)  #-#-#-#-#
 #. extracted from ../locales/locales.ini
 msgid ""
 msgstr ""
 "Project-Id-Version: movim\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-12-25 14:45+0200\n"
+"POT-Creation-Date: 2026-10-23 11:02+0100\n"
 "PO-Revision-Date: 2015-06-24 09:45+0000\n"
 "Last-Translator: 386902c248cb697d9d6d058103e08443_c36ce9b <3e1ab06cc760e2987b063fda7f345e3f_237544>, 2018\n"
-"Language-Team: Hungarian (http://www.transifex.com/movim/movim/language/hu/)\n"
+"Language-Team: Hungarian (http://app.transifex.com/movim/movim/language/hu/)\n"
 "Language: hu\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Translate Toolkit 3.7.4\n"
+"X-Generator: Translate Toolkit 3.19.5\n"
 
 #: [about]thanks
 msgid "Thanks"
@@ -162,6 +170,14 @@ msgstr "API"
 msgid "Movim is an XMPP-based communication platform. All the project, except the following software and resources, is under"
 msgstr "A Movim egy XMPP alapú kommunikációs platform. Az egész projekt, kivéve a következő szoftvereket és forrásokat, az alábbi alatt van:"
 
+#: [about]sourcecode_title
+msgid "Sourcecode"
+msgstr ""
+
+#: [about]sourcecode_text
+msgid "Check out the sourcecode on the Github repository"
+msgstr ""
+
 #: [account]title [page]account
 msgid "Account"
 msgstr "Felhasználó"
@@ -186,10 +202,6 @@ msgstr "Jelszó megerősítése"
 msgid "The password has been updated"
 msgstr "A jelszó frissítve lett"
 
-#: [account]password_not_valid
-msgid "Please provide a valid password (6 characters minimum)"
-msgstr "Kérlek adj meg egy érvényes jelszót (minimum 6 karakter)"
-
 #: [account]password_not_same
 msgid "The provided passwords are not the same"
 msgstr "A megadott jelszavak nem egyeznek"
@@ -199,8 +211,8 @@ msgid "Delete your account"
 msgstr "Felhasználói fiókod törlése"
 
 #: [account]delete_text
-msgid "You will delete your XMPP account and all the relative information linked to it (profile, contacts and publications)."
-msgstr "Törölni fogod az XMPP fiókodat és minden vele kapcsolatos információt (profil, kapcsolatok és közzétételek)."
+msgid "You will delete your XMPP account and all the relative information linked to it (profile, contacts, and publications)."
+msgstr ""
 
 #: [account]delete_text_confirm
 msgid "Type your full username"
@@ -219,56 +231,24 @@ msgid "Leave this instance"
 msgstr "Ennek az instanciának elhagyása"
 
 #: [account]clear_text
-msgid "You will delete all the relative information linked to your account on this Movim instance (profile, contacts and publications)."
-msgstr "Törölni fogod az összes a fiókoddal kapcsolatos információt ezen a Movim instancián (profil, kapcsolatok és közzétételek)."
+msgid "You will delete all the relative information linked to your account on this Movim instance (profile, contacts, and publications)."
+msgstr ""
 
 #: [account]clear_text_confirm
-msgid "This action will not delete your account but will disconnect you from this instance."
-msgstr "Ez a művelet nem törli a fiókodat, hanem leválaszt erről az instanciáról."
+msgid "This action will not delete your account but will disconnect you from Movim."
+msgstr ""
 
 #: [account]delete_bundle_title
 msgid "OMEMO Key deletion"
 msgstr ""
 
 #: [account]delete_bundle_text
-msgid "Your are going to destroy the following OMEMO key. Your contacts will not be able to encrypt messages using that key anymore. This action cannot be reverted. Are you sure?"
+msgid "You are going to destroy the following OMEMO key. Your contacts will not be able to encrypt messages using that key anymore. This action cannot be reverted. Are you sure?"
 msgstr ""
 
-#: [create]title [subscribe]title
-msgid "Create a new account"
-msgstr "Felhasználó létrehozása"
-
-#: [create]notfound
-msgid "No account creation form found on the server"
-msgstr "Nem található felhasználó létrehozási űrlap a szerveren."
-
-#: [create]server_on
-msgid "on"
-msgstr "itt:"
-
-#: [create]successfull
-msgid "Your acccount has been successfully registered"
-msgstr "Felhasználói fiókodat sikeresen létrehoztuk."
-
-#: [create]loading
-msgid "Loading"
-msgstr "Töltés"
-
-#: [create]placeholder
-msgid "…and start playing"
-msgstr "...és kezdődhet a játék"
-
-#: [error]not_acceptable
-msgid "Not Acceptable"
-msgstr "Nem elfogadható"
-
-#: [error]service_unavailable
-msgid "The registration system of this server is currently unavailable"
-msgstr "A szerver regisztrációs rendszere jelenleg nem elérhető."
-
-#: [error]forbidden
-msgid "Registration forbidden"
-msgstr "Regisztáció tiltva"
+#: [account]xmpp_server_info
+msgid "XMPP Server Information"
+msgstr ""
 
 #: [adhoc]title
 msgid "Actions"
@@ -277,6 +257,26 @@ msgstr "Akciók"
 #: [adhoc]completed
 msgid "Action completed"
 msgstr "A művelet befejeződött"
+
+#: [tools]title
+msgid "Developer Tools"
+msgstr ""
+
+#: [tools]sdp_to_jingle
+msgid "Convert SDP to Jingle"
+msgstr ""
+
+#: [tools]sdp_title
+msgid "SDP"
+msgstr ""
+
+#: [tools]jingle_to_sdp
+msgid "Convert Jingle to SDP"
+msgstr ""
+
+#: [tools]jingle_title
+msgid "Jingle stanza"
+msgstr ""
 
 #: [admin]general
 msgid "General Settings"
@@ -294,13 +294,21 @@ msgstr "Alapértelmezett nyelv"
 msgid "Log verbosity"
 msgstr "Naplórészletesség"
 
+#: [general]join_title
+msgid "Your instance is public?"
+msgstr ""
+
+#: [general]join_text
+msgid "Register your instance on join.movim.eu and join the Movim federation!"
+msgstr ""
+
 #: [restrictsuggestions]title
 msgid "Restrict suggestions"
 msgstr "Javaslatok korlátozása"
 
 #: [restrictsuggestions]text
-msgid "Only suggest chatrooms, Communities and other contents that are available on the user XMPP server and related services"
-msgstr "Csak olyan chatszobák, közösségek és más tartalmak ajánlása, amely elérhető a felhasználó XMPP szerverén és kapcsolódó szolgáltatásokon"
+msgid "Only suggest chatrooms, Communities, and other contents that are available on the user's XMPP server and related services"
+msgstr ""
 
 #: [chatonly]title
 msgid "Chat only"
@@ -331,25 +339,44 @@ msgid "Remove the XMPP registration flow and buttons from the interface"
 msgstr ""
 
 #: [whitelist]title
-msgid "Whitelisted XMPP Servers"
-msgstr "Fehérlistázott XMPP szerverek"
+msgid "Allowed XMPP Servers"
+msgstr ""
 
 #: [whitelist]info1
-msgid "If you want to specify a list of authorized XMPP servers on your Movim pod and forbid the connection on all the others please put their domain name here, with comma (ex: movim.eu,jabber.fr)"
-msgstr "Ha megakarsz határozni az azonosított XMPP szervereket a Movim pod-odon és megtiltani a kapcsolatot minden egyéb szervernek, kérlek írd a domain nevüket ide, vesszővel elválasztva (pl: movim.eu,jabber.fr)"
+msgid "If you want to specify a list of authorized XMPP servers on your Movim pod and forbid the connection on all the others please put their domain name(s) here, with comma (ex: movim.eu,jabber.fr)"
+msgstr ""
 
 #: [whitelist]info2
 msgid "Leave this field blank if you allow the access to all the XMPP accounts."
 msgstr "Hagyd ezt a mezőt üresen ha engedélyezed a hozzáférést mindegyik XMPP felhasználóhoz."
 
 #: [whitelist]label
-msgid "List of whitelisted XMPP servers"
-msgstr "A fehérlistázott szerverek listája"
+msgid "List of allowed XMPP servers"
+msgstr ""
 
-#: [information]title
-msgctxt "[information]title"
-msgid "Information Message"
-msgstr "Információs üzenet"
+#: [ssrfwhitelist]title
+msgid "Whitelisted Domains for SSRF Protection"
+msgstr ""
+
+#: [ssrfwhitelist]info1
+msgid "Movim is protecting you against SSRF vulnerabilities. This means that Movim blocks all URLs (shared links, avatars, and pictures) that point to your local network IPs."
+msgstr ""
+
+#: [ssrfwhitelist]info2
+msgid "See the related SSRF documentation on developer.mozilla.org."
+msgstr ""
+
+#: [ssrfwhitelist]info3
+msgid "Add all domains hosted locally here (for example, if you host a blog, an XMPP file upload service, or other web services)."
+msgstr ""
+
+#: [ssrfwhitelist]info4
+msgid "This setting will be applied after a daemon restart."
+msgstr ""
+
+#: [ssrfwhitelist]label
+msgid "List of Locally Authorized Domains"
+msgstr ""
 
 #: [information]description [communityconfig]description
 msgid "Description"
@@ -376,7 +403,6 @@ msgid "Leave this field blank if you don’t want to show any message."
 msgstr "Hagyd üresen ezt a mezőt, ha nem akarsz megjeleníteni semmilyen üzenetet!"
 
 #: [information]label
-msgctxt "[information]label"
 msgid "Information Message"
 msgstr "Információs üzenet"
 
@@ -416,22 +442,6 @@ msgstr ""
 msgid "Access Tenor and get your API key"
 msgstr ""
 
-#: [twitter]title
-msgid "Twitter integration"
-msgstr ""
-
-#: [twitter]label
-msgid "Your Twitter Token"
-msgstr ""
-
-#: [twitter]info1
-msgid "The Twitter integration allow Movim to embed and extract the Tweets shared on the instance"
-msgstr ""
-
-#: [twitter]info2
-msgid "Generate your Token on the Developer Twitter website"
-msgstr ""
-
 #: [log]empty
 msgid "Empty"
 msgstr "Üres"
@@ -443,6 +453,14 @@ msgstr "Rendszernapló"
 #: [log]syslog_files
 msgid "Syslog and files"
 msgstr "Rendszernapló és fájlok"
+
+#: [maxsessions]title
+msgid "Maximum of connected sessions"
+msgstr ""
+
+#: [maxsessions]info
+msgid "Movim will forbid new users to connect when the limit is reached, set it to 0 to disable"
+msgstr ""
 
 #: [adminreported]reported_by
 msgid "Reported by %s users"
@@ -469,23 +487,23 @@ msgid "File"
 msgstr "Fájl"
 
 #: [avatar]updated
-msgid "Avatar Updated"
-msgstr "Avatár frissítve"
-
-#: [avatar]not_updated
-msgid "Avatar Not Updated"
-msgstr "Az avatár nem lett frissítve."
-
-#: [avatar]missing
-msgid "No avatar defined yet"
-msgstr "Még nincs megadva avatar"
-
-#: [avatar]change
-msgid "Change my avatar"
+msgid "Profile Picture Updated"
 msgstr ""
 
-#: [avatar]upload_new
-msgid "Upload a new picture"
+#: [avatar]not_updated
+msgid "Profile Picture Not Updated"
+msgstr ""
+
+#: [avatar]change
+msgid "Change my profile picture"
+msgstr ""
+
+#: [avatar]too_big
+msgid "Your picture is too big"
+msgstr ""
+
+#: [avatar]missing
+msgid "No avatar yet"
 msgstr ""
 
 #: [banner]change
@@ -501,7 +519,7 @@ msgid "Banner Not Updated"
 msgstr ""
 
 #: [banner]missing
-msgid "No banner defined yet"
+msgid "No banner yet"
 msgstr ""
 
 #: [blocked]title
@@ -536,9 +554,9 @@ msgstr ""
 msgid "The administrator is also aware of this list and can therefore block those users system wide"
 msgstr ""
 
-#: [blog]title [feed]title
-msgid "%s’s feed"
-msgstr "%s hírfolyama"
+#: [blog]title
+msgid "%s’s blog"
+msgstr ""
 
 #: [blog]private
 msgid "This content is private, please login to see it"
@@ -558,6 +576,10 @@ msgstr ""
 
 #: [message]retract_body
 msgid "Your contact attempted to retract a previous message, but it's unsupported by your client"
+msgstr ""
+
+#: [message]moderate_body
+msgid "This message was moderated"
 msgstr ""
 
 #: [message]error
@@ -588,10 +610,6 @@ msgstr "Megállt…"
 msgid "Contact gone"
 msgstr "A partner elment"
 
-#: [message]history
-msgid "%s messages retrieved"
-msgstr "%s üzenet betöltve"
-
 #: [message]edit_help
 msgid "↑ to edit your previous message"
 msgstr ""
@@ -601,7 +619,7 @@ msgid ":shortcut: to insert an emoji"
 msgstr ""
 
 #: [message]visitor_help
-msgid "You are not allowed to send messages in this conference"
+msgid "You are not allowed to send messages in this chatroom"
 msgstr ""
 
 #: [chat]attention
@@ -645,9 +663,8 @@ msgid "See the profile"
 msgstr "A profil megtekintése"
 
 #: [chat]clear
-msgctxt "[chat]clear"
 msgid "Clear the history"
-msgstr ""
+msgstr "Az előzmények törlése"
 
 #: [chat]edit_previous
 msgid "Edit last message"
@@ -657,12 +674,20 @@ msgstr "Az utolsó üzenet szerkesztése"
 msgid "Report abuse"
 msgstr "Visszaélés jelentése"
 
-#: [chat]jingle_incoming [notificationconfig]audio_call
+#: [chat]jingle_incoming [config]audio_call
 msgid "Incoming call"
 msgstr ""
 
 #: [chat]jingle_outgoing
 msgid "Outgoing call"
+msgstr ""
+
+#: [chat]jingle_retract
+msgid "Missed call"
+msgstr ""
+
+#: [chat]jingle_reject
+msgid "Refused call"
 msgstr ""
 
 #: [chat]jingle_end
@@ -681,58 +706,85 @@ msgstr ""
 msgid "%s seconds"
 msgstr ""
 
-#: [chat]publish_error
-msgid "An error occured when sending the message"
+#: [chat]muc_admin
+msgid "%s is now admin"
 msgstr ""
 
-#: [chat]mam_retrieval
-msgid "Synchronizing the history, please wait…"
+#: [chat]muc_owner
+msgid "%s is now owner"
+msgstr ""
+
+#: [chat]muc_outcast
+msgid "%s is now banned"
+msgstr ""
+
+#: [chat]muc_member
+msgid "%s is now member"
+msgstr ""
+
+#: [chat]publish_error
+msgid "An error occurred when sending the message"
 msgstr ""
 
 #: [chat]clear_history
-msgctxt "[chat]clear_history"
-msgid "Clear the history"
+msgid "Clear the local history"
 msgstr ""
 
 #: [chat]clear_history_text
-msgid "You are going to delete %s messages, are you sure?"
+msgid "You are going to delete %s local messages, are you sure?"
 msgstr ""
 
 #: [chat]action_impossible_encrypted
 msgid "Action impossible in encrypted chats"
 msgstr ""
 
-#: [chatroom]members
-msgid "Members"
-msgstr "Tagok"
+#: [chat]first_messages_title
+msgid "This is the beginning of this conversation"
+msgstr ""
 
-#: [chatroom]connected [chatrooms]connected
-msgid "Connected to the chatroom"
-msgstr "Csatlakozva a chat szobához"
+#: [chat]first_messages_text
+msgid "You can choose to add it as a new contact or block it to prevent some other unsolicited messages"
+msgstr ""
 
-#: [chatroom]disconnected [chatrooms]disconnected
-msgid "Disconnected from the chatroom"
-msgstr "Lecsatlakozva a chat szobától"
+#: [chat]first_messages_add
+msgid "Add to my contacts"
+msgstr ""
 
-#: [chatroom]config [communityaffiliation]configuration [page]configuration
-msgid "Configuration"
-msgstr "Beállítások"
+#: [chat]first_messages_block
+msgid "Block"
+msgstr ""
 
-#: [chatroom]config_saved [communityaffiliation]config_saved
-msgid "Configuration saved"
-msgstr "Beállítások elmentve."
+#: [wide_conference_call]enable_title
+msgid "Enable Wide Conference Call"
+msgstr ""
 
-#: [chatroom]subject
-msgid "Subject"
-msgstr "Tárgy"
+#: [wide_conference_call]enable_text
+msgid "Scale this call to more participants."
+msgstr ""
 
-#: [chatroom]subject_changed
-msgid "Subject changed"
-msgstr "A tárgy megváltozott"
+#: [wide_conference_call]enable_info
+msgid "An SFU (Selective Forwarding Unit) service was detected on this server. Unlike the current peer-to-peer (P2P) setup, where every participant sends their audio/video stream directly to everyone else, an SFU relays streams through a central server. This significantly reduces the bandwidth and CPU load on each participant's device, allowing the conference call to scale to many more people."
+msgstr ""
 
-#: [chatroom]administration [page]administration
-msgid "Administration"
-msgstr "Adminisztráció"
+#: [wide_conference_call]enable_info2
+msgid "Enabling Wide Conference Call will invite the SFU service into this conference call."
+msgstr ""
+
+#: [chatactions]copy_text
+msgid "Copy the text"
+msgstr ""
+
+#: [chatactions]copied_text
+msgid "Text copied"
+msgstr ""
+
+#: [chatactions]search_messages
+msgid "Search messages by content"
+msgstr ""
+
+#: [chatactions]search_messages_empty
+msgid "No messages found"
+msgstr ""
 
 #: [omemo]fingerprints_title
 msgid "Fingerprints"
@@ -755,7 +807,7 @@ msgid "Resolving OMEMO devices"
 msgstr ""
 
 #: [omemo]building_sessions
-msgid "Building encryption sessions"
+msgid "Building encrypted sessions"
 msgstr ""
 
 #: [omemo]building_own_sessions
@@ -774,8 +826,16 @@ msgstr ""
 msgid "Enabling encryption for the contact"
 msgstr ""
 
+#: [omemo]enable_room
+msgid "Enabling encryption for the chatroom"
+msgstr ""
+
 #: [omemo]disable_contact
 msgid "Disabling encryption for the contact"
+msgstr ""
+
+#: [omemo]disable_room
+msgid "Disabling encryption for the chatroom"
 msgstr ""
 
 #: [omemo]last_activity
@@ -794,6 +854,10 @@ msgstr "Még nincsenek csevegések…"
 msgid "Start a new conversation by clicking on the %s button."
 msgstr "Indíts új üzenetváltást a %sgombra való kattintással"
 
+#: [chats]new_title
+msgid "Start a new conversation"
+msgstr ""
+
 #: [chats]add
 msgid "Chat with a contact"
 msgstr "Beszélgetés egy partnerrel"
@@ -810,13 +874,17 @@ msgstr ""
 msgid "Video"
 msgstr ""
 
-#: [button]chat
-msgid "Chat"
-msgstr "Chat"
+#: [chats]audio
+msgid "Audio"
+msgstr ""
 
-#: [button]new
-msgid "New conversation"
-msgstr "Új beszélgetés"
+#: [chats_filter]all [menu]all [chatrooms]filter_all
+msgid "All"
+msgstr "Mind"
+
+#: [chats_filter]roster [menu]contacts [page]contacts
+msgid "Contacts"
+msgstr "Kapcsolatok"
 
 #: [communities]empty_text
 msgid "Discover, follow and share"
@@ -878,6 +946,14 @@ msgstr "Kérlek, adj meg egy érvényes közösségi nevet (minimum 4 karakter)"
 msgid "You cannot create a new community on this server"
 msgstr "Nem tudsz új közösséget létrehozni ezen a szerveren"
 
+#: [communitiesserver]disco_error
+msgid "Issue when trying to discover the items"
+msgstr ""
+
+#: [communitiesserver]remoteservernotfound
+msgid "The server %s cannot be reached"
+msgstr ""
+
 #: [communitiesservers]empty_title
 msgid "No Communities Servers yet…"
 msgstr ""
@@ -885,6 +961,10 @@ msgstr ""
 #: [communitiesservers]empty_text
 msgid "It seems that we can't find any communities for the moment"
 msgstr ""
+
+#: [communityaffiliation]configuration [chatrooms]config [page]configuration
+msgid "Configuration"
+msgstr "Beállítások"
 
 #: [communityaffiliation]subscriptions
 msgid "Subscriptions"
@@ -914,11 +994,19 @@ msgstr "Törölni fogod az alábbi közösséget. Kérlek erősítsd meg szánd�
 msgid "It seems that this community doesn’t exists anymore. Do you want to remove it from your subscriptions?"
 msgstr "Úgy tűnik, ez a közösség már nem létezik. El akarod távolítani a feliratkozásaid közül?"
 
+#: [communityaffiliation]delete_error
+msgid "Error during the node deletion"
+msgstr ""
+
+#: [communityaffiliation]config_saved [chatrooms]config_saved
+msgid "Configuration saved"
+msgstr "Beállítások elmentve."
+
 #: [communityaffiliation]config_error
 msgid "Error during the application of the node configuration"
 msgstr ""
 
-#: [communityaffiliation]owners
+#: [communityaffiliation]owners [room]affiliation_owners
 msgid "Owners"
 msgstr "Tulajdonosok"
 
@@ -959,6 +1047,26 @@ msgstr "Feliratkozók"
 msgid "The subscribers can publish"
 msgstr "A feliratkozók publikálhatnak"
 
+#: [communityconfig]type
+msgid "Community type"
+msgstr ""
+
+#: [communityconfig]type_articles_title
+msgid "Articles"
+msgstr ""
+
+#: [communityconfig]type_articles_text
+msgid "Publish and read articles"
+msgstr ""
+
+#: [communityconfig]type_gallery_title [page]gallery
+msgid "Gallery"
+msgstr "Galéria"
+
+#: [communityconfig]type_gallery_text
+msgid "Publish and browse pictures"
+msgstr ""
+
 #: [communitydata]sub
 msgid "%s subscribers"
 msgstr "%s feliratkozó"
@@ -979,21 +1087,21 @@ msgstr ""
 msgid "Only subscribers can publish"
 msgstr ""
 
-#: [communityheader]subscribe
-msgid "Subscribe"
-msgstr "Feliratkozás"
+#: [communityheader]follow
+msgid "Follow"
+msgstr ""
 
-#: [communityheader]unsubscribe
-msgid "Unsubscribe"
-msgstr "Leiratkozás"
+#: [communityheader]unfollow
+msgid "Unfollow"
+msgstr ""
 
-#: [communityheader]subscribed
-msgid "Subscribed"
-msgstr "Feliratkozva"
+#: [communityheader]followed
+msgid "Followed"
+msgstr ""
 
-#: [communityheader]unsubscribed
-msgid "Unsubscribed"
-msgstr "Leiratkozva"
+#: [communityheader]unfollowed
+msgid "Unfollowed"
+msgstr ""
 
 #: [communityheader]subscription_unsupported
 msgid "The subscriptions are disabled for this community"
@@ -1007,17 +1115,17 @@ msgstr "Adj meg egy címkét ehhez a közösséghez"
 msgid "My Community Name"
 msgstr "A közösségem neve"
 
-#: [communityheader]share_subscription
-msgid "Share this subscription publicly"
-msgstr "Ennek a feliratkozásnak megosztása nyilvánosan"
+#: [communityheader]share_follow
+msgid "Share this follow to everyone"
+msgstr ""
 
-#: [communityheader]share_subscription_text
+#: [communityheader]share_follow_text
 msgid "It will appear on your profile"
 msgstr "Ez meg fog jelenni a profilodon"
 
-#: [communityheader]unsubscribe_text
-msgid "You are going to unsubscribe from this community"
-msgstr "Le fogsz iratkozni erről a közösségről"
+#: [communityheader]unfollow_text
+msgid "You are going to unfollow this community"
+msgstr ""
 
 #: [communityheader]sure [delete]title
 msgid "Are you sure?"
@@ -1029,6 +1137,22 @@ msgstr ""
 
 #: [communityposts]empty_me_button
 msgid "Publish my first post"
+msgstr ""
+
+#: [communityposts]presencerequired
+msgid "Private account"
+msgstr ""
+
+#: [communityposts]presencerequired_text
+msgid "Ask %s to be in your contacts to see the publications"
+msgstr ""
+
+#: [communityposts]subscribe_presencerequired
+msgid "Send an invitation request before following the contact"
+msgstr ""
+
+#: [communityposts]subscribe_unsupported
+msgid "You can't follow the contact at the moment"
 msgstr ""
 
 #: [communitysubscriptions]subscriptions
@@ -1068,8 +1192,8 @@ msgid "Hide the offline contacts"
 msgstr "Rejtsd el az offline kapcsolatokat"
 
 #: [config]appearence
-msgid "Appearence"
-msgstr "Megjelenés"
+msgid "Appearance"
+msgstr ""
 
 #: [config]updated
 msgid "Configuration updated"
@@ -1091,6 +1215,18 @@ msgstr "Felnőtt tartalom megjelenítése"
 msgid "Will allow you to read the posts tagged with the #nsfw tag"
 msgstr "Engedélyezni fogja a #nsfw címkével ellátott bejegyzéseket."
 
+#: [config]omemoenabled
+msgid "Use OMEMO"
+msgstr ""
+
+#: [config]omemoenabled_text
+msgid "Enable end to end encryption on Movim for your account"
+msgstr ""
+
+#: [config]omemoenabled_warning
+msgid "To encrypt and decrypt messages Movim is using some code delivered from the %s web domain. If you want to exchange sensitive information please ensure that you fully trust the code issued by this intermediary."
+msgstr ""
+
 #: [config]night_mode
 msgid "Night Mode"
 msgstr "Éjjeli mód"
@@ -1099,17 +1235,21 @@ msgstr "Éjjeli mód"
 msgid "Use dark colors to rest your eyes"
 msgstr "Sötét színek használata, hogy pihenni tudjon a szemed"
 
+#: [config]night_mode_detected
+msgid "Your browser is already telling Movim to use the Night Mode by default"
+msgstr ""
+
 #: [config]chatmain
 msgid "Main chat page"
 msgstr ""
 
 #: [config]chatmain_text
-msgid "Make the chat page as the default one"
+msgid "Set the chat page to the default when opening Movim"
 msgstr ""
 
 #: [config]mam_text
-msgid "Server-side archiving preferences"
-msgstr "Szerveroldali archiválási beállítások"
+msgid "Server-side chat messages archiving preferences"
+msgstr ""
 
 #: [config]mam_always
 msgid "Always"
@@ -1122,6 +1262,54 @@ msgstr "Soha"
 #: [config]mam_saved
 msgid "Archiving preferences saved"
 msgstr "Archiválási beállítások elmentve"
+
+#: [config]blog_text
+msgid "Personal blog confidentiality"
+msgstr ""
+
+#: [config]blog_open_title
+msgid "Public blog"
+msgstr ""
+
+#: [config]blog_open_text
+msgid "Accessible to everyone on the network"
+msgstr ""
+
+#: [config]blog_presence_title
+msgid "Private blog"
+msgstr ""
+
+#: [config]blog_presence_text
+msgid "Restricted to your subscribers only"
+msgstr ""
+
+#: [config]blog_saved
+msgid "Personal blog confidentiality saved"
+msgstr ""
+
+#: [config]confidentiality
+msgid "Confidentiality"
+msgstr ""
+
+#: [config]audio_title
+msgid "Audio notifications"
+msgstr ""
+
+#: [config]audio_chat
+msgid "Incoming message"
+msgstr ""
+
+#: [config]accent_color
+msgid "Accent color"
+msgstr ""
+
+#: [config]change_nickname_title
+msgid "Be careful"
+msgstr ""
+
+#: [config]change_nickname_text
+msgid "Changing your nickname will change your public blog, feed, and articles URLs"
+msgstr ""
 
 #: [confirm]title
 msgid "Confirmation of authentication"
@@ -1140,8 +1328,8 @@ msgid "Add a contact"
 msgstr "Partner hozzáadása"
 
 #: [roster]add_contact_info1
-msgid "Enter the Jabber ID of your contact."
-msgstr "Add meg az ismerősöd Jabber azonosítóját."
+msgid "Enter the XMPP Address of your contact."
+msgstr ""
 
 #: [roster]add_contact_info2
 msgid "Press enter to validate."
@@ -1163,11 +1351,19 @@ msgstr "Ismerős törölve"
 msgid "General Information"
 msgstr "Általános információ"
 
-#: [general]name [chatrooms]name
+#: [general]name
 msgid "Name"
 msgstr "Név"
 
-#: [general]nickname [chatrooms]nickname
+#: [general]pronouns
+msgid "Pronouns"
+msgstr ""
+
+#: [general]pronouns_example
+msgid "he/she/they/…"
+msgstr ""
+
+#: [general]nickname
 msgid "Nickname"
 msgstr "Becenév"
 
@@ -1211,6 +1407,14 @@ msgstr ""
 msgid "Links"
 msgstr ""
 
+#: [general]private_account_title
+msgid "Your account is private"
+msgstr ""
+
+#: [general]private_account_text
+msgid "Go to the Settings page to create a public blog and allow the other users to find you"
+msgstr ""
+
 #: [position]legend
 msgid "Geographic Position"
 msgstr "Földrajzi helyzet"
@@ -1222,14 +1426,6 @@ msgstr "Helység"
 #: [position]country
 msgid "Country"
 msgstr "Ország"
-
-#: [mood]title
-msgid "Mood"
-msgstr "Hangulat"
-
-#: [mood]im
-msgid "I’m "
-msgstr "A hangulatom"
 
 #: [listen]title
 msgid "Listening"
@@ -1268,8 +1464,8 @@ msgid "Group"
 msgstr "Csoport"
 
 #: [delete]text
-msgid "You are going to delete one of your contacts, please confirm your action"
-msgstr "Törölni fogod az egyik kapcsolatod, kérlek erősítsd meg a szándékod."
+msgid "You are going to remove one of your contacts, please confirm your action"
+msgstr ""
 
 #: [age]years
 msgid "%s years"
@@ -1308,23 +1504,67 @@ msgid "But this contact can still see if you are online"
 msgstr "De ez az ismerős még mindig láthatja ha online vagy"
 
 #: [subscription]nil
-msgid "No subscriptions"
-msgstr "Nincsenek feliratkozók"
+msgid "You are not subscribed to anyone"
+msgstr ""
 
 #: [subscription]nil_button [button]invite
 msgid "Invite"
 msgstr "Meghívás"
 
 #: [subscription]nil_text
-msgid "This contact is in your contact list but there is no subscription between the two accounts"
-msgstr "Ez az partner a partnerlistádon van, de nincsenek feliratkozások a két fiók között."
+msgid "This contact is in your contact list but you are not subscribed to each other"
+msgstr ""
 
-#: [contactdatapublic]no_data
-msgid "No public data found"
+#: [contactssuggestions]for_you
+msgid "Suggestions for you"
+msgstr ""
+
+#: [dictaphone]name
+msgid "Dictaphone"
+msgstr ""
+
+#: [dictaphone]push_to_record
+msgid "Push to record"
+msgstr ""
+
+#: [dictaphone]recording
+msgid "Recording"
 msgstr ""
 
 #: [draw]title
 msgid "Draw"
+msgstr ""
+
+#: [emojisconfig]title
+msgid "Emojis"
+msgstr ""
+
+#: [emojisconfig]favorites_title
+msgid "My favorite emojis"
+msgstr ""
+
+#: [emojisconfig]favorites_text
+msgid "Pick emojis from the packs bellow that you want to add to your favorites ones"
+msgstr ""
+
+#: [emojisconfig]dialog_title
+msgid "Manage a favorite emoji"
+msgstr ""
+
+#: [emojisconfig]alias_error
+msgid "The shortcut should only contains lowercase letters, numbers and dashes"
+msgstr ""
+
+#: [emojisconfig]new_added
+msgid "New favorite emoji added"
+msgstr ""
+
+#: [emojisconfig]alias_conflict
+msgid "The shortcut is already used on another emoji"
+msgstr ""
+
+#: [emojisconfig]no_emojis_yet
+msgid "No favorites yet, check the settings page to add some"
 msgstr ""
 
 #: [faq]title
@@ -1340,7 +1580,7 @@ msgid "By default the content is only available to your contacts. You can make y
 msgstr ""
 
 #: [faq]permission_community_title
-msgid "How does it applies on Communities posts?"
+msgid "How does it apply to Communities posts?"
 msgstr ""
 
 #: [faq]permission_community_text
@@ -1348,7 +1588,7 @@ msgid "Similary to your blog publications except that, by default, the posts are
 msgstr ""
 
 #: [faq]chatrooms_title
-msgid "Where can I find a list of chatrooms?"
+msgid "Where can I find a list of group chats?"
 msgstr ""
 
 #: [faq]find_contacts_title
@@ -1387,53 +1627,25 @@ msgstr "Chatelnél a Movim csapatával?"
 msgid "Add the chatroom"
 msgstr "Chatszoba hozzáadása"
 
-#: [location]title
-msgid "My location"
-msgstr ""
-
-#: [location]enabled_title
-msgid "Currently shared with my contacts"
-msgstr ""
-
-#: [location]disabled_title
-msgid "Currently disabled"
-msgstr ""
-
-#: [location]last_published
-msgid "My last published location"
-msgstr ""
-
-#: [location]less_than_one_km
-msgid "Less than a km away"
-msgstr ""
-
-#: [location]n_km_away
-msgid "%s km away"
-msgstr ""
-
 #: [error]username
 msgid "Wrong username"
 msgstr "Téves felhasználónév"
 
 #: [error]jid
-msgid "Invalid JID"
-msgstr "Érvénytelen JID"
+msgid "Invalid XMPP Address"
+msgstr ""
 
 #: [error]empty_challenge
 msgid "Empty Challenge from the server"
 msgstr "Üres kihívás a szervertől"
 
 #: [error]dns
-msgid "XMPP Domain error, your account is not a correct Jabber ID"
-msgstr "XMPP domén hiba, a fiókod nem egy megfelelő Jabber ID"
+msgid "XMPP Domain error, your account is not a valid XMPP Address"
+msgstr ""
 
 #: [error]data_missings
 msgid "Some data are missing!"
 msgstr "Néhány adat hiányzik!"
-
-#: [error]wrong_password
-msgid "Wrong password"
-msgstr "Hibás jelszó"
 
 #: [error]internal
 msgid "Internal server error"
@@ -1447,9 +1659,9 @@ msgstr "Hiba a munkamenetben"
 msgid "Account successfully created"
 msgstr "Felhasználói fiók sikeresen létrehozva"
 
-#: [error]timeout
-msgid "The server takes too much time to respond"
-msgstr "A szervernek túl sok időbe telik válaszolni"
+#: [error]connection
+msgid "Movim cannot connect to the server"
+msgstr ""
 
 #: [error]impossible
 msgid "Impossible login"
@@ -1483,6 +1695,14 @@ msgstr "Ezt a belépési módot a Movim nem támogatja"
 msgid "The XMPP authentification failed"
 msgstr "Az XMPP azonosítás sikertelen volt."
 
+#: [error]max_sessions_reached
+msgid "This Movim instance is currently full."
+msgstr ""
+
+#: [error]max_sessions_reached_join
+msgid "Try a different one on %s"
+msgstr ""
+
 #: [connection]socket_connected
 msgid "Connected to the server"
 msgstr ""
@@ -1503,7 +1723,7 @@ msgstr ""
 msgid "Login using any XMPP account or create a new one"
 msgstr ""
 
-#: [form]connected
+#: [form]connected [chatrooms]filter_connected
 msgid "Connected"
 msgstr "Csatlakozva"
 
@@ -1527,29 +1747,17 @@ msgstr ""
 msgid "Visit the project official website %s."
 msgstr ""
 
-#: [login_anonymous]bad_username
-msgid "Bad nickname (between 4 and 40 characters)"
-msgstr "Rossz becenév (4-40 karakter)"
-
 #: [menu]empty_title
 msgid "No news yet…"
 msgstr "Még nincsenek hírek…"
 
 #: [menu]empty
-msgid "Welcome on your news feed, here you will see all the posts published by your contacts and in the communities you have subscribed."
-msgstr "Üdv a hírfolyamodban! Itt láthatod az ismerőseid és a feliratkozott közösségeid összes bejegyzését."
-
-#: [menu]all
-msgid "All"
-msgstr "Mind"
+msgid "Welcome to your news feed, here you will see all the posts published by your contacts and in the communities you have subscribed."
+msgstr ""
 
 #: [menu]mine
 msgid "My publications"
 msgstr "Közzétételeim"
-
-#: [menu]contacts [page]contacts
-msgid "Contacts"
-msgstr "Kapcsolatok"
 
 #: [menu]add_post
 msgid "Write a new post…"
@@ -1584,14 +1792,6 @@ msgstr ""
 msgid "Notifications"
 msgstr "Értesítések"
 
-#: [notificationconfig]audio_title
-msgid "Audio notifications"
-msgstr ""
-
-#: [notificationconfig]audio_chat
-msgid "Incoming message"
-msgstr ""
-
 #: [notificationconfig]push_subscriptions
 msgid "Push notifications"
 msgstr ""
@@ -1616,9 +1816,21 @@ msgstr ""
 msgid "Unknown platform"
 msgstr ""
 
-#: [invitations]title
-msgid "Pending Invitations"
-msgstr "Várakozó meghívások"
+#: [invitations]received
+msgid "Received Invitations"
+msgstr ""
+
+#: [invitations]adds_you
+msgid "%s wants to add you"
+msgstr ""
+
+#: [invitations]no_new
+msgid "No new invitations"
+msgstr ""
+
+#: [invitations]no_subscriptions
+msgid "No pending subscriptions"
+msgstr ""
 
 #: [invitations]wants_to_talk
 msgid "%s wants to talk with you"
@@ -1648,17 +1860,9 @@ msgstr "Legyen a profilod publikus és más felhasználók találhassanak meg é
 msgid "You can always disable this in the configuration afterwards"
 msgstr "Később bármikor kikapcsolhatod ezt a konfigurációnál"
 
-#: [onboarding]popups_title
-msgid "Popups"
-msgstr "Felugró üzenetek"
-
-#: [onboarding]popups_text
-msgid "Movim is using popups for the video-conference feature, they are sometime blocked by the browsers"
-msgstr "A Movim felugró üzeneteket használ a videókonferencia funkcióhoz, amelyeket blokkolnak egyes böngészők"
-
-#: [onboarding]popups_text_second
-msgid "Please be sure that they are enabled to use this feature properly"
-msgstr "Kérlek, engedélyezd őket, hogy megfelelően használhasd ezt a funkciót"
+#: [post]publish_something
+msgid "Publish something"
+msgstr ""
 
 #: [post]news_feed
 msgid "News Feed"
@@ -1680,28 +1884,24 @@ msgstr "Poszt közzétéve"
 msgid "Post deleted"
 msgstr "Poszt törölve"
 
-#: [post]hot
-msgid "What’s Hot"
-msgstr ""
-
 #: [post]hot_text
 msgid "Posts recently published in communities that you are not subscribed (yet)"
 msgstr ""
 
-#: [post]new [publish]new
-msgid "New post"
-msgstr "Új poszt"
+#: [post]new_blog
+msgid "New blog post"
+msgstr ""
 
 #: [post]repost
 msgid "This is a re-post from %s"
 msgstr ""
 
-#: [post]repost_profile
+#: [post]see_profile
 msgid "See %s profile"
 msgstr "%s profilja"
 
-#: [post]blog_last
-msgid "Public posts from users"
+#: [post]unknown_contact
+msgid "Unknown contact"
 msgstr ""
 
 #: [post]read_time_singular
@@ -1712,9 +1912,9 @@ msgstr ""
 msgid "%s minutes"
 msgstr ""
 
-#: [post]public
-msgid "Publish this post publicly?"
-msgstr "Nyilvánosan közzéteszed a bejegyzést?"
+#: [post]public_preview
+msgid "Preview URL: %s"
+msgstr ""
 
 #: [post]public_yes
 msgid "This post is public"
@@ -1727,6 +1927,22 @@ msgstr "Ez a bejegyzés nem nyilvános"
 #: [post]public_url
 msgid "Public URL of this post"
 msgstr "A bejegyzés nyilvános URL-je"
+
+#: [post]comments_disabled_title
+msgid "Disable the comments"
+msgstr ""
+
+#: [post]comments_disabled_text
+msgid "Nobody will be able to like or comment"
+msgstr ""
+
+#: [post]comments_disabled_yes
+msgid "Comments disabled for this post"
+msgstr ""
+
+#: [post]comments_disabled_no
+msgid "Comments enabled for this post"
+msgstr ""
 
 #: [post]delete_title [post]delete
 msgid "Delete this post"
@@ -1741,7 +1957,7 @@ msgid "Are you sure that you want to delete this comment?"
 msgstr ""
 
 #: [post]discover
-msgid "Discover more articles on the communities page"
+msgid "Discover more posts on the communities page"
 msgstr ""
 
 #: [post]more
@@ -1776,6 +1992,10 @@ msgstr ""
 msgid "Commented"
 msgstr ""
 
+#: [post]subscription_required
+msgid "You must be subscribed to %s to see this publication"
+msgstr ""
+
 #: [hello]contact_post
 msgid "Contact post"
 msgstr ""
@@ -1797,7 +2017,7 @@ msgid "Oh! Hello!"
 msgstr "Ó! Szia!"
 
 #: [hello]enter_paragraph
-msgid "It seems that you’re new there! Welcome on Movim!"
+msgid "It seems that you are new here! Welcome to Movim!"
 msgstr ""
 
 #: [hello]menu_title
@@ -1816,6 +2036,10 @@ msgstr ""
 msgid "You can go in the Configuration page to describe yourself and put a nice picture"
 msgstr ""
 
+#: [status]visit_blog
+msgid "Visit my blog"
+msgstr ""
+
 #: [status]disconnect
 msgid "Disconnect"
 msgstr "Lecsatlakozás"
@@ -1828,12 +2052,24 @@ msgstr "Jelenlét"
 msgid "Do you really want to log out?"
 msgstr ""
 
+#: [status]my_avatar
+msgid "My profile picture"
+msgstr ""
+
 #: [preview]link_copied
 msgid "Link copied to clipboard"
 msgstr ""
 
 #: [publish]placeholder
 msgid "What’s new?"
+msgstr ""
+
+#: [publish]brief_title
+msgid "Brief"
+msgstr ""
+
+#: [publish]post_title [page]post
+msgid "Post"
 msgstr ""
 
 #: [publish]post
@@ -1852,7 +2088,11 @@ msgstr ""
 msgid "Please provide a title"
 msgstr "Kérlek adj címet neki"
 
-#: [publish]preview
+#: [publish]no_picture
+msgid "At least one picture is required"
+msgstr ""
+
+#: [publish]preview [button]preview
 msgid "Preview"
 msgstr "Előnézet"
 
@@ -1864,9 +2104,9 @@ msgstr ""
 msgid "You cannot publish a post here"
 msgstr ""
 
-#: [publish]no_content_preview
-msgid "No content to preview"
-msgstr "Nincs megjeleníthető tartalom előnézethez"
+#: [publish]new
+msgid "New post"
+msgstr "Új poszt"
 
 #: [publish]title
 msgid "Post title"
@@ -1893,11 +2133,35 @@ msgid "Rich text editor"
 msgstr ""
 
 #: [publish]help_hashtag
-msgid "Add #hashtags in your title or content to allow your article to be discovered"
+msgid "Add #hashtags in your title or content to allow your post to be discovered"
 msgstr ""
 
 #: [publish]publish_error_forbidden
 msgid "You are not authorized to publish there"
+msgstr ""
+
+#: [publish]publish_error_payload_to_big
+msgid "Your post is too big to be published"
+msgstr ""
+
+#: [publish]too_long
+msgid "Your text is too long, %s characters max"
+msgstr ""
+
+#: [publish]blog_presence
+msgid "Your blog is only accessible to your subscribers. You can make it accessible to anyone in the settings page."
+msgstr ""
+
+#: [publish]embedded_link
+msgid "The media will be embedded"
+msgstr ""
+
+#: [publish]web_title
+msgid "Create a public HTTP URL from this publication"
+msgstr ""
+
+#: [publish]web_text
+msgid "This will allow anyone outside Movim to have access to your publication"
 msgstr ""
 
 #: [publishhelp]title [page]help
@@ -1912,184 +2176,288 @@ msgstr "Mégtöbb segítség"
 msgid "Markdown syntax manual"
 msgstr "Markdown formázási útmutató"
 
-#: [rooms]create
-msgid "Create a chatroom"
+#: [story]new
+msgid "New story"
 msgstr ""
 
-#: [rooms]edit
-msgid "Edit a chatroom"
-msgstr "Chatszoba szerkesztése"
-
-#: [rooms]join
-msgid "Join a chatroom"
+#: [story]new_edit
+msgid "Edit your story"
 msgstr ""
 
-#: [rooms]join_custom
-msgid "Join a custom chatroom"
+#: [story]new_publish
+msgid "Publish your story"
 msgstr ""
 
-#: [rooms]empty_text1
-msgid "You don’t have any chatrooms yet."
+#: [story]to_roster
+msgid "Publish to my contacts"
 msgstr ""
 
-#: [rooms]empty_text2
-msgid "Add one by clicking on the add button."
-msgstr "Vegyél fel egyet a hozzáadás gombra kattintva."
-
-#: [rooms]empty_synchronize_title
-msgid "You had some rooms previously listed?"
+#: [story]uploading
+msgid "Uploading the story"
 msgstr ""
 
-#: [rooms]empty_synchronize_text
-msgid "Try to synchronize them to the new room bookmarking system"
+#: [story]publishing
+msgid "Publishing the story"
 msgstr ""
 
-#: [rooms]empty_synchronize_button
-msgid "Synchronize"
+#: [story]publishing_text
+msgid "Almost there…"
 msgstr ""
 
-#: [rooms]type_room
-msgid "Type of room"
+#: [story]published
+msgid "Story published"
 msgstr ""
 
-#: [rooms]default_room
-msgid "Standard room"
+#: [create]title [subscribe]title
+msgid "Create a new account"
+msgstr "Felhasználó létrehozása"
+
+#: [create]notfound
+msgid "No account creation form found on the server"
+msgstr "Nem található felhasználó létrehozási űrlap a szerveren."
+
+#: [create]server_on
+msgid "on"
+msgstr "itt:"
+
+#: [create]successfull
+msgid "Your account has been successfully registered"
 msgstr ""
 
-#: [rooms]gateway_room
-msgid "Gateway room"
+#: [create]loading
+msgid "Loading"
+msgstr "Töltés"
+
+#: [create]placeholder
+msgid "…and start playing"
+msgstr "...és kezdődhet a játék"
+
+#: [error]not_acceptable
+msgid "Not Acceptable"
+msgstr "Nem elfogadható"
+
+#: [error]service_unavailable
+msgid "The registration system of this server is currently unavailable"
+msgstr "A szerver regisztrációs rendszere jelenleg nem elérhető."
+
+#: [error]forbidden
+msgid "Registration forbidden"
+msgstr "Regisztáció tiltva"
+
+#: [chatrooms]autojoin
+msgid "Join this chatroom on login"
 msgstr ""
 
-#: [rooms]show_all
-msgid "Show all rooms"
+#: [chatrooms]avatar
+msgid "Change the chatroom avatar"
 msgstr ""
-
-#: [rooms]hide_disconnected
-msgid "Hide disconnected rooms"
-msgstr ""
-
-#: [rooms]destroy_title
-msgid "Destroy the room"
-msgstr ""
-
-#: [rooms]destroy_text
-msgid "Are you sure you want to permanently destroy the following room?"
-msgstr ""
-
-#: [rooms]owner
-msgctxt "[rooms]owner"
-msgid "Owner"
-msgstr ""
-
-#: [rooms]admin
-msgctxt "[rooms]admin"
-msgid "Admin"
-msgstr ""
-
-#: [rooms]visitor
-msgid "Visitor"
-msgstr ""
-
-#: [rooms]explore_placeholder
-msgid "Name or description"
-msgstr ""
-
-#: [chatrooms]title
-msgid "Chatrooms"
-msgstr "Chatszobák"
-
-#: [chatrooms]id
-msgid "Chatroom ID"
-msgstr ""
-
-#: [chatrooms]name_placeholder
-msgid "My Favorite Room"
-msgstr "Kedvenc szobám"
 
 #: [chatrooms]bad_id
-msgid "Bad Chatroom ID"
-msgstr "Rossz Chat szoba azonosító"
-
-#: [chatrooms]empty_name
-msgid "Empty name"
-msgstr "Név üres"
-
-#: [chatrooms]synchronized
-msgid "%s rooms synchronized"
+msgid "Bad Chatroom Address"
 msgstr ""
 
-#: [chatrooms]not_synchronized
-msgid "No rooms to synchronize found"
-msgstr ""
-
-#: [chatrooms]users
-msgctxt "[chatrooms]users"
-msgid "Users"
-msgstr ""
-
-#: [chatrooms]members
-msgctxt "[chatrooms]members"
-msgid "Members"
+#: [chatrooms]bad_nickname
+msgid "Please enter a valid nickname (2 to 40 characters)"
 msgstr ""
 
 #: [chatrooms]banned
 msgid "Banned"
 msgstr ""
 
-#: [chatrooms]bad_nickname
-msgid "Please enter a correct nickname (2 to 40 characters)"
-msgstr "Adj meg egy helyes becenevet (2-40 karakter hosszú)"
-
-#: [chatrooms]conflict
-msgid "Username already taken"
-msgstr "A felhasználónév már használatban van"
-
-#: [chatrooms]autojoin
-msgid "Join this chatroom on connect"
+#: [chatrooms]conference_call
+msgid "Conference call"
 msgstr ""
 
-#: [chatrooms]pinned
-msgid "Pin this chatroom"
+#: [chatrooms]conference_call_edit
+msgid "Edit the conference call"
+msgstr ""
+
+#: [chatrooms]conference_call_text
+msgid "Call your contacts and share your webcam or screen"
+msgstr ""
+
+#: [chatrooms]configure
+msgid "Configure the chatroom"
+msgstr ""
+
+#: [chatrooms]conflict
+msgid "Nickname already taken"
+msgstr ""
+
+#: [chatrooms]connected
+msgid "Joined the chatroom"
+msgstr ""
+
+#: [chatrooms]create
+msgid "Create a chatroom"
+msgstr ""
+
+#: [chatrooms]created
+msgid "Chatroom created"
+msgstr ""
+
+#: [chatrooms]default_room
+msgid "Standard chatroom"
+msgstr ""
+
+#: [chatrooms]destroy_text
+msgid "Are you sure you want to permanently destroy the following chatroom?"
+msgstr ""
+
+#: [chatrooms]destroy_title
+msgid "Destroy the chatroom"
 msgstr ""
 
 #: [chatrooms]destroyed
-msgid "Room destroyed"
+msgid "Chatroom destroyed"
 msgstr ""
 
-#: [chatrooms]registrationrequired
-msgid "Chatroom cannot be joined, registration required"
+#: [chatrooms]disco_error
+msgid "Movim was not able to find a valid chatroom. Try maybe with another identifier."
 msgstr ""
 
-#: [chatrooms]itemnotfound
-msgid "The chatroom doesn’t exists"
+#: [chatrooms]disco_maybe_space
+msgid "This chatroom seems to be part of a Space, we are not able to find which one but we strongly advise you to join the Space instead"
 msgstr ""
 
-#: [chatrooms]notauthorized
-msgid "A password is required"
+#: [chatrooms]disco_not_muc
+msgid "You are trying to add something that is not a chatroom"
+msgstr ""
+
+#: [chatrooms]disco_registration_required
+msgid "A registration is required before using the service"
+msgstr ""
+
+#: [chatrooms]disconnected
+msgid "Left the chatroom"
+msgstr ""
+
+#: [chatrooms]discover
+msgid "Discover a chatroom"
+msgstr ""
+
+#: [chatrooms]edit
+msgid "Edit the chatroom"
+msgstr ""
+
+#: [chatrooms]empty_name
+msgid "Empty name"
+msgstr "Név üres"
+
+#: [chatrooms]empty_text1
+msgid "You don’t have any chatroom yet."
+msgstr ""
+
+#: [chatrooms]empty_text2
+msgid "Add one by clicking on the add button."
+msgstr "Vegyél fel egyet a hozzáadás gombra kattintva."
+
+#: [chatrooms]explore_placeholder
+msgid "Name or description"
+msgstr ""
+
+#: [chatrooms]first_room_placeholder
+msgid "Press the %s button to add a first chatroom"
 msgstr ""
 
 #: [chatrooms]forbidden
 msgid "You are not allowed to join this chatroom"
 msgstr ""
 
+#: [chatrooms]gateway_room
+msgid "Gateway chatroom"
+msgstr ""
+
+#: [chatrooms]hide_disconnected
+msgid "Hide disconnected chatrooms"
+msgstr ""
+
+#: [chatrooms]id
+msgid "Chatroom Address"
+msgstr ""
+
+#: [chatrooms]itemnotfound
+msgid "The chatroom doesn’t exist"
+msgstr ""
+
 #: [chatrooms]jidmalformed
 msgid "Your nickname is not valid"
+msgstr ""
+
+#: [chatrooms]join
+msgid "Join a chatroom"
+msgstr ""
+
+#: [chatrooms]join_custom
+msgid "Join a custom chatroom"
+msgstr ""
+
+#: [chatrooms]members
+msgid "Members"
+msgstr "Tagok"
+
+#: [chatrooms]name_placeholder
+msgid "My Favorite Chatroom"
 msgstr ""
 
 #: [chatrooms]notacceptable
 msgid "Not acceptable"
 msgstr ""
 
-#: [chatrooms]serviceunavailable
-msgid "The chatroom occupant limit has been reached"
-msgstr ""
-
 #: [chatrooms]notallowed
 msgid "You are not allowed to create a chatroom there"
 msgstr ""
 
-#: [chatrooms]created
-msgid "Chatroom created"
+#: [chatrooms]notauthorized
+msgid "A password is required"
+msgstr ""
+
+#: [chatrooms]pinned
+msgid "Pin this chatroom"
+msgstr ""
+
+#: [chatrooms]registrationrequired
+msgid "Chatroom cannot be joined, registration required"
+msgstr ""
+
+#: [chatrooms]remoteservernotfound
+msgid "The remote server for this chatroom doesn’t exist"
+msgstr ""
+
+#: [chatrooms]remoteservertimeout
+msgid "Connection to remote server timed out"
+msgstr ""
+
+#: [chatrooms]remove_text
+msgid "You are going to permanently leave the following chatroom. Please confirm your action."
+msgstr ""
+
+#: [chatrooms]remove_title
+msgid "Permanently leave a chatroom"
+msgstr ""
+
+#: [chatrooms]serviceunavailable
+msgid "The chatroom participant limit has been reached"
+msgstr ""
+
+#: [chatrooms]show_all
+msgid "Show all chatrooms"
+msgstr ""
+
+#: [chatrooms]subject
+msgid "Subject"
+msgstr "Tárgy"
+
+#: [chatrooms]title
+msgid "Chatrooms"
+msgstr "Chatszobák"
+
+#: [chatrooms]type_room
+msgid "Type of chatroom"
+msgstr ""
+
+#: [chatrooms]users
+msgid "Users"
 msgstr ""
 
 #: [bookmarks]updated
@@ -2097,15 +2465,15 @@ msgid "Bookmarks updated"
 msgstr "Könyvjelzők frissítve"
 
 #: [room]anonymous_title
-msgid "Public chatroom"
-msgstr "Nyilvános chatszoba"
+msgid "Public Channel"
+msgstr ""
 
 #: [room]anonymous_text1
 msgid "You are currently logged as an anonymous user."
 msgstr ""
 
 #: [room]anonymous_text2
-msgid "You can join using your own account or create one on the login page by loging out using the cross in the top-right corner."
+msgid "You can join using your own account or create one on the login page by logging out using the cross in the top-right corner."
 msgstr ""
 
 #: [room]anonymous_login
@@ -2133,7 +2501,7 @@ msgid "Public profiles"
 msgstr ""
 
 #: [room]nonanonymous_muc_text
-msgid "The participants of this chatroom can see each other's profile"
+msgid "The participants of this chatroom can see each other's XMPP Addresses"
 msgstr ""
 
 #: [room]archived
@@ -2144,7 +2512,7 @@ msgstr ""
 msgid "The chatroom messages are archived"
 msgstr ""
 
-#: [room]group_chat
+#: [room]group_chat [page]room
 msgid "Group Chat"
 msgstr ""
 
@@ -2156,9 +2524,12 @@ msgstr ""
 msgid "Add a new member"
 msgstr ""
 
-#: [room]group_chat_members
-msgctxt "[room]group_chat_members"
-msgid "Members"
+#: [room]group_chat_remove
+msgid "Remove a member"
+msgstr ""
+
+#: [room]group_chat_remove_text
+msgid "You will remove the following member, are you sure?"
 msgstr ""
 
 #: [room]banned_add
@@ -2169,8 +2540,8 @@ msgstr ""
 msgid "Unban"
 msgstr ""
 
-#: [room]change_affiliation
-msgid "Change the user affiliation"
+#: [room]configure_user
+msgid "Configure the user"
 msgstr ""
 
 #: [room]change_affiliation_unauthorized
@@ -2181,17 +2552,16 @@ msgstr ""
 msgid "Affiliation"
 msgstr ""
 
+#: [room]role
+msgid "Role"
+msgstr ""
+
 #: [room]reason
 msgid "Reason"
 msgstr ""
 
 #: [room]channel
 msgid "Channel"
-msgstr ""
-
-#: [room]channel_users
-msgctxt "[room]channel_users"
-msgid "Users"
 msgstr ""
 
 #: [room]channel_text
@@ -2202,8 +2572,8 @@ msgstr ""
 msgid "Never notify"
 msgstr ""
 
-#: [room]notify_quoted
-msgid "Notify when quoted"
+#: [room]notify_mentioned
+msgid "Notify when mentioned"
 msgstr ""
 
 #: [room]notify_always
@@ -2214,42 +2584,20 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
-#: [room]affiliation_owner
-msgctxt "[room]affiliation_owner"
-msgid "Owner"
+#: [room]affiliation_admins
+msgid "Admins"
 msgstr ""
 
-#: [room]affiliation_admin
-msgctxt "[room]affiliation_admin"
-msgid "Admin"
+#: [room]visitor
+msgid "Visitor"
 msgstr ""
 
-#: [room]affiliation_member [affiliation]member
-msgid "Member"
+#: [room]allowed_send_messages
+msgid "Is the user allowed to send messages?"
 msgstr ""
 
-#: [room]affiliation_none [affiliation]no-aff
-msgid "No affiliation"
-msgstr ""
-
-#: [room]affiliation_owner_changed
-msgid "User granted as owner"
-msgstr ""
-
-#: [room]affiliation_admin_changed
-msgid "User granted as admin"
-msgstr ""
-
-#: [room]affiliation_member_changed
-msgid "User granted as member"
-msgstr ""
-
-#: [room]affiliation_outcast_changed
-msgid "User banned"
-msgstr ""
-
-#: [room]affiliation_none_changed
-msgid "Affiliation removed for the user"
+#: [room]role_changed
+msgid "Role changed"
 msgstr ""
 
 #: [roomsexplore]no_local
@@ -2257,20 +2605,24 @@ msgid "No chatrooms found locally"
 msgstr ""
 
 #: [roomsexplore]global_title
-msgid "Global search"
+msgid "Channels"
 msgstr ""
 
 #: [roomsexplore]no_global
 msgid "No chatrooms found globally"
 msgstr ""
 
+#: [roomsexplore]find_more
+msgid "Find more channels"
+msgstr ""
+
+#: [roomsexplore]find_more_text
+msgid "%s in total"
+msgstr ""
+
 #: [search]keyword
 msgid "What are you looking for?"
 msgstr "Mit keresel?"
-
-#: [search]subtitle
-msgid "Open me using Ctrl + M"
-msgstr "A Ctrl + M gombbal nyithatsz meg"
 
 #: [search]placeholder
 msgid "#cats, username@server.com, John…"
@@ -2281,12 +2633,12 @@ msgid "No contacts yet?"
 msgstr ""
 
 #: [search]no_contacts_text
-msgid "Find one by searching for their name or id"
+msgid "Find one by searching for their name or address"
 msgstr ""
 
 #: [search]tags
 msgid "Tags"
-msgstr ""
+msgstr "Címkék"
 
 #: [search]show_complete_roster
 msgid "Show all the contacts"
@@ -2300,28 +2652,216 @@ msgstr ""
 msgid "Share in a new publication"
 msgstr ""
 
-#: [sendto]contact
-msgid "Send it to a contact"
+#: [sendto]selected
+msgid "contacts selected"
 msgstr ""
 
-#: [sendto]chatroom
-msgid "Share it in a chatroom"
+#: [sendto]pick
+msgid "Pick the contacts you want to share this content with"
 msgstr ""
 
 #: [sendto]shared_with
 msgid "Post shared"
 msgstr ""
 
-#: [sendto]shared_contact
-msgid "Post shared with your contact"
-msgstr ""
-
-#: [sendto]shared_chatroom
-msgid "Post shared within the chatroom"
+#: [sendto]shared_contacts
+msgid "Post shared with %s contacts"
 msgstr ""
 
 #: [sendto]more_contacts
 msgid "More contacts"
+msgstr ""
+
+#: [sendto]os_share
+msgid "Share outside Movim"
+msgstr ""
+
+#: [sendto]sharing_post
+msgid "Post shared using Movim"
+msgstr ""
+
+#: [sendto]sharing_story
+msgid "Story shared using Movim"
+msgstr ""
+
+#: [spaceinfo]config_title
+msgid "Space configuration"
+msgstr ""
+
+#: [spaceinfo]config_saved
+msgid "Space configuration saved"
+msgstr ""
+
+#: [spaceinfo]config_error
+msgid "Space configuration error"
+msgstr ""
+
+#: [spaceinfo]admin_title
+msgid "Space administration"
+msgstr ""
+
+#: [spaceinfo]destroy_title
+msgid "Destroy the space"
+msgstr ""
+
+#: [spaceinfo]destroy_text
+msgid "You are going to destroy the following Space, all the chatrooms within it will also be destroyed"
+msgstr ""
+
+#: [spaceinfo]invite_title
+msgid "Invite new contacts"
+msgstr ""
+
+#: [spaceinfo]invite_text
+msgid "A moderator will have to approve the join request"
+msgstr ""
+
+#: [spaceinfo]invite_uri_title
+msgid "Send an invitation key to your contacts"
+msgstr ""
+
+#: [spaceinfo]leave_title [spacesmenu]leave_title
+msgid "Leave the space"
+msgstr ""
+
+#: [spaceinfo]add_room_title
+msgid "Add a room"
+msgstr ""
+
+#: [spaceinfo]add_directory_title
+msgid "Add a directory"
+msgstr ""
+
+#: [spaceinfo]edit_directory_title
+msgid "Edit a directory"
+msgstr ""
+
+#: [spaceinfo]remove_directory_title
+msgid "Remove a directory"
+msgstr ""
+
+#: [spaceinfo]remove_directory_confirm
+msgid "Do you really want to remove this directory?"
+msgstr ""
+
+#: [spaceinfo]remove_directory_text
+msgid "The %s rooms will be preserved"
+msgstr ""
+
+#: [spaceinfo]edited_directories
+msgid "Edited directories"
+msgstr ""
+
+#: [spaceinfo]edited_room
+msgid "Edited room"
+msgstr ""
+
+#: [spaceinfo]pending_approvals
+msgid "%s subscriptions requests are waiting for your approval"
+msgstr ""
+
+#: [spaceinfo]pending_request
+msgid "%s is waiting for your approval to join the space"
+msgstr ""
+
+#: [spaceinfo]pending_action
+msgid "Manage the request"
+msgstr ""
+
+#: [spaceinfo]pinned
+msgid "Pin this space in the bar"
+msgstr ""
+
+#: [spaceinfo]owner_cannot_leave
+msgid "An owner cannot leave his own Space"
+msgstr ""
+
+#: [spaceinfo]affiliation_none
+msgid "Remove from the space"
+msgstr ""
+
+#: [spacesmenu]create_space_title
+msgid "Create a space"
+msgstr ""
+
+#: [spacesmenu]add_space_title
+msgid "Add a new space"
+msgstr ""
+
+#: [spacesmenu]join_space_title
+msgid "Join a space"
+msgstr ""
+
+#: [spacesmenu]invite_space_title
+msgid "You got an invite?"
+msgstr ""
+
+#: [spacesmenu]space_title
+msgid "Space title"
+msgstr ""
+
+#: [spacesmenu]space_title_empty
+msgid "Your Space title is empty"
+msgstr ""
+
+#: [spacesmenu]space_created
+msgid "Space created"
+msgstr ""
+
+#: [spacesmenu]loading_space_info
+msgid "Loading the space"
+msgstr ""
+
+#: [spacesmenu]subscribed
+msgid "Subscribed to the space"
+msgstr ""
+
+#: [spacesmenu]invitation_key
+msgid "Use an invitation key"
+msgstr ""
+
+#: [spacesmenu]key_required
+msgid "A valid key is required"
+msgstr ""
+
+#: [spacesmenu]locked_title
+msgid "Locked space"
+msgstr ""
+
+#: [spacesmenu]locked_text
+msgid "You are not authorized to join the space at the moment"
+msgstr ""
+
+#: [spacesmenu]locked_try_again
+msgid "Try again"
+msgstr ""
+
+#: [spacesmenu]leave_text
+msgid "Are you sure that you want to leave the space?"
+msgstr ""
+
+#: [spacesmenu]pending_subscription_title
+msgid "A request has been send to a moderator."
+msgstr ""
+
+#: [spacesmenu]pending_subscription_text
+msgid "You will be able to join the space once its accepted."
+msgstr ""
+
+#: [spacesmenu]pending_subscription_add_title
+msgid "Add %s to the space"
+msgstr ""
+
+#: [spacesmenu]pending_subscription_refuse_title
+msgid "Deny the access"
+msgstr ""
+
+#: [spacesmenu]contact_added
+msgid "Contact added in the space"
+msgstr ""
+
+#: [spacesmenu]contact_denied
+msgid "Contact denied in the space"
 msgstr ""
 
 #: [sticker]title
@@ -2344,17 +2884,53 @@ msgstr ""
 msgid "Powered by Tenor"
 msgstr ""
 
-#: [subscribe]info
-msgid "Movim is a decentralized social network, before creating a new account you need to choose a server to register."
-msgstr "A Movim egy decentralizált közösségi hálózat. Mielőtt létrehozod a fiókod válassz egy szervert a regisztrációhoz."
-
-#: [subscribe]server_question
-msgid "Your server here?"
+#: [stories]publish
+msgid "New Story"
 msgstr ""
 
-#: [subscribe]server_contact
-msgid "Contact us to add yours to the officially supported servers list"
-msgstr "Írj nekünk, hogy a hivatalosan támogatott szerverek között legyen a tiéd is"
+#: [stories]title
+msgid "Stories"
+msgstr ""
+
+#: [stories]new_story
+msgid "New Story from %s"
+msgstr ""
+
+#: [stories]forbidden
+msgid "You don't have access to this story, send an invitation to the author to access it"
+msgstr ""
+
+#: [stories]share_title
+msgid "Some of your contacts might not have access to this story"
+msgstr ""
+
+#: [stories]share_text
+msgid "They might have to subscribe to the publisher account"
+msgstr ""
+
+#: [stories]comment
+msgid "Send a comment to %s"
+msgstr ""
+
+#: [stories]delete_title
+msgid "Story deletion"
+msgstr ""
+
+#: [stories]delete_text
+msgid "Are you sure that you want to delete this story?"
+msgstr ""
+
+#: [stories]deleted
+msgid "Story deleted"
+msgstr ""
+
+#: [subscribe]info
+msgid "Movim is a decentralized social network, you are invited to register on the following XMPP server(s)"
+msgstr ""
+
+#: [feed]title
+msgid "%s’s feed"
+msgstr "%s hírfolyama"
 
 #: [feed]nope
 msgid "No public feed for this contact"
@@ -2400,6 +2976,14 @@ msgstr ""
 msgid "Max file size %s"
 msgstr ""
 
+#: [upload]upload_xmpp
+msgid "Uploading to your account"
+msgstr ""
+
+#: [upload]encrypted_warning
+msgid "You will send an unencrypted file in an encrypted discussion. Are you sure about it?"
+msgstr ""
+
 #: [vcard]title [page]profile
 msgid "Profile"
 msgstr "Profil"
@@ -2412,11 +2996,15 @@ msgstr "Profil frissítve"
 msgid "Profile Not Updated"
 msgstr "A profil nem frissült"
 
-#: [vcard]public
+#: [vcard]nickname_info
+msgid "This will also be used as your default nickname when joining a chatroom"
+msgstr ""
+
+#: [profile]public
 msgid "Your profile is now public"
 msgstr "A profilod mostantól nyilvános"
 
-#: [vcard]restricted
+#: [profile]restricted
 msgid "Your profile is now restricted"
 msgstr "Korlátozva van a profilod"
 
@@ -2425,11 +3013,11 @@ msgid "Configure your instance nickname"
 msgstr ""
 
 #: [profile]privacy_question
-msgid "Is this profile public?"
+msgid "Is this account public on this Movim instance?"
 msgstr ""
 
 #: [profile]privacy_info
-msgid "Please pay attention! By making your profile public, all the information listed below will be available for all the Movim users and on the whole Internet."
+msgid "Movim will create a public page to host your blog and your account will be searchable by the other Movim users."
 msgstr ""
 
 #: [profile]nickname_info
@@ -2445,7 +3033,7 @@ msgid "John_Bob96"
 msgstr ""
 
 #: [profile]nickname_error
-msgid "Your nickname should only contains letters, numbers, - and _"
+msgid "Your nickname should only contain letters, numbers, - and _"
 msgstr ""
 
 #: [profile]nickname_conflict
@@ -2469,7 +3057,7 @@ msgid "Movim is currently working in degraded mode"
 msgstr ""
 
 #: [degraded]text_1
-msgid "Your server doesn’t support XMPP Pubsub persistence or the social features (communities, news feed and profile) are disabled by the administrator."
+msgid "Your server doesn’t support XMPP Pubsub persistence or the social features (communities, news feed, and profile) are disabled by the administrator."
 msgstr ""
 
 #: [degraded]text_2
@@ -2493,15 +3081,19 @@ msgid "…ringing"
 msgstr ""
 
 #: [visio]declined
-msgid "declined"
+msgid "Declined"
 msgstr ""
 
 #: [visio]in_call
-msgid "in call"
+msgid "Ongoing call"
+msgstr ""
+
+#: [visio]joined_call
+msgid "Joined call"
 msgstr ""
 
 #: [visio]failed
-msgid "failed"
+msgid "Failed"
 msgstr ""
 
 #: [visio]connecting
@@ -2509,47 +3101,79 @@ msgid "…connecting"
 msgstr ""
 
 #: [visio]ended
-msgid "call ended"
+msgid "End of call"
 msgstr ""
 
-#: [visioconfig]title
-msgid "Video & Voice"
+#: [visio]waiting_participants
+msgid "Waiting for incoming participants"
 msgstr ""
 
-#: [visioconfig]help
-msgid "Configure the default devices used by Movim"
+#: [visio]no_participants_left
+msgid "All participants have left the call"
 msgstr ""
 
-#: [visioconfig]microphone
-msgid "Microphone"
+#: [visio]hang_up
+msgid "Hang up the call"
 msgstr ""
 
-#: [visioconfig]microphone_label
+#: [visio]hang_up_text
+msgid "You are going to hang up the current call, are you sure?"
+msgstr ""
+
+#: [visio]pinned
+msgid "%s pinned"
+msgstr ""
+
+#: [visio]unpinned
+msgid "Unpinned"
+msgstr ""
+
+#: [visiolobby]called
+msgid "%s is calling you"
+msgstr ""
+
+#: [visiolobby]calling
+msgid "Calling %s"
+msgstr ""
+
+#: [visiolobby]muji_create
+msgid "Creating a conference call in %s"
+msgstr ""
+
+#: [visiolobby]muji_join
+msgid "Joining the conference call"
+msgstr ""
+
+#: [visiolobby]setup
+msgid "Setting up your camera and microphone"
+msgstr ""
+
+#: [visiolobby]devices_disco
+msgid "Please allow your browser to share your devices to configure them"
+msgstr ""
+
+#: [visiolobby]microphone_label
 msgid "Default microphone"
 msgstr ""
 
-#: [visioconfig]camera
-msgid "Camera"
-msgstr ""
-
-#: [visioconfig]camera_label
+#: [visiolobby]camera_label
 msgid "Default camera"
 msgstr ""
 
-#: [visioconfig]default_microphone_changed
+#: [visiolobby]default_microphone_changed
 msgid "Default microphone changed"
 msgstr ""
 
-#: [visioconfig]default_camera_changed
+#: [visiolobby]default_camera_changed
 msgid "Default camera changed"
 msgstr ""
 
-#: [visioconfig]no_mic_sound
+#: [visiolobby]no_mic_sound
 msgid "No sound detected from your microphone"
 msgstr ""
 
-#: [visioconfig]no_mic_sound2
-msgid "Try to select another source or check your system settings"
+#: [visiolobby]no_mic_sound2
+msgid "Try make some noise, select another source or check your system settings"
 msgstr ""
 
 #: [global]no_js
@@ -2557,7 +3181,7 @@ msgid "Movim requires Javascript to be enabled to work properly."
 msgstr ""
 
 #: [global]description
-msgid "Movim is a kickass distributed social networking platform that protect your privacy and comes with a set of awesome features."
+msgid "Movim is a kickass distributed social networking platform that protects your privacy and comes with a set of awesome features."
 msgstr ""
 
 #: [global]loading
@@ -2572,86 +3196,94 @@ msgstr ""
 msgid "Switch to another pod"
 msgstr ""
 
-#: [page]communities
-msgid "Communities"
+#: [global]main_menu
+msgid "Main menu"
 msgstr ""
 
-#: [page]home
-msgid "Home"
-msgstr "Kezdőoldal"
+#: [global]bottom_menu
+msgid "Bottom menu"
+msgstr ""
 
-#: [page]explore
-msgid "Explore"
-msgstr "Felfedezés"
+#: [global]skip_main
+msgid "Skip to main content"
+msgstr ""
+
+#: [page]about
+msgid "About"
+msgstr "Névjegy"
 
 #: [page]account_creation
 msgid "Account Creation"
 msgstr "Felhasználó létrehozása"
 
-#: [page]news
-msgid "News"
-msgstr "Hírek"
+#: [page]administration
+msgid "Administration"
+msgstr "Adminisztráció"
 
 #: [page]avatar
-msgid "Avatar"
-msgstr "Avatár"
-
-#: [page]chats
-msgid "Chats"
-msgstr "Beszélgetések"
-
-#: [page]publish
-msgid "Publish"
-msgstr "Közzétesz"
-
-#: [page]post
-msgid "Post"
+msgid "Profile Picture"
 msgstr ""
 
 #: [page]blog
 msgid "Blog"
 msgstr "Blog"
 
-#: [page]about
-msgid "About"
-msgstr "Névjegy"
+#: [page]chats
+msgid "Messages"
+msgstr "Üzenetek"
 
-#: [page]login
-msgid "Login"
-msgstr "Bejelentkezés"
-
-#: [page]not_found
-msgid "Not Found"
+#: [page]communities
+msgid "Communities"
 msgstr ""
+
+#: [page]explore
+msgid "Explore"
+msgstr "Felfedezés"
 
 #: [page]feed
 msgid "Feed"
 msgstr "Hírforrás"
 
+#: [page]home
+msgid "Home"
+msgstr "Kezdőoldal"
+
+#: [page]login
+msgid "Login"
+msgstr "Bejelentkezés"
+
+#: [page]news
+msgid "News"
+msgstr "Hírek"
+
+#: [page]not_found
+msgid "Not Found"
+msgstr ""
+
 #: [page]posts
 msgid "Posts"
 msgstr "Megosztások"
 
-#: [page]gallery
-msgid "Gallery"
-msgstr "Galéria"
-
-#: [page]visio
-msgid "Visio-conference"
-msgstr "Videó-konferencia"
+#: [page]publish
+msgid "Publish"
+msgstr "Közzétesz"
 
 #: [page]share
 msgctxt "[page]share"
 msgid "Share"
-msgstr ""
+msgstr "Megosztás"
 
-#: [page]room
-msgid "Room"
-msgstr "Szoba"
+#: [page]space
+msgid "Space"
+msgstr ""
 
 #: [page]tag
 msgid "Tag"
 msgstr "Címke"
+
+#: [page]visio
+msgid "Visio-conference"
+msgstr "Videó-konferencia"
 
 #: [error]error
 msgid "Error: %s"
@@ -2685,29 +3317,57 @@ msgstr ""
 msgid "Oops!"
 msgstr "Hupsz!"
 
-#: [button]call
-msgid "Call"
-msgstr ""
+#: [button]accept
+msgid "Accept"
+msgstr "Elfogad"
+
+#: [button]add
+msgid "Add"
+msgstr "Hozzáad"
 
 #: [button]audio_call
 msgid "Audio Call"
 msgstr ""
 
-#: [button]video_call
-msgid "Video Call"
+#: [button]bool_no
+msgid "No"
+msgstr "Nem"
+
+#: [button]bool_yes
+msgid "Yes"
+msgstr "Igen"
+
+#: [button]call
+msgid "Call"
+msgstr "Hívás"
+
+#: [button]cancel
+msgid "Cancel"
+msgstr "Mégse"
+
+#: [button]chat
+msgid "Chat"
+msgstr "Chat"
+
+#: [button]clear
+msgid "Clear"
+msgstr "Törlés"
+
+#: [button]close
+msgid "Close"
+msgstr "Bezárás"
+
+#: [button]connecting
+msgid "Connecting"
+msgstr "Csatlakozás"
+
+#: [button]copy_link
+msgid "Copy Link"
 msgstr ""
 
-#: [button]validate
-msgid "Validate"
-msgstr "Érvényesít"
-
-#: [button]refresh
-msgid "Refresh"
-msgstr "Frissít"
-
-#: [button]add
-msgid "Add"
-msgstr "Hozzáad"
+#: [button]create
+msgid "Create"
+msgstr ""
 
 #: [button]delete
 msgid "Delete"
@@ -2717,13 +3377,106 @@ msgstr "Törlés"
 msgid "Destroy"
 msgstr ""
 
-#: [button]cancel
-msgid "Cancel"
-msgstr "Mégse"
+#: [button]discover
+msgid "Discover"
+msgstr ""
 
-#: [button]close
-msgid "Close"
-msgstr "Bezárás"
+#: [button]enable
+msgid "Enable"
+msgstr ""
+
+#: [button]join
+msgid "Join"
+msgstr ""
+
+#: [button]leave
+msgid "Leave"
+msgstr ""
+
+#: [button]like
+msgid "Like"
+msgstr ""
+
+#: [button]more
+msgid "More"
+msgstr ""
+
+#: [button]new
+msgid "New conversation"
+msgstr "Új beszélgetés"
+
+#: [button]next
+msgid "Next"
+msgstr "Következő"
+
+#: [button]not_now
+msgid "Not Now"
+msgstr ""
+
+#: [button]open
+msgid "Open"
+msgstr "Nyitott"
+
+#: [button]previous
+msgid "Previous"
+msgstr "Előző"
+
+#: [button]quote
+msgid "Quote"
+msgstr ""
+
+#: [button]refresh
+msgid "Refresh"
+msgstr "Frissít"
+
+#: [button]refuse
+msgid "Refuse"
+msgstr "Visszautasít"
+
+#: [button]register
+msgid "Register"
+msgstr "Regisztráció"
+
+#: [button]remove
+msgid "Remove"
+msgstr ""
+
+#: [button]reply
+msgid "Reply"
+msgstr ""
+
+#: [button]return
+msgid "Return"
+msgstr "Visszatérés"
+
+#: [button]save
+msgid "Save"
+msgstr "Mentés"
+
+#: [button]search
+msgid "Search"
+msgstr "Keresés"
+
+#: [button]send_to
+msgid "Send to"
+msgstr ""
+
+#: [button]share
+msgctxt "[button]share"
+msgid "Share"
+msgstr "Megosztás"
+
+#: [button]sign_up
+msgid "Sign Up"
+msgstr ""
+
+#: [button]submitting
+msgid "Submitting"
+msgstr "Közzétesz"
+
+#: [button]unregister
+msgid "Unregister"
+msgstr "Regisztráció törlése"
 
 #: [button]update
 msgid "Update"
@@ -2733,106 +3486,13 @@ msgstr "Frissít"
 msgid "Updating"
 msgstr "Frissítés"
 
-#: [button]submitting
-msgid "Submitting"
-msgstr "Közzétesz"
+#: [button]validate
+msgid "Validate"
+msgstr "Érvényesít"
 
-#: [button]register
-msgid "Register"
-msgstr "Regisztráció"
-
-#: [button]reply
-msgid "Reply"
+#: [button]video_call
+msgid "Video Call"
 msgstr ""
-
-#: [button]unregister
-msgid "Unregister"
-msgstr "Regisztráció törlése"
-
-#: [button]save
-msgid "Save"
-msgstr "Mentés"
-
-#: [button]clear
-msgid "Clear"
-msgstr "Törlés"
-
-#: [button]connecting
-msgid "Connecting"
-msgstr "Csatlakozás"
-
-#: [button]bool_yes
-msgid "Yes"
-msgstr "Igen"
-
-#: [button]bool_no
-msgid "No"
-msgstr "Nem"
-
-#: [button]return
-msgid "Return"
-msgstr "Visszatérés"
-
-#: [button]accept
-msgid "Accept"
-msgstr "Elfogad"
-
-#: [button]refuse
-msgid "Refuse"
-msgstr "Visszautasít"
-
-#: [button]next
-msgid "Next"
-msgstr "Következő"
-
-#: [button]previous
-msgid "Previous"
-msgstr "Előző"
-
-#: [button]search
-msgid "Search"
-msgstr "Keresés"
-
-#: [button]share
-msgctxt "[button]share"
-msgid "Share"
-msgstr ""
-
-#: [button]discover
-msgid "Discover"
-msgstr ""
-
-#: [button]like
-msgid "Like"
-msgstr ""
-
-#: [button]not_now
-msgid "Not Now"
-msgstr ""
-
-#: [button]enable
-msgid "Enable"
-msgstr ""
-
-#: [button]sign_up
-msgid "Sign Up"
-msgstr ""
-
-#: [button]send_to
-msgid "Send to"
-msgstr ""
-
-#: [button]more
-msgid "More"
-msgstr ""
-
-#: [button]copy_link
-msgid "Copy Link"
-msgstr ""
-
-#: [button]open
-msgid "Open"
-msgstr "Nyitott"
 
 #: [input]optional
 msgid "Optional"
@@ -2840,6 +3500,10 @@ msgstr ""
 
 #: [input]muc_pubsub_node
 msgid "Associated Community"
+msgstr ""
+
+#: [input]open_me_using
+msgid "Open me using"
 msgstr ""
 
 #: [day]title
@@ -2897,6 +3561,14 @@ msgstr "Webcím"
 #: [client]registered
 msgid "Registered"
 msgstr "Regisztrálva"
+
+#: [client]gateway
+msgid "Gateway"
+msgstr "Átjáró"
+
+#: [client]im
+msgid "Server"
+msgstr "Szerver"
 
 #: [presence]online
 msgid "Online"
@@ -3178,6 +3850,10 @@ msgstr "ellazult"
 msgid "relieved"
 msgstr "megkönnyebbült"
 
+#: [mood]remorseful
+msgid "remorseful"
+msgstr ""
+
 #: [mood]restless
 msgid "restless"
 msgstr "nyugtalan"
@@ -3430,6 +4106,10 @@ msgstr ""
 msgid "Owner"
 msgstr "Tulajdonos"
 
+#: [affiliation]admin
+msgid "Admin"
+msgstr ""
+
 #: [affiliation]publisher
 msgid "Publisher"
 msgstr "Kiadó"
@@ -3438,8 +4118,36 @@ msgstr "Kiadó"
 msgid "Publish only"
 msgstr ""
 
+#: [affiliation]member
+msgid "Member"
+msgstr ""
+
 #: [affiliation]outcast
 msgid "Outcast"
+msgstr ""
+
+#: [affiliation]no_aff
+msgid "No affiliation"
+msgstr ""
+
+#: [affiliation]owner_changed
+msgid "User granted as owner"
+msgstr ""
+
+#: [affiliation]admin_changed
+msgid "User granted as admin"
+msgstr ""
+
+#: [affiliation]member_changed
+msgid "User granted as member"
+msgstr ""
+
+#: [affiliation]outcast_changed
+msgid "User banned"
+msgstr ""
+
+#: [affiliation]none_changed
+msgid "Affiliation removed for the user"
 msgstr ""
 
 #: [api]error

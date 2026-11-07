@@ -1,0 +1,47 @@
+<section>
+    <form name="invite">
+        <h3>{$c->__('room.invite')}</h3>
+        <h4>{$conference->conference}</h4>
+        <div>
+            <input type="hidden" value="{$conference->conference}" name="to" id="to"/>
+            <datalist id="contact_list">
+                {loop="$contacts"}
+                    <option value="{$value}"/>
+                {/loop}
+            </datalist>
+            <input
+                name="invite"
+                list="contact_list"
+                id="invite"
+                required
+                placeholder="user@server.tld"/>
+            <label>{$c->__('roster.add_contact_info1')}</label>
+        </div>
+        {if="!$conference->isGroupChat()"}
+            <h2 style="text-align: center;">{$c->__('global.or')}</h2>
+            <div>
+                <ul class="list">
+                    <li>
+                        <span class="control icon gray active" onclick="Preview.copyToClipboard('{$c->route('login', $invite->code)}')">
+                            <i class="material-symbols">content_copy</i>
+                        </span>
+                        <div>
+                            <input readonly value="{$c->route('login', $invite->code)}">
+                            <label>{$c->__('room.invite_code')}</label>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        {/if}
+    </section>
+    <footer>
+        <button class="button flat" onclick="Dialog_ajaxClear()">
+            {$c->__('button.cancel')}
+        </button>
+        <button
+            class="button flat"
+            onclick="RoomsUtils_ajaxInvite(MovimUtils.formToJson('invite'));">
+            {$c->__('button.invite')}
+        </button>
+    </footer>
+</div>

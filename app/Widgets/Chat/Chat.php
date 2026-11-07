@@ -1,0 +1,1836 @@
+<?php
+
+namespace App\Widgets\Chat;
+
+use App\Conference;
+use App\Contact;
+use App\Info;
+use App\Message;
+use App\MessageFile;
+use App\MessageOmemoHeader;
+use App\Post as AppPost;
+use App\Reaction;
+use App\Url;
+use App\Widgets\Chats\Chats;
+use App\Widgets\Dictaphone\Dictaphone;
+use App\Widgets\Notif\Notif;
+use App\Widgets\Post\Post;
+use App\Widgets\Rooms\Rooms;
+use App\Widgets\RoomsUtils\RoomsUtils;
+use Carbon\Carbon;
+use Illuminate\Database\Capsule\Manager as DB;
+use Movim\Emoji;
+use Movim\Image;
+use Movim\Jid;
+use Movim\Widget\Base;
+use Movim\Widget\Wrapper;
+use Movim\XMPPUri;
+use Moxl\Xec\Action\BOB\Request;
+use Moxl\Xec\Action\Message\Displayed;
+use Moxl\Xec\Action\Message\MDSDisplayed;
+use Moxl\Xec\Action\Message\Publish;
+use Moxl\Xec\Action\Message\Reactions;
+use Moxl\Xec\Payload\Packet;
+use Respect\Validation\Validator;
+use stdClass;
+
+class Chat extends Base
+{
+    private $_pagination = 50;
+    private $_wrapper = [];
+    private $_mucPresences = [];
+
+    public function load()
+    {
+        $this->addjs('chat.js');
+
+        $this->addcss('chat.css');
+        $this->registerEvent('carbons', 'onMessage');
+        $this->registerEvent('message', 'onMessage');
+        $this->registerEvent('presence', 'onPresence', ['chat', 'space*']);
+        $this->registerEvent('retracted', 'onRetracted');
+        $this->registerEvent('moderated', 'onRetracted');
+        $this->registerEvent('receiptack', 'onMessageReceipt');
+        $this->registerEvent('pubsub_getitem_messageresolved', 'onPostResolved');
+        $this->registerEvent('displayed', 'onMessage', ['chat', 'space*']);
+        $this->registerEvent('mam_get_handle', 'onMAMRetrieved', ['chat', 'space*']);
+        $this->registerEvent('chatstate', 'onChatState', 'chat');
+        // $this->registerEvent('subject', 'onConferenceSubject', 'chat'); Spam the UI during authentication
+        $this->registerEvent('muc_setsubject_handle', 'onConferenceSubject', 'chat');
+        $this->registerEvent('presence_muc_handle', 'onMucConnected', ['chat', 'space*']);
+        $this->registerEvent('message_publish_error', 'onPublishError', ['chat', 'space*']);
+
+        $this->registerEvent('chat_counter', 'onCounter', 'chat');
+
+        $this->registerEvent('jingle_message', 'onJingleMessage');
+        $this->registerEvent('muji_message', 'onMujiMessage');
+        $this->registerEvent('muc_event_message', 'onMucEventMessage');
+
+        $this->registerEvent('bob_request_handle', 'onSticker');
+
+        $this->registerEvent('currentcall_started', 'onCallEvent', 'chat');
+        $this->registerEvent('currentcall_stopped', 'onCallEvent', 'chat');
+
+        $this->registerEvent('presence_muji', 'onPresence');
+        $this->registerEvent('presence_was_muji', 'onMujiOrSFUPresence', ['chat', 'space*']);
+        $this->registerEvent('presence_muc_muji_leaving', 'onMujiOrSFUPresence', ['chat', 'space*']);
+        $this->registerEvent('presence_sfu', 'onMujiOrSFUPresence', ['chat', 'space*']);
+    }
+
+    public function onMujiOrSFUPresence(Packet $packet)
+    {
+        $this->ajaxGetHeader($packet->content->jid, true);
+    }
+
+    public function onPresence(Packet $packet)
+    {
+        $jid = $packet->content->jid;
+        $arr = explode('|', (new Notif($this->me, sessionId: $this->sessionId))->getCurrent());
+        if (isset($arr[1]) && $jid == $arr[1]) {
+            if (! $packet->content->muc || $packet->content->hasMuji()) {
+                $this->ajaxGetHeader($jid, $packet->content->muc);
+            } elseif ($packet->content->muc) {
+                $this->rpc('Chat_ajaxHttpGetPresences', $jid);
+            }
+        }
+    }
+
+    public function onCallEvent(Packet $packet)
+    {
+        if ($packet->content['mujiroom'] == null) {
+            $this->ajaxGetHeader($packet->from);
+        }
+    }
+
+    public function onJingleMessage(Packet $packet)
+    {
+        $this->onMessage($packet);
+    }
+
+    public function onMujiMessage(Packet $packet)
+    {
+        $this->onMessage($packet);
+    }
+
+    public function onMucEventMessage(Packet $packet)
+    {
+        $this->onMessage($packet);
+    }
+
+    public function onMessageReceipt(Packet $packet)
+    {
+        $this->onMessage($packet, history: false, receipt: true);
+    }
+
+    public function onRetracted(Packet $packet)
+    {
+        $this->onMessage($packet, history: false, receipt: true);
+    }
+
+    public function onPostResolved(Packet $packet)
+    {
+        $this->onMessage($packet);
+    }
+
+    public function onCounter(Packet $packet)
+    {
+        $this->rpc('MovimUtils.setDataItem', '#chatcounter', 'counter', $packet->content);
+        $this->rpc('MovimUtils.setDataItem', '#chatheadercounter', 'counter', $packet->content);
+    }
+
+    public function onNotificationCounterClear(Packet $packet)
+    {
+        $params = $packet->content;
+        $jid = $params[1] ?? null;
+
+        if ($params[0] === 'chat' && $jid) {
+            // Check if the jid is a connected chatroom
+            $presence = $this->me->session->presences()
+                ->where('jid', $jid)
+                ->where('mucjid', $this->me->id)
+                ->first();
+
+            $this->getMessages($jid, muc: $presence != null, seenOnly: true);
+        }
+    }
+
+    public function onPublishError(Packet $packet)
+    {
+        $this->toast(
+            $packet->content ??
+                $this->__('chat.publish_error')
+        );
+    }
+
+    public function onMessage(Packet $packet, $history = false, $receipt = false)
+    {
+        $message = $packet->content;
+        $from = null;
+        $chatStates = linker($this->sessionId)->chatStates;
+        $rawbody = $message->getInlinedBodyAttribute(true) ?? $message->body;
+
+        $spaceCounter = false;
+
+        if (
+            $message->isEmpty() && ! in_array(
+                $message->type,
+                array_merge(Message::MESSAGE_TYPE, Message::MESSAGE_TYPE_MUC)
+            )
+        ) {
+            return;
+        }
+
+        if ($message->file) {
+            $rawbody = '📄 ' . $this->__('avatar.file');
+
+            if ($message->file->isPicture) {
+                $rawbody = '🖼️ ' . $this->__('chats.picture');
+            } elseif ($message->file->isAudio) {
+                $rawbody = '🎵 ' . $this->__('chats.audio');
+            } elseif ($message->file->isVideo) {
+                $rawbody = '🎞️ ' . $this->__('chats.video');
+            }
+        }
+
+        if (
+            $message->user_id == $message->jidto
+            && ! $history
+            && ! $message->isEmpty()
+            && $message->seen == false
+            && $message->jidfrom != $message->jidto
+        ) {
+            $from = $message->jidfrom;
+            $contact = Contact::firstOrNew(['id' => $from]);
+
+            $conference = $message->isMuc()
+                ? $this->me->session
+                ->conferences()->where('conference', $from)
+                ->first()
+                : null;
+
+            if (
+                $contact != null
+                && ! $message->isMuc()
+                && ! $message->retracted
+                && ! $message->oldid
+            ) {
+                $roster = $this->me->session->contacts()->where('jid', $from)->first();
+                $chatStates->clearState($from);
+
+                $name = $roster ? $roster->truename : $contact->truename;
+
+                // Specific case where the message is a MUC PM
+                $jid = new Jid($message->jidfrom);
+                if ($jid->username == $name && $jid->resource == $message->resource) {
+                    $name = $message->resource;
+                }
+
+                $body = $message->encrypted && is_array($message->omemoheader)
+                    ? '🔒 ' . $this->__('message.encrypted')
+                    : $rawbody;
+
+                if ($message->type == 'space_pending') {
+                    $body = $this->__('spaceinfo.pending_request', $message->subject);
+                }
+                // Prevent some spammy notifications
+                if ($roster || $contact->exists) {
+                    $this->notif(
+                        key: 'chat|' . $from,
+                        title: $name ?? $from, // truename should be fine but its not
+                        body: $body,
+                        url: $this->route('chat', $contact->id),
+                        picture: $contact->getPicture(),
+                        time: 6,
+                        actions: [[
+                            'title' => $this->__('button.reply'),
+                            'action' => 'chat',
+                        ]],
+                        data: [
+                            'jid' => $contact->id,
+                            'muc' => $message->isMuc(),
+                        ],
+                        rpcCall: 'Notif.incomingMessage'
+                    );
+                }
+            }
+            // If it's a groupchat message
+            elseif (
+                $message->isMuc()
+                && ! $message->retracted
+                && $conference
+                && ! $conference->isFromSpace()
+                && (($conference->notificationKey == 'on-mention' && $message->quoted)
+                    || $conference->notificationKey == 'always')
+                && ! $receipt
+            ) {
+                $this->notif(
+                    key: $conference->notifKey,
+                    title: $conference->title,
+                    body: $message->resource . ': ' . $rawbody,
+                    url: $conference->route,
+                    picture: $conference->getPicture(),
+                    time: 4,
+                    actions: [[
+                        'title' => $this->__('button.reply'),
+                        'action' => 'chat',
+                    ]],
+                    data: [
+                        'jid' => $contact->id,
+                        'muc' => true,
+                    ],
+                    rpcCall: 'Notif.incomingMessage'
+                );
+            } elseif ($message->isMuc()) {
+                if ($conference && $conference->isFromSpace()) {
+                    $subscription = $this->me->subscriptions()
+                        ->spaces()
+                        ->where('server', $conference->space_server)
+                        ->where('node', $conference->space_node)
+                        ->first();
+
+                    if (
+                        $subscription
+                    ) {
+                        if (
+                            $subscription->notify == 'always'
+                            || ($subscription->notify == 'on-mention' && $message->quoted)
+                        ) {
+                            $title = $conference->spaceInfo?->name
+                                ? $conference->spaceInfo->name . ' • '
+                                : '';
+                            $title .= $conference->title;
+
+                            $this->notif(
+                                key: $conference->notifKey,
+                                title: $title,
+                                body: $message->resource . ': ' . $rawbody,
+                                url: $conference->route,
+                                picture: $subscription->info?->getPicture(placeholder: $subscription->info?->name),
+                                time: 4,
+                                actions: [[
+                                    'title' => $this->__('button.reply'),
+                                    'action' => 'space_chat',
+                                ]],
+                                data: [
+                                    'server' => $conference->space_server,
+                                    'node' => $conference->space_node,
+                                    'room' => $conference->conference,
+                                ],
+                                rpcCall: 'Notif.incomingMessage'
+                            );
+                        }
+
+                        Wrapper::getInstance()->iterate(
+                            'space_counter',
+                            (new Packet)->pack(
+                                $this->me->unreads(space: [$conference->space_server, $conference->space_node]),
+                                $subscription->counterId
+                            ),
+                            user: $this->me,
+                            sessionId: $this->sessionId
+                        );
+
+                        $spaceCounter = true;
+                    }
+                } elseif ($conference && $conference->notify == 0) {
+                    $message->seen = true;
+                    $message->save();
+                }
+
+                $chatStates->clearState($from, $message->resource);
+            }
+
+            $this->onChatState($chatStates->getState($from));
+        }
+
+        $this->rpc('Chat.appendMessagesWrapper', $this->prepareMessage($message, $from));
+
+        if ($spaceCounter) {
+            Wrapper::getInstance()->iterate('chat_counter', (new Packet)->pack($this->me->unreads()), user: $this->me, sessionId: $this->sessionId);
+        }
+    }
+
+    public function onSticker(Packet $packet)
+    {
+        [$to, $cid] = array_values($packet->content);
+        $this->ajaxGet($to);
+    }
+
+    public function onChatState(Packet $packet, $first = true)
+    {
+        if ($first) {
+            $this->rpc('MovimUtils.removeClass', '#' . cleanupId($packet->from . '_state'), 'first');
+        }
+
+        $message = '';
+
+        if (isset($packet->content)) {
+            $message = $this->view('_chat_compose_bubble', [
+                'list' => is_array($packet->content) ? implode(', ', array_keys($packet->content)) : null,
+                'contact' => is_array($packet->content) ? null : Contact::firstOrNew(['id' => $packet->from]),
+            ]);
+        }
+
+        $this->rpc('Chat.setScroll');
+        $this->rpc('MovimTpl.fill', '#' . cleanupId($packet->from . '_state'), $message);
+        $this->rpc('Chat.scrollRestore');
+    }
+
+    public function onConferenceSubject(Packet $packet)
+    {
+        $this->ajaxGetRoom($packet->content->jidfrom, noConnect: true);
+    }
+
+    public function onMAMRetrieved(Packet $packet)
+    {
+        $content = $packet->content;
+
+        $this->rpc('MovimUtils.removeClass', '#chat_widget .contained', 'loading');
+
+        if ($content['counter'] > 0) {
+            if ($content['forward']) {
+                $this->rpc('Chat.getNewerMessages');
+            } else {
+                $this->rpc('Chat.getHistory', false);
+            }
+        }
+    }
+
+    public function onMucConnected(Packet $packet)
+    {
+        $arr = explode('|', (new Notif($this->me, sessionId: $this->sessionId))->getCurrent());
+
+        if ($packet->content?->hasMuji()) {
+            $this->ajaxGetHeader($packet->content->jid, true);
+        } elseif (isset($arr[1]) && $arr[1] == $packet->content->jid) {
+            $this->ajaxGetRoom($packet->content->jid, noConnect: true);
+        }
+    }
+
+    public function ajaxInit()
+    {
+        $view = $this->tpl();
+
+        $this->rpc(
+            'Chat.init',
+            $view->draw('_chat_date'),
+            $view->draw('_chat_separator'),
+            [
+                'pagination' => $this->_pagination,
+                'delivery_error' => $this->__('message.error'),
+                'action_impossible_encrypted_error' => $this->__('chat.action_impossible_encrypted'),
+            ]
+        );
+    }
+
+    /**
+     * Get the header
+     */
+    public function ajaxGetHeader(string $jid, ?bool $muc = false)
+    {
+        $this->rpc(
+            'MovimTpl.fill',
+            '#' . cleanupId($jid . '_header'),
+            $this->prepareHeader($jid, $muc)
+        );
+
+        $this->onChatState(linker($this->sessionId)->chatStates->getState($jid), false);
+    }
+
+    public function ajaxHttpGetEmpty()
+    {
+        $this->ajaxGet();
+    }
+
+    /**
+     * @brief Get a discussion
+     */
+    public function ajaxGet(?string $jid = null, ?bool $light = false)
+    {
+        if ($jid == null || $jid == $this->me->id) {
+            $this->rpc('MovimTpl.hidePanel');
+            $this->rpc('Notif.current', 'chat');
+            $this->rpc('MovimUtils.pushSoftState', $this->route('chat'));
+            $this->rpc('Notif.setTitle', $this->__('page.chats'));
+            if ($light == false) {
+                $this->rpc('MovimTpl.fill', '#chat_widget', $this->prepareEmpty());
+            }
+        } else {
+            if ($light == false) {
+                $this->rpc('MovimUtils.pushSoftState', $this->route('chat', $jid));
+                $this->rpc('MovimTpl.fill', '#chat_widget', $this->prepareChat($jid));
+
+                $this->onChatState(linker($this->sessionId)->chatStates->getState($jid), false);
+
+                $this->rpc('MovimTpl.showPanel');
+                $this->rpc('Chat.focus');
+
+                (new Dictaphone($this->me, sessionId: $this->sessionId))->ajaxHttpGet();
+            }
+
+            if ($this->currentCall()?->isStarted()) {
+                $this->rpc('MovimVisio.moveToChat', $this->currentCall()?->getBareJid());
+            }
+
+            $this->rpc('Chat.setObservers');
+            $this->rpc('MovimTpl.fill', '#' . cleanupId($jid) . '-conversation', '');
+            $this->getMessages($jid);
+            $this->rpc('Notif.current', 'chat|' . $jid);
+            $this->rpc('Chat.scrollToSeparator');
+
+            if ($this->me->hasOMEMO()) {
+                $this->rpc('Chat.checkOMEMOState', $jid);
+            }
+        }
+    }
+
+    /**
+     * @brief Get a chatroom
+     *
+     * @param  string  $jid
+     */
+    public function ajaxGetRoom(string $room, $noConnect = false)
+    {
+        if (! validateJid($room)) {
+            return;
+        }
+
+        $conference = $this->me->session->conferences()->where('conference', $room)->with('members')->first();
+
+        if ($conference) {
+            if (! $conference->connected && ! $noConnect) {
+                $this->rpc('Rooms_ajaxJoin', $conference->conference, $conference->nick);
+            }
+
+            if ($conference->isFromSpace() && $info = $conference->spaceInfo) {
+                $this->rpc('Notif.setTitle', $this->__('page.space') . ' • ' . $info->name . ' • ' . $conference->title);
+            } else {
+                $this->rpc('Notif.setTitle', $this->__('page.chats') . ' • ' . $conference->title);
+            }
+
+            $this->rpc('MovimUtils.pushSoftState', $conference->route);
+            $this->rpc('MovimTpl.fill', '#chat_widget', $this->prepareChat($room, muc: true));
+            $this->rpc('Chat.getPresences', $room);
+
+            $this->onChatState(linker($this->sessionId)->chatStates->getState($room), first: false);
+
+            $this->rpc('MovimTpl.showPanel');
+
+            if ($this->currentCall()?->isStarted()) {
+                $this->rpc('MovimVisio.moveToChat', $this->currentCall()?->getBareJid());
+            }
+
+            if ($conference->isConferenceCall()) {
+                $this->rpc('MovimUtils.addClass', '#chat_widget', 'call');
+                $this->getConferenceCall($conference);
+            } else {
+                $this->rpc('MovimUtils.removeClass', '#chat_widget', 'call');
+                $this->rpc('Chat.focus');
+
+                (new Dictaphone($this->me, sessionId: $this->sessionId))->ajaxHttpGet();
+
+                $this->rpc('Chat.setObservers');
+                $this->rpc('MovimTpl.fill', '#' . cleanupId($room) . '-conversation', '');
+                $this->getMessages($room, muc: true);
+                $this->rpc('Notif.current', $conference->notifKey);
+                $this->rpc('Chat.scrollToSeparator');
+
+                if ($this->me->hasOMEMO() && $conference->isGroupChat()) {
+                    $this->rpc('Chat.setGroupChatMembers', $conference->members->pluck('jid')->toArray());
+                    $this->rpc('Chat.checkOMEMOState', $room, true);
+                } else {
+                    $this->rpc('Chat.setGroupChatMembers', []);
+                }
+            }
+        } else {
+            $this->rpc('RoomsUtils_ajaxHttpRoomDiscover', $room);
+            $this->ajaxHttpGetEmpty();
+        }
+    }
+
+    /**
+     * Get the conference call view
+     */
+    public function getConferenceCall(Conference $conference)
+    {
+        $this->rpc('MovimTpl.fill', '#chat_conference_call', $this->view(
+            '_chat_conference_call',
+            [
+                'conference' => $conference,
+                'sfu' => $conference->hasRelatedSFUService(),
+                'canedit' => $conference->presence && in_array($conference->presence->mucaffiliation, ['owner', 'admin']),
+            ]
+        ));
+    }
+
+    /**
+     * @brief Get a Space room
+     */
+    public function ajaxGetSpaceRoom(string $server, string $node, string $roomId)
+    {
+        $this->rpc('MovimUtils.pushSoftState', $this->route('space', [$server, $node, $roomId]));
+        $this->rpc('MovimTpl.fill', '#chat_widget', $this->prepareChat($roomId, true));
+    }
+
+    /**
+     * @brief Send a message
+     */
+    public function ajaxHttpDaemonSendMessage(
+        string $id,
+        string $to,
+        ?string $message = null,
+        ?bool $muc = false,
+        ?stdClass $file = null,
+        ?int $replyToMid = 0,
+        ?bool $mucReceipts = false,
+        ?stdClass $omemo = null
+    ) {
+        $messageFile = null;
+        $messageOMEMOHeader = null;
+        $urlId = null;
+
+        if ($file) {
+            $messageFile = new MessageFile;
+            $valid = $messageFile->import($file);
+
+            if (! $valid) {
+                $messageFile = null;
+            }
+        } elseif ($message != null && $url = Url::resolveFromDB(trim($message))) {
+            $urlId = $url->id;
+
+            if ($url->messageFile !== null) {
+                $messageFile = $url->messageFile;
+            }
+        }
+
+        if ($omemo) {
+            $messageOMEMOHeader = new MessageOmemoHeader;
+            $messageOMEMOHeader->import($omemo);
+        }
+
+        $this->sendMessage(
+            id: $id,
+            to: $to,
+            message: $message,
+            muc: $muc,
+            file: $messageFile,
+            replyToMid: $replyToMid,
+            mucReceipts: $mucReceipts,
+            messageOMEMOHeader: $messageOMEMOHeader,
+            urlId: $urlId
+        );
+    }
+
+    /**
+     * @brief Send a resolved message
+     *
+     * @return void
+     */
+    public function sendMessage(
+        string $id,
+        string $to,
+        ?string $message = '',
+        ?bool $muc = false,
+        ?Message $replace = null,
+        ?MessageFile $file = null,
+        ?int $replyToMid = 0,
+        ?bool $mucReceipts = false,
+        ?MessageOmemoHeader $messageOMEMOHeader = null,
+        ?string $urlId = null,
+    ) {
+        if (! Validator::uuid(4)->validate($id) || !validateJid($to)) {
+            return;
+        }
+
+        if ($messageOMEMOHeader) {
+            $message = 'Encrypted OMEMO message sent';
+        }
+
+        $body = ($file != null && $file->type != 'xmpp/uri')
+            ? $file->url
+            : $message;
+
+        if ($body == '' || $body == '/me') {
+            return;
+        }
+
+        $m = new Message;
+        $m->id = $id;
+        $m->originid = $m->id;
+        $m->messageid = $m->id;
+        $m->replaceid = $replace ? $replace->originid : null;
+        $m->user_id = $this->me->id;
+        $m->jidto = $to;
+        $m->jidfrom = $this->me->id;
+        $m->published = gmdate('Y-m-d H:i:s');
+        $m->urlid = $urlId;
+
+        $reply = null;
+
+        // If the replaced message is quoting another one ensure that we keep the quote
+        if ($replace && $replace->parentmid) {
+            $replyToMid = $replace->parentmid;
+        }
+
+        if ($replyToMid !== 0) {
+            $reply = $this->me->messages()
+                ->where('mid', $replyToMid)
+                ->first();
+
+            if ($reply) {
+                // See https://xmpp.org/extensions/xep-0201.html#new
+                $m->thread = $reply->thread;
+                $m->parentmid = $reply->mid;
+            }
+        }
+
+        $m->markable = true;
+        $m->seen = true;
+        $m->type = 'chat';
+        $m->resource = $this->me->session->resource;
+
+        if ($muc) {
+            $m->type = 'groupchat';
+            $m->resource = $this->me->username;
+            $m->jidfrom = $to;
+        }
+
+        $p = $this->xmpp(new Publish);
+        $p->setTo($to);
+        $p->setReplace($m->replaceid);
+        $p->setId($m->id);
+        $p->setOriginid($m->originid);
+
+        if ($muc) {
+            $p->setMuc();
+
+            if ($mucReceipts) {
+                $p->setMucReceipts();
+            }
+        }
+
+        if ($file) {
+            $p->setFile($file);
+            $m->resolved = true;
+            $m->picture = $file->isPicture;
+
+            if ($file->type == 'xmpp/uri') {
+                $xmppUri = new XMPPUri($file->url);
+
+                if ($post = $xmppUri->getPost()) {
+                    $m->postid = $post->id;
+                }
+            }
+        }
+
+        if ($reply) {
+            $quotable = false;
+
+            // https://xmpp.org/extensions/xep-0461.html#business-id
+            if ($reply->isMuc()) {
+                // stanza-id only
+                $p->setReplyid($reply->stanzaid);
+                $quotable = true;
+            } elseif ($reply->messageid) {
+                $p->setReplyid($reply->messageid);
+                $quotable = true;
+            }
+
+            if ($quotable) {
+                $p->setReplyto($reply->jidfrom . '/' . $reply->resource);
+                $matches = [];
+                preg_match_all('/^/m', $reply->body, $matches);
+
+                $p->setReplyquotedbodylength(
+                    mb_strlen($reply->body) + (2 * count($matches[0])) + 1
+                );
+
+                // Prepend quoted message body
+                $quotedBody = preg_replace('/^/m', '> ', $reply->body);
+                $p->setContent($quotedBody . "\n" . $body);
+            } else {
+                $p->setContent($body);
+            }
+        } else {
+            $p->setContent($body);
+        }
+
+        $m->body = $body;
+
+        // Custom emojis
+
+        $matchedCustomEmojis = [];
+        preg_match_all('/:([a-z0-9\-]+):/', $m->body, $matchedCustomEmojis);
+
+        if (! empty($matchedCustomEmojis[1])) {
+            $favoritesEmojis = $this->me->emojis->keyBy('pivot.alias');
+
+            $html = '<p>' . $m->body . '</p>';
+
+            $replaced = false;
+            $inlines = [];
+
+            // We send the original body without changes
+            $p->setContent($m->body);
+
+            foreach ($matchedCustomEmojis[1] as $matched) {
+                if ($favoritesEmojis->has($matched)) {
+                    $emoji = $favoritesEmojis->get($matched);
+                    $replaced = true;
+
+                    $key = generateKey(12);
+                    $inlines[$key] = [
+                        'hash' => $emoji->cache_hash,
+                        'algorythm' => $emoji->cache_hash_algorythm,
+                        'alt' => $emoji->pivot->alias,
+                    ];
+
+                    $m->body = str_replace(
+                        ':' . $matched . ':',
+                        Message::$inlinePlaceholder . $key,
+                        $m->body
+                    );
+
+                    $dom = new \DOMDocument('1.0', 'UTF-8');
+                    $img = $dom->createElement('img');
+                    $img->setAttribute('src', 'cid:' . \phpToIANAHash()[$emoji->cache_hash_algorythm] . '+' . $emoji->cache_hash . '@bob.xmpp.org');
+                    $img->setAttribute('alt', ':' . $emoji->pivot->alias . ':');
+                    $dom->append($img);
+
+                    $html = str_replace(
+                        ':' . $matched . ':',
+                        $dom->saveXML($dom->documentElement),
+                        $html
+                    );
+                }
+            }
+
+            if ($replaced) {
+                $m->inlines = serialize($inlines);
+                $p->setHTML($html);
+            }
+        }
+
+        if ($messageOMEMOHeader) {
+            $m->encrypted = true;
+            $m->omemoheader = (string) $messageOMEMOHeader;
+            $m->bundleid = $messageOMEMOHeader->sid;
+            $p->setMessageOMEMO($messageOMEMOHeader);
+        }
+
+        linker($this->sessionId)->chatOwnState->halt();
+
+        $p->request();
+
+        // We sent the published id back
+        if ($messageOMEMOHeader) {
+            $this->rpc('Chat.sentId', $m->id);
+        }
+
+        /* Is it really clean ? */
+        if (! $p->getMuc()) {
+            $m->body = htmlentities(trim($m->body), ENT_XML1, 'UTF-8');
+            $m->save();
+
+            $m = $m->fresh();
+
+            if ($file && $file->type != 'xmpp/uri') {
+                $file->message_mid = $m->mid;
+                $file->save();
+
+                $m = $m->fresh();
+            }
+
+            $packet = new Packet;
+            $packet->content = $m;
+
+            // We refresh the Chats list
+            $c = new Chats($this->me, sessionId: $this->sessionId);
+            $c->onMessage($packet);
+
+            $this->onMessage($packet);
+        }
+    }
+
+    /**
+     * @brief Send a correction message
+     *
+     * @return void
+     */
+    public function ajaxHttpDaemonCorrect(string $id, string $to, string $mid, string $message = '')
+    {
+        $replace = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        if ($replace) {
+            $this->sendMessage(
+                id: $id,
+                to: $to,
+                message: $message,
+                muc: $replace->isMuc(),
+                replace: $replace
+            );
+        }
+    }
+
+    /**
+     * @brief Send a reaction
+     */
+    public function ajaxHttpDaemonSendReaction(string $mid, string $emoji)
+    {
+        $parentMessage = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        $emojiHandler = Emoji::getInstance();
+        $emojiHandler->replace($emoji);
+
+        if ($parentMessage && $emojiHandler->isSingleEmoji()) {
+            // Try to load the MUC presence and resolve the resource
+            $mucPresence = null;
+            if ($parentMessage->isMuc()) {
+                $mucPresence = $this->me->session->presences()
+                    ->where('jid', $parentMessage->jidfrom)
+                    ->where('mucjid', $this->me->id)
+                    ->where('muc', true)
+                    ->first();
+
+                if (! $mucPresence) {
+                    return;
+                }
+            }
+
+            $jidfrom = ($parentMessage->isMuc())
+                ? $mucPresence->resource
+                : $this->me->id;
+
+            $emojis = $parentMessage->reactions()
+                ->where('jidfrom', $jidfrom)
+                ->get();
+
+            $r = $this->xmpp(new Reactions);
+            $newEmojis = [];
+
+            // This reaction was not published yet
+            if ($emojis->where('emoji', $emoji)->count() == 0) {
+                $now = Carbon::now();
+
+                $reaction = new Reaction;
+                $reaction->message_mid = $parentMessage->mid;
+                $reaction->jidfrom = ($parentMessage->isMuc())
+                    ? $this->me->username
+                    : $this->me->id;
+                $reaction->created_at = $now;
+                $reaction->updated_at = $now;
+                $reaction->emoji = $emoji;
+
+                if (! $parentMessage->isMuc()) {
+                    $reaction->save();
+                }
+
+                $newEmojis = $emojis->push($reaction);
+            } else {
+                if (! $parentMessage->isMuc()) {
+                    $parentMessage->reactions()
+                        ->where('jidfrom', $jidfrom)
+                        ->where('emoji', $emoji)
+                        ->delete();
+                }
+
+                $newEmojis = $emojis->filter(fn ($value, $key) => $value->emoji != $emoji);
+            }
+
+            $r->setTo($parentMessage->jidfrom != $parentMessage->user_id
+                ? $parentMessage->jidfrom
+                : $parentMessage->jidto)
+                ->setId(\generateUUID())
+                // https://xmpp.org/extensions/xep-0444.html#business-id
+                ->setParentid(! $parentMessage->isMuc() && $parentMessage->messageid
+                    ? $parentMessage->messageid
+                    : $parentMessage->stanzaid)
+                ->setReactions($newEmojis->pluck('emoji')->toArray());
+
+            if ($parentMessage->isMuc()) {
+                $r->setMuc();
+            }
+
+            $r->request();
+
+            if (! $parentMessage->isMuc()) {
+                $packet = new Packet;
+                $packet->content = $parentMessage;
+                $this->onMessage($packet);
+            }
+        }
+    }
+
+    /**
+     * @brief Refresh a message
+     */
+    public function ajaxRefreshMessage(string $mid)
+    {
+        $message = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        if ($message) {
+            $this->rpc('Chat.appendMessagesWrapper', $this->prepareMessage($message, null));
+        }
+    }
+
+    /**
+     * @brief Get the last message sent
+     *
+     * @return void
+     */
+    public function ajaxLast(string $to, $muc = false)
+    {
+        $m = $this->me->getLastMessage($to, $muc);
+
+        if (! $m) {
+            return;
+        }
+
+        // We might get an already edited message, be sure to load the id of the original one
+        $mid = $m->mid;
+
+        if ($m && ! empty($m->replaceid)) {
+            $originalMessage = $this->me->messages()
+                ->where('originid', $m->replaceid)
+                ->first();
+
+            if ($originalMessage) {
+                $mid = $originalMessage->mid;
+            }
+        }
+
+        $m->body = $m->getInlinedBodyAttribute(true);
+
+        if (
+            $m
+            && ! isset($m->sticker_cid)
+            && ! isset($m->file)
+            && ! empty($m->body)
+        ) {
+            $this->rpc('Chat.setTextarea', htmlspecialchars_decode($m->body), $mid);
+        }
+    }
+
+    /**
+     * @brief Get a sent message
+     *
+     * @param  string  $mid
+     * @return void
+     */
+    public function ajaxEdit($mid)
+    {
+        $m = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        if (
+            $m
+            && ! isset($m->sticker_cid)
+            && ! isset($m->file)
+        ) {
+            $this->rpc('Chat.setTextarea', htmlspecialchars_decode($m->body), $mid);
+        }
+    }
+
+    /**
+     * @brief Reply to a message
+     *
+     * @param  string  $mid
+     * @return void
+     */
+    public function ajaxHttpDaemonReply($mid)
+    {
+        $message = $this->me->messages()
+            ->where('mid', $mid)
+            ->first();
+
+        if (
+            $message->isClassic()
+            && (($message->isMuc() && $message->stanzaid)
+                || (! $message->isMuc() && $message->messageid))
+        ) {
+            $this->rpc('MovimTpl.fill', '#reply', $this->view('_chat_reply', [
+                'message' => $message,
+            ]));
+            $this->rpc('Chat.focus');
+        }
+    }
+
+    /**
+     * Clear the Reply box
+     */
+    public function ajaxClearReply()
+    {
+        $this->rpc('MovimTpl.fill', '#reply', '');
+    }
+
+    /**
+     * @brief Send a "composing" message
+     *
+     * @return void
+     */
+    public function ajaxSendComposing(string $to, ?bool $muc = false)
+    {
+        if (! validateJid($to)) {
+            return;
+        }
+
+        linker($this->sessionId)->chatOwnState->composing($to, $muc);
+    }
+
+    /**
+     * @brief Get a specific message context
+     */
+    public function ajaxGetMessageContext(string $jid, int $mid)
+    {
+        if (! validateJid($jid)) {
+            return;
+        }
+
+        $contextMessage = Message::jid($this->me, $jid)
+            ->where('published', '<=', function ($query) use ($mid) {
+                $query->select('published')
+                    ->from('messages')
+                    ->where('mid', $mid);
+            })
+            ->orderBy('published', 'desc')
+            ->take(1)
+            ->skip(3)
+            ->first();
+
+        if ($contextMessage) {
+            $this->rpc('MovimTpl.fill', '#' . cleanupId($contextMessage->jid) . '-conversation', '');
+            $this->ajaxGetHistory($jid, $contextMessage->published, muc: $contextMessage->isMuc(), prepend: false, tryMam: false);
+            $this->rpc('Chat.scrollAndBlinkMessageMid', $mid);
+            $this->rpc('MovimUtils.addClass', '#chat_widget .contained', 'history');
+        }
+    }
+
+    /**
+     * @brief Get the chat history
+     *
+     * @param string jid
+     * @param string time
+     */
+    public function ajaxGetHistory(string $jid, ?string $date = null, bool $muc = false, bool $prepend = true, bool $tryMam = true)
+    {
+        if (! validateJid($jid) || $this->me == null) {
+            return;
+        }
+
+        $messages = Message::jid($this->me, $jid);
+
+        if ($date !== null) {
+            $messages = $messages->where('published', $prepend ? '<' : '>=', date(MOVIM_SQL_DATE, strtotime($date)));
+        }
+
+        $messages = $muc
+            ? $messages->whereIn('type', Message::MESSAGE_TYPE_MUC)->whereNull('subject')
+            : $messages->whereIn('type', Message::MESSAGE_TYPE);
+
+        $messages = $messages->orderBy('published', $prepend ? 'desc' : 'asc')
+            ->withCount('reactions')
+            ->take($this->_pagination)
+            ->get();
+
+        if ($messages->count() > 0) {
+            foreach ($messages as $message) {
+                $this->prepareMessage($message);
+            }
+
+            $this->rpc('Chat.appendMessagesWrapper', $this->_wrapper, $prepend);
+            $this->_wrapper = [];
+        }
+
+        // Not enough messages from the DB, lets try to get more from MAM
+        if ($tryMam && ($messages->count() == 0 || $messages->count() < $this->_pagination)) {
+            $this->rpc('MovimUtils.addClass', '#chat_widget .contained', 'loading');
+            if ($muc) {
+                $this->rpc('RoomsUtils_ajaxGetMAMHistory', $jid);
+            } else {
+                $this->rpc('Chats_ajaxGetMAMHistory', $jid);
+            }
+        }
+    }
+
+    /**
+     * @brief Set last displayed message
+     */
+    public function ajaxDisplayed($jid, $id)
+    {
+        if (! validateJid($jid)) {
+            return;
+        }
+
+        $message = $this->me->messages()->where('id', $id)->first();
+
+        if ($message && $message->displayed == null) {
+            if ($message->markable == true) {
+                $message->displayed = gmdate('Y-m-d H:i:s');
+                $message->save();
+
+                if (! $message->isMuc()) {
+                    $this->xmpp(new Displayed)
+                        ->setTo($jid)
+                        ->setId($message->messageid)
+                        ->setType($message->type)
+                        ->request();
+                }
+                // https://xmpp.org/extensions/xep-0333.html#rules-muc
+                elseif ($message->stanzaid) {
+                    $this->xmpp(new Displayed)
+                        ->setTo($jid)
+                        ->setId($message->stanzaid)
+                        ->setType($message->type)
+                        ->request();
+                }
+            }
+
+            // Can be heavy on some MUCs, might be optimized
+            if ($message->isMuc() && $message->stanzaid) {
+                $this->xmpp(new MDSDisplayed)
+                    ->setTo($jid)
+                    ->setId($message->stanzaid)
+                    ->request();
+            }
+        }
+    }
+
+    /**
+     * @brief Ask to clear the history
+     *
+     * @param  string  $jid
+     */
+    public function ajaxClearHistory($jid)
+    {
+        $this->dialog($this->view('_chat_clear', [
+            'jid' => $jid,
+            'count' => Message::jid($this->me, $jid)->count(),
+        ]));
+    }
+
+    /**
+     * @brief Clear the history
+     */
+    public function ajaxClearHistoryConfirm(string $jid)
+    {
+        if (! validateJid($jid)) {
+            return;
+        }
+
+        Message::whereIn('id', function ($query) use ($jid) {
+            $jidFromToMessages = DB::table('messages')
+                ->where('user_id', $this->me->id)
+                ->where('jidfrom', $jid)
+                ->unionAll(
+                    DB::table('messages')
+                        ->where('user_id', $this->me->id)
+                        ->where('jidto', $jid)
+                );
+
+            $query->select('id')->from(
+                $jidFromToMessages,
+                'messages'
+            )->where('user_id', $this->me->id);
+        })->delete();
+
+        $this->me->MAMEarliests()->where('jid', $jid)->delete();
+
+        $this->ajaxGet($jid);
+    }
+
+    public function prepareChat($jid, ?bool $muc = false)
+    {
+        return $this->view('_chat', [
+            'jid' => $jid,
+            'muc' => $muc,
+            'emoji' => addEmojis('😀'),
+        ]);
+    }
+
+    public function ajaxHttpGetPresences(string $room)
+    {
+        $this->rpc(
+            'MovimTpl.fill',
+            '#' . cleanupId($room) . '-nav',
+            $this->view('_chat_room_nav', [
+                'contactsHtml' => (new RoomsUtils($this->me, sessionId: $this->sessionId))->preparePresences(
+                    $room,
+                    havePagination: false,
+                    compact: true
+                ),
+            ])
+        );
+    }
+
+    public function ajaxClearAndGetMessages(string $jid, $muc = false)
+    {
+        $this->rpc('MovimTpl.fill', '#' . cleanupId($jid) . '-conversation', '');
+        $this->getMessages($jid, muc: $muc);
+        $this->rpc('MovimUtils.removeClass', '#chat_widget .contained', 'history');
+    }
+
+    public function getMessages(string $jid, ?bool $muc = false, ?bool $seenOnly = false, ?bool $event = true)
+    {
+        if (! validateJid($jid)) {
+            return;
+        }
+
+        $messagesQuery = Message::jid($this->me, $jid);
+
+        $messagesQuery = $muc
+            ? $messagesQuery->whereIn('type', Message::MESSAGE_TYPE_MUC)->whereNull('subject')
+            : $messagesQuery->whereIn('type', Message::MESSAGE_TYPE);
+
+        /**
+         * The object need to be cloned there for MySQL, looks like the pagination/where is kept somewhere in between…
+         **/
+        $messagesRequest = clone $messagesQuery;
+        $messagesCount = clone $messagesQuery;
+
+        $messages = $messagesRequest->withCount('reactions')->orderBy('published', 'desc')->take($this->_pagination)->get();
+        $unreadsCount = $messagesCount->where('seen', false)->count();
+
+        if ($unreadsCount > 0) {
+            $messagesClear = clone $messagesQuery;
+            // Two queries as Eloquent doesn't seems to map correctly the parameters
+            Message::whereIn('mid', $messagesClear->where('seen', false)->pluck('mid'))->update(['seen' => true]);
+        }
+
+        // Prepare the muc presences if possible
+        $firstMessage = $messages->first();
+        if ($firstMessage && $firstMessage->isMuc()) {
+            $this->_mucPresences = $this->me->session->presences()
+                ->where('jid', $firstMessage->jidfrom)
+                ->where('muc', true)
+                ->whereIn('resource', $messages->pluck('resource')->unique())
+                ->get()
+                ->keyBy(function ($presence) {
+                    return $presence->jid . $presence->resource;
+                });
+        }
+
+        if (! $seenOnly) {
+            $messages = $messages->reverse();
+
+            foreach ($messages as $message) {
+                $this->prepareMessage($message);
+            }
+
+            $view = $this->tpl();
+            $view->assign('jid', $jid);
+
+            $view->assign('contact', Contact::firstOrNew(['id' => $jid]));
+            $view->assign('me', false);
+            $view->assign('muc', $muc);
+            $left = $view->draw('_chat_bubble');
+
+            $view->assign('contact', Contact::firstOrNew(['id' => $this->me->id]));
+            $view->assign('me', true);
+            $view->assign('muc', $muc);
+            $right = $view->draw('_chat_bubble');
+
+            $this->rpc('Chat.setSpecificElements', $left, $right);
+            $this->rpc('Chat.appendMessagesWrapper', $this->_wrapper, false);
+        }
+
+        if ($event) {
+            $muc
+                ? (new Rooms(user: $this->me, sessionId: $this->sessionId))->setCounter($jid)
+                : (new Chats(user: $this->me, sessionId: $this->sessionId))->chatOpen($jid);
+        }
+
+        Wrapper::getInstance()->iterate(
+            'chat_counter',
+            (new Packet)->pack($this->me->unreads()),
+            user: $this->me,
+            sessionId: $this->sessionId
+        );
+
+        if ($unreadsCount > 0) {
+            $this->rpc('Chat.insertSeparator', $unreadsCount);
+        }
+
+        // Do we need to query MAM?
+        if ($messages->isEmpty()) {
+            $earliest = $this->me->MAMEarliests();
+            $earliest = $muc ? $earliest->where('to', $jid)
+                : $earliest->where('jid', $jid);
+
+            if (! $earliest->first()) {
+                $this->rpc('Chat.getHistory', true);
+            }
+        } elseif ($messages->count() < $this->_pagination) {
+            $earliest = $this->me->MAMEarliests();
+            $earliest = $muc ? $earliest->where('to', $jid)
+                : $earliest->where('jid', $jid);
+            $me = $earliest->first();
+
+            if (
+                ! $me ||
+                (new Carbon($me->earliest))->isAfter(new Carbon($messages->first()->published))
+            ) {
+                $this->rpc('Chat.getHistory', true);
+            }
+        }
+    }
+
+    public function prepareMessage(&$message, $jid = null): array
+    {
+        if ($jid != $message->jidto && $jid != $message->jidfrom && $jid != null) {
+            return $this->_wrapper;
+        }
+
+        $message->jidto = echapJS($message->jidto);
+        $message->jidfrom = echapJS($message->jidfrom);
+
+        $emoji = Emoji::getInstance();
+
+        // URL messages
+        if (! empty($message->body)) {
+            $message->url = filter_var(trim($message->body), FILTER_VALIDATE_URL);
+        }
+
+        // If the message doesn't contain a file but is a URL, we try to resolve it
+        if (! $message->file && $message->url && $message->resolved == false) {
+            $this->rpc('Chat.resolveMessage', (int) $message->mid);
+        }
+
+        if ($message->retracted) {
+            $message->body = '<i class="material-symbols">delete</i> ' . __('message.retracted');
+        } elseif ($message->encrypted) {
+            $message->body = __('message.encrypted');
+        } elseif (isset($message->html) && ! isset($message->file)) {
+            $message->body = $message->html;
+        } elseif (! isset($message->file)) {
+            $message->linkify();
+
+            if (is_string($message->body)) {
+                $message->body = $emoji->replace($message->body);
+            }
+        }
+
+        if (isset($message->subject) && $message->type == 'headline') {
+            $message->body = $message->subject . ': ' . $message->body;
+        }
+
+        // XEP-0393
+        if (! empty($message->body)) {
+            $message->body = (preg_replace('/^```(\n*)([\s\S]*?)```([A-Za-z \t]*)*$/m', "<code class='block'>$2</code>", $message->body));
+            $message->body = (preg_replace('/(?<=^|[\s,\*,_,~])(`(?!\s).+?(?<!\s)`)/', '<code>$1</code>', $message->body));
+            $message->body = (preg_replace('/(?<=^|[\s,_,`,~])(\*(?!\s).+?(?<!\s)\*)/', '<b>$1</b>', $message->body));
+            $message->body = (preg_replace('/(?<=^|[\s,\*,`,~])(_(?!\s).+?(?<!\s)_)/', '<em>$1</em>', $message->body));
+            $message->body = (preg_replace('/(?<=^|[\s,\*,_,`])(~(?!\s).+?(?<!\s)~)/', '<s>$1</s>', $message->body));
+        }
+
+        // Inlines
+        $message->body = $message->getInlinedBodyAttribute(alt: false, triggerRequest: function ($message, $hash, $algorythm) {
+            $r = $this->xmpp(new Request);
+            $r->setTo($message->jidfrom)
+                ->setResource($message->resource)
+                ->setHash($hash)
+                ->setAlgorythm($algorythm)
+                ->request();
+        }) ?? $message->body;
+
+        // Sticker message
+        if (isset($message->sticker_cid_hash) && isset($message->sticker_cid_algorythm)) {
+            $stickerImage = $message->stickerImage;
+
+            if (
+                ! $stickerImage
+                && $message->jidfrom != $message->session
+            ) {
+                $r = $this->xmpp(new Request);
+                $r->setTo($message->jidfrom)
+                    ->setResource($message->resource)
+                    ->setHash($message->sticker_cid_hash)
+                    ->setAlgorythm($message->sticker_cid_algorythm)
+                    ->setMessagemid($message->mid)
+                    ->request();
+            } else {
+                $stickerSize = $stickerImage->getGeometry();
+
+                $message->sticker = [
+                    'url' => Image::getOrCreate($stickerImage->getKey()), // Todo, don't reload
+                    'width' => $stickerSize['width'],
+                    'height' => $stickerSize['height'],
+                ];
+            }
+
+            $message->body = '';
+        }
+
+        // Jumbo emoji
+        if (
+            $emoji->isSingleEmoji()
+            && ! isset($message->html)
+            && $message->isClassic()
+        ) {
+            $message->sticker = [
+                'url' => $emoji->getLastSingleEmojiURL(),
+                'title' => ':' . $emoji->getLastSingleEmojiTitle() . ':',
+                'height' => 60,
+            ];
+
+            $message->body = '';
+        }
+
+        // Attached file
+        if (! $message->retracted) {
+            if ($message->postid != null) {
+                $post = $message->post()->first();
+
+                if ($post->isStory()) {
+                    $story = AppPost::myStories($this->me, $message->postid)->first();
+
+                    if ($story) {
+                        $p = new Post($this->me, sessionId: $this->sessionId);
+                        $message->card = $p->prepareTicket($story);
+                        $message->story = true;
+                    } else {
+                        $view = $this->tpl();
+                        $view->assign('post', $post);
+                        $message->body = $view->draw('_chat_story_forbidden');
+                    }
+                } else {
+                    $p = new Post($this->me, sessionId: $this->sessionId);
+                    $message->card = $p->prepareTicket($post);
+
+                    if ($message->body == null) {
+                        $message->body = '';
+                    }
+                }
+            } elseif (isset($message->file) && $message->file->type != 'xmpp') {
+                if (
+                    ! $message->file->preview
+                    && ! typeIsAudio($message->file->type)
+                    && ! typeIsVideo($message->file->type)
+                ) {
+                    $view = $this->tpl();
+                    $view->assign('file', $message->file);
+                    $message->card = $view->draw('_chat_file');
+                }
+
+                $message->body = '';
+            }
+        }
+
+        if (
+            $message->resolvedUrl && ! $message->file
+            && ! $message->card && ! $message->sticker
+        ) {
+            $resolved = $message->resolvedUrl;
+            if ($resolved) {
+                $message->card = $this->prepareEmbed($resolved);
+            }
+
+            if ($message->body == null) {
+                $message->body = '';
+            }
+        }
+
+        if ($message->retracted) {
+            $message->card = null;
+        }
+
+        // Parent
+        if ($message->parent) {
+            if ($message->parent->file) {
+                $message->parent->body = '<i class="material-symbols">insert_drive_file</i> ' . __('avatar.file');
+
+                if (typeIsPicture($message->parent->file->type)) {
+                    $message->parent->body = '<i class="material-symbols">image</i> ' . __('chats.picture');
+                } elseif (typeIsAudio($message->parent->file->type)) {
+                    $message->parent->body = '<i class="material-symbols">equalizer</i> ' . __('chats.audio');
+                } elseif (typeIsVideo($message->parent->file->type)) {
+                    $message->parent->body = '<i class="material-symbols">local_movies</i> ' . __('chats.video');
+                }
+            }
+
+            if ($message->parent->isMuc()) {
+                $message->parent->resolveColor();
+                $message->parent->fromName = $message->parent->resource;
+            } else {
+                // TODO optimize
+                $roster = $this->me->session->contacts()
+                    ->where('jid', $message->parent->jidfrom)
+                    ->first();
+
+                $contactFromName = $message->parent->from
+                    ? $message->parent->from->truename
+                    : $message->parent->jidfrom;
+
+                $message->parent->fromName = $roster
+                    ? $roster->truename
+                    : $contactFromName;
+            }
+        }
+
+        // reactions_count if cached, if not, reload it from the DB
+        if ($message->replaceid || ($message->reactions_count ?? $message->reactions()->count())) {
+            $message->reactionsHtml = $this->prepareReactions($message);
+        }
+
+        if ($message->body) {
+            $message->rtl = isRTL($message->body);
+        }
+
+        $message->publishedPrepared = $this->prepareTime($message->published);
+
+        if ($message->delivered) {
+            $message->delivered = $this->prepareDate($message->delivered);
+        }
+
+        if ($message->displayed) {
+            $message->displayed = $this->prepareDate($message->displayed);
+        }
+
+        $date = $this->prepareDate($message->published, compact: true, hours: false);
+
+        if (empty($date)) {
+            $date = $this->__('date.today');
+        }
+
+        // We create the date wrapper
+        if (! array_key_exists($date, $this->_wrapper)) {
+            $this->_wrapper[$date] = [];
+        }
+
+        $messageDBSeen = $message->seen;
+        $n = new Notif($this->me, sessionId: $this->sessionId);
+
+        if ($message->isMuc()) {
+            $message->resolveColor();
+
+            // Cache the resolved presences for a while
+            $key = $message->jidfrom . $message->resource;
+            if (! isset($this->_mucPresences[$key])) {
+                $this->_mucPresences[$key] = $this->me->session->presences()
+                    ->where('jid', $message->jidfrom)
+                    ->where('resource', $message->resource)
+                    ->where('muc', true)
+                    ->first();
+            }
+
+            if ($this->_mucPresences[$key] && $this->_mucPresences[$key] !== true) {
+                $message->moderator = ($this->_mucPresences[$key]->mucrole == 'moderator');
+                $message->mucjid = $this->_mucPresences[$key]->mucjid;
+                $message->mine = $message->seen = ($this->_mucPresences[$key]->mucjid == $this->me->id);
+                $message->icon_url = $this->_mucPresences[$key]->conferencePicture;
+            } else {
+                // No presence, we set a placeholder avatar as a fallback
+                $message->icon_url = avatarPlaceholder($message->resource ?? $message->jidfrom);
+                $this->_mucPresences[$key] = true;
+            }
+        }
+
+        // Only used for message replacement
+        $message->originid = $message->originid == null && ! $message->isMuc()
+            ? $message->messageid
+            : null;
+
+        // Handle faulty replacing messages
+        if (
+            $message->replace
+            && (
+                ($message->replace->jidfrom != $message->jidfrom || $message->replace->resource != $message->resource)
+                ||
+                ($message->isMuc() && ! $this->_mucPresences[$message->jidfrom . $message->resource])
+            )
+        ) {
+            unset($message->replace);
+            unset($message->replaceid);
+        }
+
+        if ($message->seen === false) {
+            $message->seen = ('chat|' . $message->jidfrom == $n->getCurrent());
+        }
+
+        if (
+            $message->seen === true
+            && $messageDBSeen === false
+        ) {
+            $this->me->messages()
+                ->where('id', $message->id)
+                ->update(['seen' => true]);
+        }
+
+        $msgkey = '<' . $message->jidfrom;
+        $msgkey .= ($message->isMuc() && $message->resource != null)
+            ? cleanupId($message->resource, true)
+            : '';
+        $msgkey .= '>' . substr($message->published, 11, 5);
+
+        $counter = count($this->_wrapper[$date]);
+
+        $this->_wrapper[$date][$counter . $msgkey] = $message;
+
+        if ($message->type == 'invitation') {
+            $view = $this->tpl();
+            $view->assign('message', $message);
+            $message->body = ($message->jidfrom == $this->me->id)
+                ? $view->draw('_chat_invitation_self')
+                : $view->draw('_chat_invitation');
+        }
+
+        // Internal messages
+        if (in_array($message->type, [
+            'jingle_finish',
+            'jingle_incoming',
+            'jingle_outgoing',
+            'jingle_reject',
+            'jingle_retract',
+            'muc_admin',
+            'muc_member',
+            'muc_outcast',
+            'muc_owner',
+            'space_pending',
+        ])) {
+            $view = $this->tpl();
+            $view->assign('message', $message);
+
+            if ($message->type == 'space_pending') {
+                $view->assign('contact', Contact::firstOrNew(['id' => $message->subject]));
+            }
+
+            $message->body = $view->draw('_chat_' . $message->type);
+        }
+
+        if ($message->type == 'jingle_end') {
+            $view = $this->tpl();
+            $view->assign('message', $message);
+            $view->assign('diff', false);
+
+            $start = $this->me->messages()->where('thread', $message->thread)
+                ->whereIn('type', ['jingle_incoming', 'jingle_outgoing'])
+                ->first();
+
+            if ($start) {
+                $diff = (new \DateTime($start->created_at))
+                    ->diff(new \DateTime($message->created_at));
+
+                $view->assign('diff', $diff);
+            }
+
+            $message->body = trim((string) $view->draw('_chat_jingle_end'));
+        }
+
+        return $this->_wrapper;
+    }
+
+    public function prepareEmbed(Url $url, ?Message $message = null)
+    {
+        return $this->view('_chat_embed', [
+            'url' => $url,
+            'message' => $message,
+        ]);
+    }
+
+    public function prepareReactions(Message $message): ?string
+    {
+        $merged = [];
+
+        $reactions = $message
+            ->reactions();
+
+        if ($message->replace) {
+            $reactions = $reactions->unionAll(
+                DB::table('reactions')
+                    ->where('message_mid', $message->replace->mid)
+            );
+        }
+
+        $reactions = $reactions->orderBy('created_at')
+            ->get();
+
+        foreach ($reactions as $reaction) {
+            if (! array_key_exists($reaction->emoji, $merged)) {
+                $merged[$reaction->emoji] = [];
+            }
+
+            $merged[$reaction->emoji][] = $reaction->jidfrom;
+        }
+
+        if (empty($merged)) {
+            return null;
+        }
+
+        return $this->view('_chat_reactions', [
+            'message' => $message,
+            'reactions' => $merged,
+            'me' => $this->me->id,
+        ]);
+    }
+
+    public function prepareHeader($jid, ?bool $muc = false)
+    {
+        $view = $this->tpl();
+
+        $view->assign('jid', $jid);
+        $view->assign('muc', $muc);
+        $view->assign(
+            'info',
+            Info::where('server', $this->me->session->host)
+                ->where('node', '')
+                ->first()
+        );
+        $view->assign('anon', false);
+        $view->assign('counter', $this->me->unreads(cached: true));
+
+        if ($muc) {
+            $view->assign('conference', $this->me->session->conferences()
+                ->where('conference', $jid)
+                ->with('info')
+                ->first());
+
+            $mucinfo = Info::where('server', (new Jid($jid))->domain)
+                ->where('node', '')
+                ->first();
+            if ($mucinfo && ! empty($mucinfo->abuseaddresses)) {
+                $view->assign('info', $mucinfo);
+            }
+        } else {
+            $view->assign('roster', $this->me->session->contacts()->where('jid', $jid)->first());
+            $view->assign('contact', Contact::firstOrNew(['id' => $jid]));
+        }
+
+        return $view->draw('_chat_header');
+    }
+
+    public function prepareEmpty()
+    {
+        return $this->view('_chat_empty', [
+            'top' => $this->me->session->topContactsToChat()->take(15)->get(),
+        ]);
+    }
+
+    public function ajaxHttpGetExplore($page = 0)
+    {
+        $this->rpc('MovimTpl.fill', '#chat_explore', $this->prepareExplore($page));
+    }
+
+    public function prepareExplore($page = 0)
+    {
+        $pagination = 8;
+
+        $users = Contact::suggest($this->me)
+            ->skip($page * $pagination)
+            ->take($pagination + 1)
+            ->get();
+
+        return $this->view('_chat_explore', [
+            'presencestxt' => getPresencesTxt(),
+            'users' => $users,
+            'pagination' => $pagination,
+            'page' => $page,
+        ]);
+    }
+}

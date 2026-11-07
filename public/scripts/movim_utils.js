@@ -26,12 +26,12 @@ var MovimUtils = {
         return 'id-' + string.replace(/([^a-z0-9]+)/gi, '-').toLowerCase();
     },
     hash(string) {
-        var hash = 0;
+        let hash = 0;
 
-        if (string.length == 0) return hash;
+        if (string.length === 0) return hash;
 
-        for (i = 0; i < string.length; i++) {
-            char = string.charCodeAt(i);
+        for (let i = 0; i < string.length; i++) {
+            const char = string.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
             hash = hash & hash;
         }
@@ -44,36 +44,64 @@ var MovimUtils = {
     disconnect: function () {
         window.location.replace(ERROR_URI);
     },
+
+    clearAllActivesRooms: function () {
+        document.querySelectorAll('ul.list.rooms li:not(.subheader)')
+            .forEach(item => item.classList.remove('active'));
+    },
+    setActiveRoom: function (jid) {
+        if (typeof Chats != 'undefined') Chats.clearAllActives();
+        MovimUtils.clearAllActivesRooms();
+        MovimUtils.addClass('ul.list.rooms li[data-jid="' + jid + '"]', 'active');
+    },
+
+    formSetDirty: function (formname) {
+        var form = document.forms[formname];
+
+        if (!form) {
+            return false;
+        }
+
+        form.dataset.dirty = true;
+    },
+
     formToJson: function (formname) {
         var form = document.forms[formname];
-        if (!form)
-            return false;
+
+        if (!form) {
+            return;
+        }
 
         var json = {};
+
+        json['isDirty'] = Boolean(form.dataset.dirty);
 
         for (var i = 0; i < form.elements.length; i++) {
             json_att = {};
 
             for (var j = 0; j < form.elements[i].attributes.length; j++) {
-                json_att[form.elements[i].attributes[j].name] = form.elements[i].attributes[j].value;
+                if (form.elements[i].attributes[j].name != 'value') {
+                    json_att[form.elements[i].attributes[j].name] = form.elements[i].attributes[j].value;
+                }
             }
 
             if (form.elements[i].name.length != 0) {
-                if (form.elements[i].type == 'checkbox')
+                if (form.elements[i].type == 'checkbox') {
                     json[form.elements[i].name] = {
                         'value': form.elements[i].checked,
                         'attributes': json_att
                     };
-                else if (form.elements[i].type == 'radio' && form.elements[i].checked)
+                } else if (form.elements[i].type == 'radio' && form.elements[i].checked) {
                     json[form.elements[i].name] = {
                         'value': form.elements[i].value,
                         'attributes': json_att
                     };
-                else if (form.elements[i].type != 'radio')
+                } else if (form.elements[i].type != 'radio') {
                     json[form.elements[i].name] = {
                         'value': form.elements[i].value,
                         'attributes': json_att
                     };
+                }
             }
         }
 
@@ -94,72 +122,68 @@ var MovimUtils = {
     pushState: function (url) {
         window.history.pushState(null, '', url);
     },
+    pushSoftState: function (url) {
+        if (window.location != url) {
+            window.history.pushState({ soft: true }, '', url);
+            MovimTpl.currentPage = window.location.pathname;
+        }
+    },
     redirect: function (url) {
         window.location.href = url;
-    },
-    softRedirect: function (url) {
-        var location = window.location.href;
-
-        if (location.substring(0, location.indexOf('#')) !== url) {
-            window.location.href = url;
-        }
     },
     openInNew: function (url) {
         window.open(url, '_blank');
     },
     reload: function (uri, noHistory) {
-        // Rewrite the URL for a soft reload
-        requestUri = uri.slice(0, uri.indexOf('?')) + '?soft/' + uri.slice(uri.indexOf('?') + 1);
+        requestUri = new URL(uri.replace(/^\/\//, 'https://'));
+        requestUri.searchParams.append('soft', 'true');
 
-        document.body.classList.add('loading');
-        document.body.classList.remove('finished');
+        MovimTpl.loadingPage();
 
-        MovimRPC.fetchWithTimeout(requestUri, {
+        MovimRPC.fetchWithTimeout(requestUri.toString(), {
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             }
         }).then(reponse => {
-            onloaders = [];
-            onfocused = [];
-
             reponse.text().then(value => {
-                document.body.classList.remove('loading');
-
                 let page = JSON.parse(value);
 
-                if (noHistory != true) {
-                    history.pushState({ soft: true }, '', uri);
-                }
+                const oldWidgetCss = Array.from(
+                    document.head.querySelectorAll('link[rel=stylesheet].widget')
+                );
 
-                if (typeof MovimWebsocket != 'undefined') {
-                    MovimWebsocket.clear();
-                }
-
-                document.head.querySelectorAll('link[rel=stylesheet].widget').forEach(e => e.remove());
-                document.head.querySelectorAll('script[type=\'text/javascript\'].widget').forEach(e => e.remove());
-                document.head.querySelectorAll('script[type=\'text/javascript\'].inline').forEach(e => e.remove());
-                document.querySelectorAll('#endcommon ~ *').forEach(e => e.remove());
-
-                document.body.innerHTML += page.content;
-                document.title = page.title;
-
-                // CSS
-
-                page.widgetsCSS.forEach(url => {
-                    var css = document.createElement("link");
+                const cssPromises = page.widgetsCSS.map(url => new Promise((resolve) => {
+                    const css = document.createElement('link');
                     css.setAttribute('rel', 'stylesheet');
                     css.href = url;
                     css.classList.add('widget');
+                    css.onload = resolve;
+                    css.onerror = resolve;
                     document.head.appendChild(css);
-                });
+                }));
 
-                // Javascript
+                Promise.all(cssPromises).then(() => {
+                    MovimTpl.finishedPage();
 
-                const promises = [];
-                page.widgetsScripts.forEach(script => {
-                    promises.push(new Promise(function (resolve, reject) {
-                        var js = document.createElement("script");
+                    if (noHistory !== true) {
+                        MovimUtils.pushSoftState(uri);
+                    }
+
+                    if (typeof MovimWebsocket !== 'undefined') {
+                        MovimWebsocket.clear();
+                    }
+
+                    oldWidgetCss.forEach(e => e.remove());
+                    document.head.querySelectorAll('script[type=\'text/javascript\'].widget').forEach(e => e.remove());
+                    document.head.querySelectorAll('script[type=\'text/javascript\'].inline').forEach(e => e.remove());
+                    document.querySelectorAll('#endcommon ~ *').forEach(e => e.remove());
+
+                    document.body.insertAdjacentHTML('beforeend', page.content);
+                    document.title = page.title;
+
+                    const promises = page.widgetsScripts.map(script => new Promise((resolve) => {
+                        const js = document.createElement('script');
                         js.src = script;
                         js.setAttribute('type', 'text/javascript');
                         js.onload = resolve;
@@ -167,21 +191,15 @@ var MovimUtils = {
                         js.classList.add('widget');
                         document.head.appendChild(js);
                     }));
-                });
 
-                var js = document.createElement("script");
-                js.classList.add('inline');
-                js.innerHTML = page.inlineScripts;
-                document.head.appendChild(js);
+                    const inlineJs = document.createElement('script');
+                    inlineJs.classList.add('inline');
+                    inlineJs.innerHTML = page.inlineScripts;
+                    document.head.appendChild(inlineJs);
 
-                // Events
-                Promise.all(promises).then(() => {
-                    if (typeof MovimWebsocket != 'undefined') {
-                        MovimWebsocket.launchAttached();
-                        MovimWebsocket.launchInitiated();
-                    }
-
-                    movimLaunchOnload();
+                    Promise.all(promises).then(() => {
+                        MovimEvents.triggerWindow('loaded', null);
+                    });
                 });
             });
         }).catch(error => {
@@ -199,45 +217,31 @@ var MovimUtils = {
         let el = document.querySelector(element);
         if (el) el.classList.remove(classname);
     },
-    textareaAutoheight: function (textbox) {
-        if (textbox != null) {
-            var val = MovimUtils.htmlEscape(textbox.value).replace(/\n/g, '<br>');
-            var hidden = document.querySelector('#hiddendiv');
-            hidden.innerHTML = val + '<br/>';
-
-            textboxStyle = window.getComputedStyle(textbox);
-
-            hidden.style.paddingTop = textboxStyle.paddingTop;
-            hidden.style.paddingBottom = textboxStyle.paddingBottom;
-            hidden.style.width = textboxStyle.width;
-            hidden.style.fontSize = textboxStyle.fontSize;
-
-            textbox.style.height = hidden.scrollHeight + 'px';
+    setDataItem: function (element, key, value) {
+        let el = document.querySelector(element);
+        if (el) {
+            if (value) {
+                el.dataset[key] = value;
+            } else {
+                delete el.dataset[key];
+            }
         }
     },
-    copyToClipboard: function (text) {
-        var input = document.body.appendChild(document.createElement('input'));
-        input.value = text;
-        input.focus();
-        input.select();
-        document.execCommand('copy');
-        input.parentNode.removeChild(input);
+    decodeHTMLEntities(text) {
+        var textarea = document.createElement('textarea');
+        textarea.innerHTML = text;
+        return textarea.value;
     },
-    applyAutoheight: function () {
-        var textareas = document.querySelectorAll('textarea[data-autoheight=true]')
-
-        for (var i = 0; i < textareas.length; i++) {
-            MovimUtils.textareaAutoheight(textareas[i]);
-            textareas[i].addEventListener('keyup', e => MovimUtils.textareaAutoheight(e.target));
-        };
+    copyToClipboard: function (text) {
+        navigator.clipboard.writeText(text).catch(err => MovimUtils.logError(err));
     },
     htmlEscape: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+        return string
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
     },
     enhanceArticlesContent: function () {
         document.querySelectorAll('article section > div video')
@@ -262,11 +266,13 @@ var MovimUtils = {
             });
     },
     urlParts: function () {
-        var str = window.location.search.split('/');
-        var page = str[0].substring(1);
+        var str = window.location.pathname.split('/');
+        var page = str[1];
+
+        str.shift();
         str.shift();
 
-        var str = str.map(param => decodeURIComponent(param));
+        str = str.map(param => decodeURIComponent(param));
 
         return { 'page': page, 'params': str, 'hash': window.location.hash.substring(1) };
     },
@@ -285,63 +291,16 @@ var MovimUtils = {
         } while (Math.abs(bytes) >= thresh && u < units.length - 1);
         return bytes.toFixed(1) + ' ' + units[u];
     },
-    getOrientation: function (file, callback) {
-        var testImageURL =
-            'data:image/jpeg;base64,/9j/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAYAAAA' +
-            'AAAD/2wCEAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBA' +
-            'QEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE' +
-            'BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAf/AABEIAAIAAwMBEQACEQEDEQH/x' +
-            'ABRAAEAAAAAAAAAAAAAAAAAAAAKEAEBAQADAQEAAAAAAAAAAAAGBQQDCAkCBwEBAAAAAAA' +
-            'AAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AG8T9NfSMEVMhQ' +
-            'voP3fFiRZ+MTHDifa/95OFSZU5OzRzxkyejv8ciEfhSceSXGjS8eSdLnZc2HDm4M3BxcXw' +
-            'H/9k='
-
-        var img = document.createElement('img');
-        img.onload = function () {
-            // Check if the browser supports automatic image orientation:
-            let orientation = img.width === 2 && img.height === 3;
-
-            if (orientation) {
-                return callback(-1);
-            } else {
-                var reader = new FileReader();
-
-                reader.onload = function (e) {
-                    var view = new DataView(e.target.result);
-                    if (view.getUint16(0, false) != 0xFFD8) return callback(-2);
-                    var length = view.byteLength, offset = 2;
-
-                    while (offset < length) {
-                        var marker = view.getUint16(offset, false);
-                        offset += 2;
-                        if (marker == 0xFFE1) {
-                            if (view.getUint32(offset += 2, false) != 0x45786966) return callback(-1);
-
-                            var little = view.getUint16(offset += 6, false) == 0x4949;
-                            offset += view.getUint32(offset + 4, little);
-
-                            var tags = view.getUint16(offset, little);
-                            offset += 2;
-
-                            for (var i = 0; i < tags; i++)
-                                if (view.getUint16(offset + (i * 12), little) == 0x0112)
-
-                                    return callback(view.getUint16(offset + (i * 12) + 8, little));
-                        }
-                        else if ((marker & 0xFF00) != 0xFF00) break;
-                        else offset += view.getUint16(offset, false);
-                    }
-
-                    return callback(-1);
-                };
-
-                reader.readAsArrayBuffer(file);
-            }
-        }
-        img.src = testImageURL
+    loadImage: function (file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const image = new Image();
+            image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+            image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image decoding failed')); };
+            image.src = url;
+        });
     },
     drawImageProp: function (ctx, img, x, y, w, h, offsetX, offsetY) {
-
         if (arguments.length === 2) {
             x = y = 0;
             w = ctx.canvas.width;
@@ -387,6 +346,23 @@ var MovimUtils = {
         // fill image in dest. rectangle
         ctx.drawImage(img, cx, cy, cw, ch, x, y, w, h);
     },
+    imageToHex: function (img) {
+        const context = document.createElement("canvas").getContext("2d");
+        context.drawImage(img, 0, 0, 1, 1);
+        const i = context.getImageData(0, 0, 1, 1).data;
+        return "#" + ((1 << 24) + (i[0] << 16) + (i[1] << 8) + i[2]).toString(16).slice(1);
+    },
+    getEventLocation: function (e) {
+        if (e.touches && e.touches.length == 1) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        }
+        else if (e.clientX && e.clientY) {
+            return { x: e.clientX, y: e.clientY }
+        }
+    },
+    base64ToBinary: function (base64) {
+        return new Uint8Array(atob(base64).split('').map(x => x.charCodeAt(0)));
+    },
     arrayBufferToBase64: function (ab) {
         return btoa((new Uint8Array(ab)).reduce((data, byte) => data + String.fromCharCode(byte), ''));
     },
@@ -420,20 +396,31 @@ var MovimUtils = {
         return Array.from({ length: end - start + 1 }, (_, i) => i)
     },
     linkify: function (inputText) {
-        var replacedText, replacePattern1, replacePattern2, replacePattern3;
+        const replacePattern1 = /(^|[ ])(\b(https?|ftp):\/\/[-A-Z0-9+&amp;@#\/%?=~_|!:,.;]*[-A-Z0-9+&amp;@#\/%=~_|])($|[ ])/gim;
+        const replacePattern2 = /(([a-zA-Z0-9\-\_\.])+@[a-zA-Z\_]+?(\.[a-zA-Z]{2,6})+)/gim;
 
-        //URLs starting with http://, https://, or ftp://
-        replacePattern1 = /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
-        replacedText = inputText.replace(replacePattern1, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-
-        //URLs starting with "www." (without // before it, or it'd re-link the ones done above).
-        replacePattern2 = /(^|[^\/])(www\.[\S]+(\b|$))/gim;
-        replacedText = replacedText.replace(replacePattern2, '$1<a href="http://$2" target="_blank" rel="noopener">$2</a>');
-
-        //Change email addresses to mailto:: links.
-        replacePattern3 = /(([a-zA-Z0-9\-\_\.])+@[a-zA-Z\_]+?(\.[a-zA-Z]{2,6})+)/gim;
-        replacedText = replacedText.replace(replacePattern3, '<a href="mailto:$1">$1</a>');
+        let replacedText = inputText.replace(replacePattern1, '<a href="$2" target="_blank" rel="noopener noreferrer">$2</a>');
+        replacedText = replacedText.replace(replacePattern2, '<a href="mailto:$1">$1</a>');
 
         return replacedText;
-    }
+    },
+    logError: function (error) {
+        console.log(error.name + ': ' + error.message);
+        console.error(error);
+    },
 };
+
+/*
+ * Set the li onclick event to the link and stop propagation, for accessinility purposes
+ */
+function listIconClick(event) {
+    event.stopPropagation();
+    let li = event.target.closest('li');
+    if (li && li.onclick) {
+        li.click();
+        return;
+    }
+
+    let span = event.target.closest('span.icon');
+    if (span) span.click();
+}

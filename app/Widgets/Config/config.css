@@ -1,0 +1,39 @@
+label[for=nightmode] i,
+form ul.list li div>span.supporting.night_mode_detected {
+    display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    form > div .checkbox > input[type="checkbox"] + label[for=nightmode] {
+        width: 3rem;
+        height: 3rem;
+        left: 1.25em;
+        top: 0.25em;
+    }
+
+    label[for=nightmode] i,
+    form ul.list li div>span.supporting.night_mode_detected {
+        display: initial;
+    }
+
+    form div:has(> #nightmode) {
+        opacity: 0.25;
+        pointer-events: none;
+    }
+}
+
+form li#accent_color div.radio {
+    display: inline-block;
+    margin-right: 0.5rem;
+    line-height: 5rem;
+}
+
+form li#accent_color div.radio label {
+    transform: scale(1.5);
+    position: relative;
+    margin-top: 0.5rem;
+}
+
+form li#accent_color div.radio input[type=radio] {
+    display: none;
+}

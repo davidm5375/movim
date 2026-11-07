@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,67 +7,43 @@
 
 namespace Movim\Controller;
 
-use Movim\Template\Builder;
+use App\User;
 use Movim\Route;
+use Movim\Template\Builder;
 
 class Base
 {
-    public $name = 'main';          // The name of the current page
-    public $unique = false;         // Only one WS for this page
-    protected $session_only = false;// The page is protected by a session ?
-    protected $set_cookie = true;   // Set a fresh cookie
-    protected $raw = false;         // Display only the content ?
-    protected $public = false;      // It's a public page
-    protected $js_check = true;     // Check is Javascript is enabled
-    protected $page;
+    public string $name = 'main'; // The name of the current page
+    protected bool $session_only = false; // The page is protected by a session?
+    protected bool $set_cookie = true; // Set a fresh cookie
+    protected bool $raw = false; // Display only the content?
+    protected bool $public = false; // It's a public page
+    protected bool $js_check = true; // Browser check if Javascript is enabled
+    protected ?Builder $page;
 
-    public function __construct()
+    public function __construct(protected ?User $user = null)
     {
-        $this->page = new Builder;
+        $this->page = new Builder($this->user);
+        $this->name = str_replace(
+            'controller',
+            '',
+            strtolower((new \ReflectionClass($this))->getShortName())
+        );
     }
 
-    /**
-     * Returns the value of a $_GET variable. Mainly used to avoid getting
-     * notices from PHP when attempting to fetch an empty variable.
-     * @param  name is the desired variable's name.
-     * @return the value of the requested variable, or FALSE.
-     */
-    protected function fetchGet($name)
+    protected function fetchGet(string $key): ?string
     {
-        if (isset($_GET[$name])) {
-            return htmlentities(urldecode($_GET[$name]));
+        if (isset($_GET[$key])) {
+            return htmlentities(urldecode($_GET[$key]));
         }
 
-        return false;
+        return null;
     }
 
-    /**
-     * Returns the value of a $_POST variable. Mainly used to avoid getting
-     * notices from PHP when attempting to fetch an empty variable.
-     * @param  name is the desired variable's name.
-     * @return the value of the requested variable, or FALSE.
-     */
-    protected function fetchPost($name)
-    {
-        if (isset($_POST[$name])) {
-            return htmlentities($_POST[$name]);
-        }
-
-        return false;
-    }
-
-    protected function checkSession()
-    {
-        if ($this->session_only
-        && !isLogged()) {
-            $this->name = 'login';
-        }
-    }
-
-    protected function redirect($page, $params = false)
+    protected function redirect(string $page, ?array $params = null)
     {
         $url = Route::urlize($page, $params);
-        header('Location: '. $url);
+        header('Location: ' . $url);
         exit;
     }
 
@@ -83,7 +60,6 @@ class Base
         $this->page->addCSS('dialog.css');
         $this->page->addCSS('card.css');
         $this->page->addCSS('chip.css');
-        $this->page->addCSS('table.css');
         $this->page->addCSS('color.css');
         $this->page->addCSS('block.css');
         $this->page->addCSS('menu.css');
@@ -94,32 +70,46 @@ class Base
         $this->page->addCSS('scrollbar.css');
 
         $this->page->addScript('movim_utils.js');
+        $this->page->addScript('movim_events.js');
+        $this->page->addScript('movim_jingles.js');
         $this->page->addScript('movim_e2ee.js');
         $this->page->addScript('movim_base.js');
         $this->page->addScript('movim_favicon.js');
-        $this->page->addScript('movim_electron.js');
         $this->page->addScript('movim_avatar.js');
-        $this->page->addScript('movim_emojis_list.js');
         $this->page->addScript('movim_rpc.js');
         $this->page->addScript('movim_tpl.js');
-        $this->page->addScript('libsignal_protocol.js');
+        $this->page->addScript('movim_emojis_list.js', noTime: true);
+        // https://github.com/conversejs/converse.js/blob/master/3rdparty/libsignal-protocol.min.js
+        $this->page->addScript('libsignal_protocol.min.js', noTime: true);
+        $this->page->addScript('thumbhash.js', noTime: true);
 
-        if (!$this->public) {
+        if (! $this->public) {
             $this->page->addScript('movim_websocket.js');
         }
 
-        $content = new Builder;
+        $this->page->addScript('movim_visio.js');
+
+        $content = new Builder($this->user);
+
+        if ($this->js_check == false) {
+            $content->disableJavascriptCheck();
+        }
 
         $headers = getallheaders();
 
         $built = $content->build('common');
         $this->page->setCommonContent($built);
 
-        if ($headers
-         && array_key_exists('Accept', $headers)
-         && array_key_exists('Content-Type', $headers)
-         && $headers['Accept'] == 'application/json'
-         && $headers['Content-Type'] == 'application/json') {
+        header('Cache-Control: no-cache');
+
+        if (
+            $headers
+            && array_key_exists('Accept', $headers)
+            && array_key_exists('Content-Type', $headers)
+            && $this->fetchGet('soft')
+            && $headers['Accept'] == 'application/json'
+            && $headers['Content-Type'] == 'application/json'
+        ) {
             $built = $content->build($this->name);
             $this->page->setContent($built);
 
@@ -140,6 +130,24 @@ class Base
             header('Referrer-Policy: strict-origin-when-cross-origin');
             echo $this->page->build('page', $this->public);
         }
+    }
+
+    public function listWidgets(): array
+    {
+        preg_match_all(
+            '/widget(\(\'(\w+)\'\))/',
+            file_get_contents(VIEWS_PATH . '/' . $this->name . '.tpl'),
+            $matches
+        );
+
+        $widgets = $matches[2];
+
+        // Specific case for Visio, see common.tpl as well
+        if ($this->user) {
+            array_push($widgets, 'Visio');
+        }
+
+        return $widgets;
     }
 
     public function load()

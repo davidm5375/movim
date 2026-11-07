@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -7,7 +8,6 @@
 namespace Movim\Console;
 
 use App\Configuration;
-
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -15,7 +15,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ConfigCommand extends Command
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('config')
@@ -27,22 +27,34 @@ class ConfigCommand extends Command
                 'Content of the info box on the login page'
             )
             ->addOption(
-                'username',
+                'description',
                 null,
                 InputOption::VALUE_REQUIRED,
-                'Username for the admin area'
-            )
-            ->addOption(
-                'password',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Password for the admin area'
+                'General description of the instance'
             )
             ->addOption(
                 'timezone',
                 null,
                 InputOption::VALUE_REQUIRED,
                 'The server timezone'
+            )
+            ->addOption(
+                'restrictsuggestions',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Only suggest chatrooms, Communities and other contents that are available on the user XMPP server and related services'
+            )
+            ->addOption(
+                'chatonly',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Disable all the social feature (Communities, Blog…) and keep only the chat ones'
+            )
+            ->addOption(
+                'disableregistration',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Remove the XMPP registration flow and buttons from the interface'
             )
             ->addOption(
                 'loglevel',
@@ -73,10 +85,16 @@ class ConfigCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'The whitelisted XMPP servers'
+            )
+            ->addOption(
+                'gifapikey',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Tenor API key'
             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $configuration = Configuration::get();
 
@@ -87,16 +105,16 @@ class ConfigCommand extends Command
                 $configuration->save();
 
                 $output->writeln(
-                    '<info>The configuration key</info> '.
-                    $key.
-                    ' <info>has been updated from</info> '.
-                    $old.
-                    ' <info>to</info> '.
+                    '<info>The configuration key</info> ' .
+                    $key .
+                    ' <info>has been updated from</info> ' .
+                    $old .
+                    ' <info>to</info> ' .
                     $configuration->$key
                 );
             }
         }
 
-        return 0;
+        return Command::SUCCESS;
     }
 }

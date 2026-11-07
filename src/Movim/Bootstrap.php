@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -9,59 +10,41 @@ namespace Movim;
 define('DOCUMENT_ROOT', dirname(__FILE__, 3));
 
 use App\Configuration;
-use Illuminate\Database\Capsule\Manager as Capsule;
-
-use Illuminate\Events\Dispatcher;
-use Illuminate\Container\Container;
-
+use App\Session;
 use Dotenv\Dotenv;
+use Illuminate\Container\Container;
+use Illuminate\Database\Capsule\Manager as Capsule;
+use Illuminate\Events\Dispatcher;
+use Movim\i18n\Locale;
 
-use App\Session as DBSession;
-use App\User as DBUser;
+$language = null;
+$translations = [];
 
 class Bootstrap
 {
-    public function boot($dbOnly = false)
+    public function boot(?bool $dbOnly = false): ?Session
     {
         $this->loadHelpers();
         $this->setLogs();
 
-        if (!defined('APP_TITLE')) {
+        if (! defined('APP_TITLE')) {
             $this->setConstants();
         }
 
         mb_internal_encoding('UTF-8');
+        date_default_timezone_set('UTC');
 
         $this->loadCapsule();
 
         if ($dbOnly) {
-            return;
+            return null;
         }
 
-        //Check if vital system need is OK
-        $this->checkSystem();
+        $session = $this->checkSession();
+        $this->loadTimezone($session);
+        $this->loadLanguage($session);
 
-        $this->loadCommonLibraries();
-        $this->loadDispatcher();
-
-        $this->setTimezone();
-        $this->startingSession();
-        $this->loadLanguage();
-    }
-
-    private function checkSystem()
-    {
-        if (!file_exists(CACHE_PATH) && !@mkdir(CACHE_PATH)) {
-            throw new \Exception('Couldn’t create cache directory');
-        }
-
-        if (!file_exists(PUBLIC_CACHE_PATH) && !@mkdir(PUBLIC_CACHE_PATH)) {
-            throw new \Exception('Couldn’t create public cache directory');
-        }
-
-        if (!file_exists(config('paths.log')) && !@mkdir(config('paths.log'))) {
-            throw new \Exception('Couldn’t create log directory');
-        }
+        return $session;
     }
 
     private function setConstants()
@@ -80,19 +63,23 @@ class Bootstrap
         }
 
         if (isset($_SERVER['SERVER_NAME'])) {
-            define('BASE_DOMAIN', $_SERVER["SERVER_NAME"]);
+            define('BASE_DOMAIN', $_SERVER['SERVER_NAME']);
         }
 
         define('BASE_URI', $this->getBaseUri());
-        define('SESSION_ID', $_COOKIE['MOVIM_SESSION_ID'] ?? getenv('sid'));
-
         define('APP_PATH', DOCUMENT_ROOT . '/app/');
+        define('CONFIG_PATH', DOCUMENT_ROOT . '/config/');
         define('LOCALES_PATH', DOCUMENT_ROOT . '/locales/');
         define('PUBLIC_PATH', DOCUMENT_ROOT . '/public/');
-        define('PUBLIC_CACHE_PATH', DOCUMENT_ROOT . '/public/cache/');
-        define('CONFIG_PATH', DOCUMENT_ROOT . '/config/');
-        define('VIEWS_PATH', DOCUMENT_ROOT . '/app/views/');
-        define('WIDGETS_PATH', DOCUMENT_ROOT . '/app/widgets/');
+        define('CACHE_DIR', 'cache/');
+        define('IMAGES_DIR', 'images/');
+        define('PUBLIC_CACHE_PATH', PUBLIC_PATH . CACHE_DIR);
+        define('PUBLIC_IMAGES_PATH', PUBLIC_PATH . IMAGES_DIR);
+        define('PUBLIC_EMOJIS_PATH', PUBLIC_PATH . 'emojis/');
+        define('PUBLIC_STICKERS_PATH', PUBLIC_PATH . 'stickers/');
+        define('VIEWS_PATH', DOCUMENT_ROOT . '/app/Views/');
+        define('WIDGETS_PATH', DOCUMENT_ROOT . '/app/Widgets/');
+        define('WORKERS_PATH', DOCUMENT_ROOT . '/workers/');
 
         define('CACHE_PATH', config('paths.cache'));
 
@@ -102,11 +89,15 @@ class Bootstrap
         define('DEFAULT_PICTURE_QUALITY', 95);
 
         define('API_SOCKET', CACHE_PATH . 'socketapi.sock');
+        define('GALENER_API_SOCKET', CACHE_PATH . 'galenersocketapi.sock');
+        define('AVATAR_HANDLER_SOCKET', CACHE_PATH . 'avatarhandler.sock');
+        define('PUSHER_SOCKET', CACHE_PATH . 'pusher.sock');
+        define('RESOLVER_SOCKET', CACHE_PATH . 'resolver.sock');
     }
 
     private function getVersion()
     {
-        if ($f = fopen(DOCUMENT_ROOT.'/VERSION', 'r')) {
+        if ($f = fopen(DOCUMENT_ROOT . '/VERSION', 'r')) {
             return trim(fgets($f));
         }
     }
@@ -123,7 +114,7 @@ class Bootstrap
             $dirname = substr($dirname, 0, strrpos($dirname, 'index.php'));
         }
 
-        $path = (($dirname == DIRECTORY_SEPARATOR) ? '' : $dirname).'/';
+        $path = (($dirname == DIRECTORY_SEPARATOR) ? '' : $dirname) . '/';
 
         $uri = '//';
         $uri .= (array_key_exists('HTTP_HOST', $_SERVER))
@@ -137,17 +128,24 @@ class Bootstrap
         return $uri;
     }
 
+    private function loadTimezone(?Session $session)
+    {
+        if ($session) {
+            define('SESSION_TIMEZONE', $session->timezone);
+        }
+    }
+
     private function loadCapsule()
     {
         $capsule = new Capsule;
         $capsule->addConnection([
-            'driver'    => config('database.driver'),
-            'host'      => config('database.host'),
-            'port'      => config('database.port'),
-            'database'  => config('database.database'),
-            'username'  => config('database.username'),
-            'password'  => config('database.password'),
-            'charset'   => (config('database.driver') == 'mysql') ? 'utf8mb4' : 'utf8',
+            'driver' => config('database.driver'),
+            'host' => config('database.host'),
+            'port' => config('database.port'),
+            'database' => config('database.database'),
+            'username' => config('database.username'),
+            'password' => config('database.password'),
+            'charset' => (config('database.driver') == 'mysql') ? 'utf8mb4' : 'utf8',
             'collation' => (config('database.driver') == 'mysql') ? 'utf8mb4_bin' : 'utf8_unicode_ci',
         ]);
 
@@ -161,8 +159,10 @@ class Bootstrap
             global $sqlQueryExecuted;
 
             $loop->addPeriodicTimer(1, function () use ($capsule, &$sqlQueryExecuted) {
-                if ($sqlQueryExecuted < time() - 3 /* 3sec */
-                && $capsule->getConnection()->getRawPdo() != null) {
+                if (
+                    $sqlQueryExecuted < time() - 3 /* 3sec */
+                    && $capsule->getConnection()->getRawPdo() != null
+                ) {
                     $capsule->getConnection()->disconnect();
                 }
             });
@@ -170,6 +170,8 @@ class Bootstrap
             $dispatcher = new Dispatcher(new Container);
             $dispatcher->listen('Illuminate\Database\Events\QueryExecuted', function ($query) use (&$sqlQueryExecuted) {
                 $sqlQueryExecuted = time();
+
+                // \logInfo('SQL: ' . $query->sql . ' | values: ' . implode(', ', $query->bindings) . ' | time: ' . $query->time);
             });
 
             $capsule->setEventDispatcher($dispatcher);
@@ -179,47 +181,32 @@ class Bootstrap
         $capsule->setAsGlobal();
     }
 
-    private function loadCommonLibraries()
-    {
-        require_once DOCUMENT_ROOT . '/lib/XMPPtoForm.php';
-        require_once DOCUMENT_ROOT . '/lib/SDPtoJingle.php';
-        require_once DOCUMENT_ROOT . '/lib/JingletoSDP.php';
-    }
-
     private function loadHelpers()
     {
-        foreach (glob(DOCUMENT_ROOT.'/app/helpers/*Helper.php') as $file) {
+        foreach (glob(DOCUMENT_ROOT . '/app/Helpers/*Helper.php') as $file) {
             require_once $file;
         }
-    }
-
-    private function loadDispatcher()
-    {
-        require_once APP_PATH . 'widgets/Notif/Notif.php';
     }
 
     /**
      * Loads up the language, either from the User or default.
      */
-    public function loadLanguage()
+    public function loadLanguage(?Session $session)
     {
-        $l = \Movim\i18n\Locale::start();
+        $locale = Locale::start();
 
-        if (isLogged()) {
-            $lang = DBUser::me()->language;
-        }
+        global $translations;
+        global $language;
 
-        if (isset($lang)) {
-            $l->load($lang);
-        } elseif (getenv('language') != false) {
-            $l->detect(getenv('language'));
-            $l->loadPo();
+        if ($session?->user->language) {
+            $language = $session->user->language;
         } elseif (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-            $l->detect();
-            $l->loadPo();
+            $language = $locale->detect($_SERVER['HTTP_ACCEPT_LANGUAGE']);
         } else {
-            $l->load(Configuration::get()->locale);
+            $language = Configuration::get()->locale;
         }
+
+        $translations = $locale->load($language);
     }
 
     private function setLogs()
@@ -229,79 +216,150 @@ class Bootstrap
         register_shutdown_function([$this, 'fatalErrorShutdownHandler']);
     }
 
-    private function setTimezone()
+    private function checkSession(): ?Session
     {
-        $offset = 0;
+        if (array_key_exists('MOVIM_SESSION_ID', $_COOKIE)) {
+            $sessionId = $_COOKIE['MOVIM_SESSION_ID'];
 
-        if (array_key_exists('HTTP_MOVIM_OFFSET', $_SERVER)) $offset = invertSign(((int)$_SERVER['HTTP_MOVIM_OFFSET'])*60);
-        elseif (getenv('offset') != 0) $offset = (int)getenv('offset');
-
-        define('TIMEZONE_OFFSET', $offset);
-        /*else {
-            // We set the default timezone to the server timezone
-            // And we set a global offset
-            define('TIMEZONE_OFFSET', getTimezoneOffset($config->timezone));
-        }*/
-
-        date_default_timezone_set("UTC");
-    }
-
-    private function startingSession()
-    {
-        if (SESSION_ID !== null) {
-            $process = (bool)requestAPI('exists', 2, ['sid' => SESSION_ID]);
-            $session = DBSession::find(SESSION_ID);
+            $process = (bool) requestAPI('exists', post: ['sid' => $sessionId]);
+            $session = Session::find($sessionId);
 
             if ($session) {
                 // There a session in the DB but no process
-                if (!$process) {
+                if (! $process) {
                     $session->delete();
-                    return;
+
+                    return null;
                 }
 
-                $session->loadMemory();
+                return $session;
             } elseif ($process) {
                 // A process but no session in the db
-                requestAPI('disconnect', 2, ['sid' => SESSION_ID]);
+                requestAPI('disconnect', post: ['sid' => $sessionId]);
             }
         }
 
-        Cookie::set();
+        return null;
     }
 
     public function getWidgets()
     {
         // Return a list of interesting widgets to load (to save memory)
-        return ['Account','AccountNext','AdHoc','Avatar','BottomNavigation',
-        'Communities','CommunityAffiliations','CommunityConfig','CommunityData',
-        'CommunityHeader','CommunityPosts','CommunitiesServer','CommunitiesServers',
-        'Confirm','ContactActions','Chat','ChatOmemo','Chats','Config','ContactData','ContactHeader',
-        'ContactSubscriptions','Dialog','Drawer','Location','Login',
-        'Menu','Navigation','Notif', 'Notifications','NewsNav','Post','PostActions',
-        'Presence','Publish','Rooms','RoomsExplore', 'RoomsUtils', 'Stickers','Toast',
-        'Upload','Vcard4','Visio','VisioLink'];
+        return [
+            'Account',
+            'AdHoc',
+            'Avatar',
+            'Blocked',
+            'BottomNavigation',
+            'Chat',
+            'ChatActions',
+            'ChatOmemo',
+            'Chats',
+            'Communities',
+            'CommunitiesServer',
+            'CommunitiesServers',
+            'CommunityAffiliations',
+            'CommunityConfig',
+            'CommunityData',
+            'CommunityHeader',
+            'CommunityPosts',
+            'Config',
+            'Confirm',
+            'ContactActions',
+            'ContactBlogConfig',
+            'ContactData',
+            'ContactHeader',
+            'ContactsSuggestions',
+            'ContactSubscriptions',
+            'Dialog',
+            'Drawer',
+            'EmojisConfig',
+            'Login',
+            'Menu',
+            'Navigation',
+            'NewsNav',
+            'Notif',
+            'Notifications',
+            'Post',
+            'PostActions',
+            'Presence',
+            'Publish',
+            'PublishStories',
+            'Register',
+            'Rooms',
+            'RoomsExplore',
+            'RoomsUtils',
+            'Shortcuts',
+            'SpacesMenu',
+            'SpaceInfo',
+            'SpaceRooms',
+            'Stickers',
+            'Stories',
+            'Toast',
+            'Upload',
+            'Vcard4',
+            'Visio',
+        ];
     }
 
     /**
      * Error Handlers…
      */
-
-    public function systemErrorHandler($errno, string $errstr, string $errfile = '', int $errline = 0, $trace = '')
+    public function systemErrorHandler($errno, string $errstr, string $errfile = '', int $errline = 0, ?string $trace = null)
     {
-        if (\is_array($trace)) $trace = '';
+        if (\is_array($trace)) {
+            $trace = '';
+        }
 
-        $error = $errstr . " in " . $errfile . ' (line ' . $errline . ")\n";
-        $fullError = $error . 'Trace' . "\n" . $trace;
+        $error = $errstr . ' in ' . $errfile . ' (line ' . $errline . ")\n";
+
+        $serializedTrace = $trace;
+
+        if ($serializedTrace == null) {
+            $backtrace = debug_backtrace();
+
+            $i = 0;
+
+            foreach ($backtrace as $step) {
+                $arguments = '';
+
+                if (array_key_exists('args', $step)) {
+                    $arguments = '(';
+
+                    $j = 0;
+                    foreach ($step['args'] as $value) {
+                        $arguments .= match (gettype($value)) {
+                            'boolean' => $value ? 'true' : 'false',
+                            'integer', 'double' => $value,
+                            'string' => "'" . substr($value, 0, 120) . "'",
+                            'object' => 'Object(' . get_class($value) . ')',
+                            'NULL' => 'NULL',
+                            'array' => 'Array',
+                            default => 'unknown',
+                        };
+
+                        if ($j < count($step['args']) - 1) {
+                            $arguments .= ', ';
+                        }
+
+                        $j++;
+                    }
+
+                    $arguments .= ')';
+                }
+
+                $serializedTrace .= '#' . $i . ' ' . $step['file'] . '(' . $step['line'] . '): ' . $step['function'] . $arguments . "\n";
+                $i++;
+            }
+        }
+
+        $fullError = $error . 'Trace:' . "\n" . $serializedTrace;
 
         if (php_sapi_name() != 'cli' && ob_get_contents() == '') {
-            echo 'An error occured during the Movim boot check the ' . config('paths.log') . 'error.log file' . "\n";
+            echo 'An error occured during the Movim boot check the ' . config('paths.log') . 'errors.log file' . "\n";
         }
 
-        if (php_sapi_name() == 'cli' && !class_exists('Utils')) {
-            echo $error;
-        } else {
-            \Utils::error($fullError);
-        }
+        logError($fullError);
 
         return false;
     }
@@ -310,7 +368,7 @@ class Bootstrap
     {
         $this->systemErrorHandler(
             E_ERROR,
-            get_class($exception) . ': '. $exception->getMessage(),
+            get_class($exception) . ': ' . $exception->getMessage(),
             $exception->getFile(),
             $exception->getLine(),
             $exception->getTraceAsString()

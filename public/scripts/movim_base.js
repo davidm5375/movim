@@ -1,100 +1,74 @@
 /**
- * Movim Base
- *
- * Some basic functions essential for Movim
- */
-
-var onloaders = [];
-var onfocused = [];
-var isFocused = false;
-var isTouch = false;
-
-/**
- * @brief Adds a function to the onload event
- * @param function func
- */
-function movimAddOnload(func) {
-    if (typeof(func) === "function") {
-        onloaders.push(func);
-    }
-}
-
-/**
- * @brief Adds a function to focus event
- * @param function func
- */
-function movimAddFocus(func) {
-    if (typeof(func) === "function") {
-        onfocused.push(func);
-    }
-}
-
-/**
- * @brief Function that is run once the page is loaded.
- */
-document.addEventListener("DOMContentLoaded", () => {
-    movimLaunchOnload();
-});
-
-/**
- * @brief Execute onloader functions
- */
-function movimLaunchOnload() {
-    for (var i = 0; i < onloaders.length; i++) {
-        onloaders[i]();
-    }
-}
-
-/**
- * The focus event doesn't seems to be triggered all the time ¯\_(ツ)_/¯
- */
-var onFocusedFunction = function() {
-    if (isFocused) return;
-
-    isFocused = true;
-    for (var i = 0; i < onfocused.length; i++) {
-        onfocused[i]();
-    }
-};
-
-window.addEventListener('mouseover', onFocusedFunction);
-window.addEventListener('focus', onFocusedFunction);
-window.addEventListener('blur', function() { isFocused = false; });
-window.addEventListener('touchstart', function() { isTouch = true; }, { once: true });
-
-/**
  * Register a service worker for the Progressive Web App
  */
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker
-        .register('sw.js')
-        .then(() => {
+        .register(SW_URI)
+        .then((registration) => {
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    registration.update().catch(() => { });
+                }
+            });
+            return navigator.serviceWorker.ready;
+        })
+        .then((r) => {
             console.log('Service Worker Registered');
         });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+    });
+
+    const channel = new BroadcastChannel('messages');
+    channel.addEventListener('message', event => {
+        Notif.snackbarClear();
+        window.focus();
+
+        switch (event.data.type) {
+            case 'call':
+                break;
+            case 'call_reject':
+                VisioUtils.cancelLobby(event.data.data.fullJid, event.data.data.callId);
+                break;
+            case 'space_chat':
+                MovimUtils.reload(event.data.data.server, event.data.data.node, event.data.data.room);
+                break;
+            case 'chat':
+                Search.chat(event.data.data.jid, event.data.data.muc);
+                break;
+            default:
+                if (event.data.data.url) {
+                    MovimUtils.reload(event.data.data.url);
+                }
+                break;
+        }
+    });
 }
 
+MovimEvents.registerWindow('loaded', 'movimbase', () => {
+    const pwaButton = document.querySelector('#pwa');
 
-movimAddOnload(function() {
-    /**
-     * Handle the PWA install button
-     */
-     const pwaButton = document.querySelector('#pwa');
+    if (pwaButton) {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            pwaButton.style.display = 'initial';
 
-     window.addEventListener('beforeinstallprompt', (e) => {
-         e.preventDefault();
-         deferredPrompt = e;
-         pwaButton.style.display = 'initial';
+            pwaButton.addEventListener('click', () => {
+                deferredPrompt.prompt();
 
-         pwaButton.addEventListener('click', () => {
-             deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Movim App installed');
+                    }
 
-             deferredPrompt.userChoice.then((choiceResult) => {
-                 if (choiceResult.outcome === 'accepted') {
-                     console.log('Movim App installed');
-                 }
-
-                 deferredPrompt = null;
-             });
-         });
-     });
+                    deferredPrompt = null;
+                });
+            });
+        });
+    }
 });

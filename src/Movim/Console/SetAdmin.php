@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,17 +7,16 @@
 
 namespace Movim\Console;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputOption;
-
 use App\User;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class SetAdmin extends Command
 {
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('setAdmin')
@@ -30,26 +30,26 @@ class SetAdmin extends Command
             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $user = User::find($input->getArgument('jid'));
 
         if ($user) {
             if ($input->getOption('remove')) {
                 $user->admin = false;
-                $output->writeln('<info>User '.$input->getArgument('jid').' is not admin anymore</info>');
+                $output->writeln('<info>User ' . $input->getArgument('jid') . ' is not admin anymore</info>');
             } else {
                 $user->admin = true;
-                $output->writeln('<info>User '.$input->getArgument('jid').' is now admin</info>');
+                $output->writeln('<info>User ' . $input->getArgument('jid') . ' is now admin</info>');
             }
 
             $user->save();
 
-            return 0;
+            return Command::SUCCESS;
         }
 
-        $output->writeln('<error>User '.$input->getArgument('jid').' not found</error>');
+        $output->writeln('<error>User ' . $input->getArgument('jid') . ' not found</error>');
 
-        return 1;
+        return Command::FAILURE;
     }
 }

@@ -11,18 +11,22 @@
     color: white;
     box-sizing: border-box;
     pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.4s ease;
+    transition: opacity 0.2s ease, transform 0.4s ease, box-shadow .3s cubic-bezier(.4, 0, .2, 1);
     background-color: rgb(var(--movim-gray));
     transform: translateY(0);
 }
 
-body.nightmode .snackbar,
-body.nightmode .toast {
-    background-color: rgb(var(--movim-background));
-}
-
 .snackbar ul.active {
     pointer-events: auto;
+}
+
+.snackbar:active {
+    transform: translateY(1px);
+    box-shadow: var(--elevation-2);
+}
+
+.snackbar:hover:not(:active) {
+    box-shadow: var(--elevation-4);
 }
 
 .toast {
@@ -35,7 +39,7 @@ body.nightmode .toast {
 
 .snackbar {
     right: 1rem;
-    border-radius: 1rem;
+    border-radius: 2rem;
     opacity: 1;
     top: 1rem;
 }
@@ -61,14 +65,14 @@ body.nightmode .toast {
     max-height: initial;
 }
 
-.snackbar#status_websocket:not(.hide) ~ main,
-.snackbar#status_websocket:not(.hide) ~ div.dialog {
-    opacity: 0.5;
+.snackbar#status_websocket:not(.hide)~nav,
+.snackbar#status_websocket:not(.hide)~main {
+    opacity: 0.05;
     pointer-events: none;
-    filter: grayscale(1);
 }
 
-.snackbar#status_websocket:not(.hide) ~ div.drawer {
+.snackbar#status_websocket:not(.hide)~div.dialog,
+.snackbar#status_websocket:not(.hide)~div.drawer {
     opacity: 0;
 }
 
@@ -86,6 +90,7 @@ body.nightmode .toast {
 }
 
 @media screen and (max-width: 576px) {
+
     .snackbar,
     .toast {
         left: 1rem;

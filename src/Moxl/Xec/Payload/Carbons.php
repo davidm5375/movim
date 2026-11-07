@@ -1,0 +1,53 @@
+<?php
+
+namespace Moxl\Xec\Payload;
+
+use App\Message;
+use Moxl\Xec\Handler;
+
+class Carbons extends Payload
+{
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        $parentfrom = bareJid((string) $parent->attributes()->from);
+        $message = $stanza->forwarded->message;
+
+        if ($parentfrom == $this->me->id) {
+            if ($message->retract
+             && $message->retract->attributes()->xmlns == 'urn:xmpp:message-retract:1') {
+                $retracted = new Retracted($this->me, sessionId: $this->sessionId);
+                $retracted->handle($message->retract, $message);
+            } elseif ($message->body || $message->subject
+            || ($message->reactions && $message->reactions->attributes()->xmlns == 'urn:xmpp:reactions:0')) {
+                $m = Message::findByStanza($this->me, $message);
+                $m = $m->set($this->me, $message, $stanza->forwarded);
+
+                if (! $message->reactions) {
+                    $m->save();
+                }
+
+                $m = $m->fresh();
+
+                if (! $message->reactions) {
+                    $m->clearUnreads();
+                }
+
+                $this->pack($m);
+                $this->deliver();
+            } elseif ($message->displayed) {
+                // Another client just displayed the message
+                $displayed = new Displayed($this->me, sessionId: $this->sessionId);
+                $displayed->handle($message->displayed, $message);
+            } elseif (count($jingleMessages = $stanza->xpath('//*[@xmlns="urn:xmpp:jingle-message:0"]')) >= 1) {
+                $callto = bareJid((string) $message->attributes()->to);
+
+                if ($callto == $this->me->id || $callto == '') {
+                    // We get carbons for calls other clients make as well as calls other clients receive
+                    // So make sure we only ring when we see a call _to_ us
+                    // Or with no "to", which means from ourselves to ourselves, like another client's <accept>
+                    (new Handler($this->me, sessionId: $this->sessionId))->handleNode($jingleMessages[0], $message);
+                }
+            }
+        }
+    }
+}

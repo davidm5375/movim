@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Widgets\PublishStories;
+
+use App\Post;
+use App\Upload;
+use Movim\Widget\Base;
+use Moxl\Xec\Action\Pubsub\GetItem;
+use Moxl\Xec\Action\Pubsub\PostPublish;
+use Moxl\Xec\Payload\Packet;
+
+class PublishStories extends Base
+{
+    public function load()
+    {
+        $this->registerEvent('pubsub_postpublish_handle', 'onPublish');
+
+        if ($this->me?->hasUpload()) {
+            $this->addjs('publishstories.js');
+            $this->addcss('publishstories.css');
+        }
+    }
+
+    public function onPublish(Packet $packet)
+    {
+        [$to, $node, $id, $repost, $comments] = array_values($packet->content);
+
+        if ($node == Post::STORIES_NODE) {
+            $this->toast($this->__('story.published'));
+
+            // If the  Story was not cached we force reload
+            if (! Post::where('server', $to)->where('node', $node)->where('nodeid', $id)->exists()) {
+                $gi = $this->xmpp(new GetItem);
+                $gi->setTo($to)
+                    ->setNode($node)
+                    ->setId($id)
+                    ->request();
+            }
+
+            $this->rpc('MovimUtils.reload', $this->route('chat'));
+        }
+
+        $this->rpc('PublishStories.close');
+    }
+
+    public function ajaxOpen()
+    {
+        $this->rpc('PublishStories.init');
+    }
+
+    public function ajaxNoTitle()
+    {
+        $this->toast($this->__('publish.no_title'));
+    }
+
+    public function ajaxGetContactsCount()
+    {
+        $this->rpc(
+            'MovimTpl.fill',
+            '#publishcontactscount',
+            $this->view('_publishstories_contactscount', [
+                'rostercount' => $this->me->session->contacts()->whereIn('subscription', ['both', 'from'])->count(),
+            ])
+        );
+    }
+
+    public function ajaxPublish($form, string $uploadId)
+    {
+        if (empty($form->title->value)) {
+            $this->ajaxNoTitle();
+        }
+
+        $upload = Upload::find($uploadId);
+
+        if (! $upload) {
+            return;
+        }
+
+        $publish = $this->xmpp(new PostPublish);
+        $publish->setTo($this->me->id)
+            ->setNode(Post::STORIES_NODE)
+            ->setId(generateUUID())
+            ->setFrom($this->me->id)
+            ->setTitle($form->title->value)
+            ->addEnclosure($upload->geturl, 'story', 'image/jpeg')
+            ->setTags(getHashtags(htmlspecialchars($form->title->value)))
+            ->request();
+    }
+}

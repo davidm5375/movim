@@ -1,37 +1,40 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
+
 namespace Movim\Template;
 
 use App\Configuration;
+use App\User;
 use Movim\Controller\Ajax;
+use Movim\i18n\Dir;
+use Movim\i18n\Locale;
 use Movim\Widget\Wrapper;
 use stdClass;
 
 class Builder
 {
-    private $_view = '';
-    private $title = APP_TITLE;
-    private $content = '';
-    private $commonContent = '';
-    private $css = [];
-    private $scripts = [];
-    private $dir = 'ltr';
-    private $public;
-    private $user;
+    private string $_view = '';
+    private string $title = APP_TITLE;
+    private string $content = '';
+    private string $commonContent = '';
+    private array $css = [];
+    private array $scripts = [];
+    private string $eagerScripts = "/\/(movim_rpc|movim_utils)/";
+    private string $lang = Locale::DEFAULT_LANGUAGE;
+    private Dir $dir = Locale::DEFAULT_DIRECTION;
+    private bool $public;
     private $js_check = true;
 
     /**
      * Constructor. Determines whether to show the login page to the user or the
      * Movim interface.
      */
-    public function __construct()
+    public function __construct(private ?User $user = null)
     {
-        if (isLogged()) {
-            $this->user = \App\User::me();
-        }
     }
 
     public function viewsPath(string $file)
@@ -41,6 +44,7 @@ class Builder
 
     /**
      * Returns or prints the link to a file.
+     *
      * @param file is the path to the file
      * @param return optionally returns the link instead of printing it if set to true
      */
@@ -58,23 +62,23 @@ class Builder
     /**
      * Actually generates the page from templates.
      */
-    public function build(string $view, $public = false)
+    public function build(string $view, bool $public = false)
     {
         $this->_view = $view;
         $this->public = $public;
-        $template = $this->_view.'.tpl';
+        $template = $this->_view . '.tpl';
 
         ob_start();
 
-        require($this->viewsPath($template));
+        require $this->viewsPath($template);
         $outp = ob_get_clean();
 
         $scripts = $this->printCSSs();
         $scripts .= $this->printScripts();
 
         $outp = str_replace(
-            ['<%scripts%>', '<%meta%>', '<%content%>', '<%common%>', '<%title%>', '<%dir%>'],
-            [$scripts, $this->meta(), $this->content, $this->commonContent, $this->title(), $this->dir()],
+            ['<%scripts%>', '<%meta%>', '<%content%>', '<%common%>', '<%title%>', '<%language%>', '<%dir%>'],
+            [$scripts, $this->meta(), $this->content, $this->commonContent, $this->title(), $this->language(), $this->dir()->value],
             $outp
         );
 
@@ -84,7 +88,7 @@ class Builder
     /**
      * Generate the page
      */
-    public function softBuild(string $view, $public = false): stdClass
+    public function softBuild(string $view, bool $public = false): stdClass
     {
         $this->_view = $view;
         $this->public = $public;
@@ -133,17 +137,30 @@ class Builder
     }
 
     /**
+     * Displays the current language
+     */
+    public function language(): string
+    {
+        if ($this?->user?->language != null) {
+            $this->lang = $this->user->language;
+
+            return Locale::printISO639($this->lang);
+        }
+
+        $locale = Locale::start();
+        $locale->detect(getenv('language'));
+
+        $this->lang = Locale::printISO639($locale->language ?? Configuration::get()->locale);
+
+        return $this->lang;
+    }
+
+    /**
      * Displays the current font direction
      */
-    public function dir()
+    public function dir(): Dir
     {
-        if (isLogged()) {
-            $lang = \App\User::me()->language;
-
-            if (in_array($lang, ['ar', 'he', 'fa'])) {
-                $this->dir = 'rtl';
-            }
-        }
+        $this->dir = Locale::getDirection($this->lang);
 
         return $this->dir;
     }
@@ -189,7 +206,7 @@ class Builder
             $metas->appendChild($meta);
         }
 
-        if (isset($widgets->description) && !empty($widgets->description)) {
+        if (isset($widgets->description) && ! empty($widgets->description)) {
             $widgets->description = truncate(stripTags($widgets->description), 100);
 
             $meta = $dom->createElement('meta');
@@ -206,7 +223,7 @@ class Builder
             $meta->setAttribute('name', 'description');
             $meta->setAttribute('content', $widgets->description);
             $metas->appendChild($meta);
-        } else if (!empty(Configuration::get()->description)) {
+        } elseif (! empty(Configuration::get()->description)) {
             $meta = $dom->createElement('meta');
             $meta->setAttribute('name', 'description');
             $meta->setAttribute('content', Configuration::get()->description);
@@ -248,9 +265,9 @@ class Builder
         return strip_tags($dom->saveXML($dom->documentElement), '<meta><link>');
     }
 
-    public function addScript(string $script)
+    public function addScript(string $script, ?bool $noTime = false)
     {
-        $this->scripts[] = urilize('scripts/' . $script);
+        $this->scripts[] = urilize('scripts/' . $script, $noTime);
     }
 
     public function addCSS(string $file)
@@ -294,7 +311,11 @@ class Builder
         $s->setAttribute('type', 'text/javascript');
         $s->setAttribute('src', $script);
 
-        if (!empty($class)) {
+        if (! preg_match($this->eagerScripts, $script)) {
+            $s->setAttribute('defer', '');
+        }
+
+        if (! empty($class)) {
             $s->setAttribute('class', $class);
         }
 
@@ -326,7 +347,7 @@ class Builder
         $s->setAttribute('rel', 'stylesheet');
         $s->setAttribute('href', $css);
 
-        if (!empty($class)) {
+        if (! empty($class)) {
             $s->setAttribute('class', $class);
         }
 
@@ -338,11 +359,16 @@ class Builder
     /**
      * Loads up a widget and prints it at the current place.
      */
-    public function widget(string $name)
+    public function widget(string $name, array $params = [])
     {
         $widgets = Wrapper::getInstance();
-        $widgets->setView($this->_view);
 
-        echo $widgets->runWidget($name, 'build');
+        echo $widgets->runWidget(
+            widgetName: $name,
+            method: 'build',
+            params: $params,
+            user: $this->user,
+            view: $this->_view
+        );
     }
 }

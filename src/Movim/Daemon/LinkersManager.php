@@ -1,0 +1,121 @@
+<?php
+
+namespace Movim\Daemon;
+
+use Movim\Widget\Wrapper;
+use Ratchet\Client\WebSocket;
+use React\Dns\Config\Config;
+use React\Dns\Resolver\Factory;
+use React\Dns\Resolver\ResolverInterface;
+
+class LinkersManager
+{
+    private ResolverInterface $dns;
+    private ?WebSocket $websocket = null;
+    private array $linkers = [];
+
+    public function __construct()
+    {
+        $config = Config::loadSystemConfigBlocking();
+        $server = $config->nameservers ? reset($config->nameservers) : '8.8.8.8';
+
+        $factory = new Factory;
+        $this->dns = $factory->create($server);
+    }
+
+    public function linker(string $sid): ?Linker
+    {
+        return array_key_exists($sid, $this->linkers)
+            ? $this->linkers[$sid]
+            : null;
+    }
+
+    public function attachWebsocket(WebSocket $websocket)
+    {
+        $this->websocket = $websocket;
+    }
+
+    public function sendWebsocket(string $sid, \stdClass $message)
+    {
+        $message->sid = $sid;
+        $this->websocket->send(json_encode($message));
+    }
+
+    public function closeLinker(string $sid)
+    {
+        unset($this->linkers[$sid]);
+        logOut(colorize('Linker destroyed', 'red'), sid: $sid);
+
+        $message = new \stdClass;
+        $message->logout = true;
+        $this->sendWebsocket($sid, $message);
+    }
+
+    public function handleMessage(\stdClass $message)
+    {
+        if ($message->func == 'new' && isset($message->sid)) {
+            $this->linkers[$message->sid] = new Linker(
+                linkersManager: $this,
+                dns: $this->dns,
+                sessionId: $message->sid,
+                browserLocale: $message->browserLocale
+            );
+            logOut(colorize('Linker created', 'green'), sid: $message->sid);
+
+            return;
+        }
+
+        if (! array_key_exists($message->sid, $this->linkers)) {
+            return;
+        }
+
+        $linker = $this->linkers[$message->sid];
+
+        switch ($message->func) {
+            case 'message':
+                $linker->handleJSON(request: $message->b, sessionId: $message->sid);
+                break;
+
+            case 'up':
+            case 'down':
+                if ($linker->connected()) {
+                    Wrapper::getInstance()->iterate(
+                        key: 'session_' . $message->func,
+                        sessionId: $message->sid,
+                        user: $linker->user
+                    );
+                }
+                break;
+
+            case 'crash':
+                exit;
+
+            case 'unregister':
+                $linker->logout();
+                break;
+
+            case 'register':
+                if (validateDomain($message->host)) {
+                    // Set the host, useful for the CN certificate check
+                    $session = linker($message->sid)->session;
+
+                    // If the host is already set, we already launched the registration process
+                    if ($session->get('host')) {
+                        return;
+                    }
+
+                    $session->set('host', $message->host);
+                    $linker->register($message->host);
+                }
+                break;
+
+            case 'push_endpoint_add':
+                $linker->pushEndpointAdd($message->endpoint);
+                break;
+
+            case 'push_endpoint_remove':
+                $linker->pushEndpointRemove($message->endpoint);
+                break;
+        }
+    }
+}

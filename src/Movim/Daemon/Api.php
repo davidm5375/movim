@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -7,57 +8,43 @@
 namespace Movim\Daemon;
 
 use Movim\Bootstrap;
-
 use Psr\Http\Message\ServerRequestInterface;
-
 use React\Http\HttpServer;
 use React\Http\Message\Response;
 use React\Socket\SocketServer;
 
 class Api
 {
-    private $_core;
+    private Core $core;
 
     public function __construct(SocketServer $socket, Core $core)
     {
-        $this->_core = &$core;
-        $api = &$this;
+        $this->core = $core;
 
-        $handler = function (ServerRequestInterface $request) use ($api) {
+        $handler = function (ServerRequestInterface $request): Response {
             $response = '';
+            $post = (array) ($request->getParsedBody() ?? []);
+            $response = match ($request->getUri()->getHost()) {
+                'ajax' => $this->handleAjax($post) ?? '',
+                'exists' => (string) $this->sessionExists($post),
+                'linked' => (string) count($this->core->getStartedSessions()),
+                'started' => (string) $this->sessionsStarted(),
+                'mujiincall' => (string) $this->isMujiInCall($post),
+                // 'jidincall'    => (string) $this->isJidInCall($post),
+                'disconnect',
+                'unregister' => $this->sessionUnregister($post) ?? 'Unregistered',
+                'sessionstree' => $this->core->dumpSessionsTree(),
 
-            switch ($request->getUri()->getHost()) {
-                case 'ajax':
-                    $api->handleAjax($request->getParsedBody());
-                    break;
-                case 'exists':
-                    $response = $api->sessionExists($request->getParsedBody());
-                    break;
-                case 'linked':
-                    $response = $api->sessionsLinked();
-                    break;
-                case 'started':
-                    $response = $api->sessionsStarted();
-                    break;
-                case 'unregister':
-                    $response = $api->sessionUnregister($request->getParsedBody());
-                    break;
-                case 'disconnect':
-                    $response = $api->sessionDisconnect($request->getParsedBody());
-                    break;
-                case 'session':
-                    $response = $api->getSession();
-                    break;
-
-                case 'purifyhtml':
-                    $response = $api->purifyHtml($request->getParsedBody());
-                    break;
-            }
+                'galenerstart' => (string) $this->core->galenerManager->start(),
+                'galenerstop' => (string) $this->core->galenerManager->stop(),
+                'galenerrestart' => (string) $this->core->galenerManager->restart(),
+                'galenerstatus' => (string) $this->core->galenerManager->status(),
+            };
 
             return new Response(
                 200,
                 ['Content-Type' => 'text/plain'],
-                (string)$response
+                (string) $response
             );
         };
 
@@ -66,64 +53,73 @@ class Api
         $server->listen($socket);
     }
 
-    public function handleAjax($post)
+    public function handleAjax(array $post): void
     {
-        $sid = $post['sid'];
-        if (array_key_exists($sid, $this->_core->sessions)) {
-            $this->_core->sessions[$sid]->messageIn(rawurldecode($post['json']));
+        if (! isset($post['sid'], $post['json'])) {
+            return;
+        }
+
+        if ($session = $this->core->findSession($post['sid'])) {
+            $session->messageIn(rawurldecode($post['json']));
         }
     }
 
-    public function sessionExists($post)
+    public function sessionExists(array $post): bool
     {
-        $sid = $post['sid'];
-
-        $sessions = $this->_core->getSessions();
-
-        return (array_key_exists($sid, $sessions)
-        && $sessions[$sid] == true);
-    }
-
-    public function purifyHtml($post)
-    {
-        return purifyHTML(html_entity_decode($post['content']));
-    }
-
-    public function sessionsLinked()
-    {
-        return count($this->_core->getSessions());
-    }
-
-    public function getSession()
-    {
-        return count($this->_core->getSessions());
-    }
-
-    public function sessionsStarted()
-    {
-        $started = 0;
-        foreach ($this->_core->getSessions() as $s) {
-            if ($s == true) {
-                $started++;
-            }
+        if (! isset($post['sid'])) {
+            return false;
         }
-        return $started;
+
+        $sessions = $this->core->getStartedSessions();
+
+        return array_key_exists($post['sid'], $sessions)
+            && $sessions[$post['sid']] === true;
     }
 
-    public function sessionUnregister($post)
+    public function sessionsStarted(): int
     {
-        $sid = $post['sid'];
+        return count(array_filter($this->core->getStartedSessions(), fn ($s) => $s === true));
+    }
 
-        $session = $this->_core->getSession($sid);
-        if ($session) {
+    public function isMujiInCall(array $post): bool
+    {
+        if (! isset($post['sessionid'], $post['jid'], $post['mujiroom'])) {
+            return false;
+        }
+
+        $linker = linker($post['sessionid']);
+
+        if (! $linker || ! $linker->currentCall) {
+            return false;
+        }
+
+        return $linker->currentCall->isJidInCall($post['jid'])
+            && $linker->currentCall->mujiRoom === $post['mujiroom'];
+    }
+
+    /*public function isJidInCall(array $post): bool
+    {
+        if (!isset($post['sessionid'], $post['jid'])) {
+            return false;
+        }
+
+        $linker = linker($post['sessionid']);
+
+        if (!$linker || !$linker->currentCall) {
+            return false;
+        }
+
+        return $linker->currentCall->isJidInCall($post['jid']);
+    }*/
+
+    public function sessionUnregister(array $post): void
+    {
+        if (! isset($post['sid'])) {
+            return;
+        }
+
+        if ($session = $this->core->findSession($post['sid'])) {
             $session->messageIn(json_encode(['func' => 'unregister']));
         }
-    }
-
-    public function sessionDisconnect($post)
-    {
-        $sid = $post['sid'];
-
-        return $this->_core->forceClose($sid);
     }
 }

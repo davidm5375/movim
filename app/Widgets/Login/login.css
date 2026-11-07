@@ -1,0 +1,84 @@
+body main {
+    background: radial-gradient(circle farthest-corner at right bottom, rgb(255, 61, 0) 0, rgb(61, 58, 244) 90%);
+    display: flex;
+    align-items: center;
+}
+
+#login_widget {
+    display: flex;
+    justify-content: space-between;
+    width: 100rem;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+@media screen and (max-width: 600px) {
+    body main {
+        align-items: flex-start;
+    }
+
+    #login_widget {
+        flex-direction: column;
+    }
+
+    #login_widget:before {
+        content: '';
+        display: block;
+        background: url(../theme/img/app/logo.svg);
+        background-size: auto 4rem, 100% 100%;
+        background-position: center 2rem, center;
+        background-repeat: no-repeat;
+        height: 8rem;
+    }
+}
+
+#login_widget .dialog {
+    flex: 0 1 50%;
+    position: relative;
+    left: 0;
+    width: 100%;
+}
+
+#login_widget .dialog>section {
+    display: flex;
+    flex-direction: column;
+}
+
+#login_widget article>section {
+    padding: 0;
+}
+
+#login_widget .dialog>section .about {
+    margin-top: auto;
+}
+
+#login_widget .dialog .banner {
+    max-width: 100%;
+    padding: 0;
+    margin-top: -1rem;
+    object-fit: cover;
+    min-height: 9rem;
+    max-height: 18rem;
+    width: 100%;
+    mask-image: linear-gradient(to bottom, black 60%, transparent);
+}
+
+#login_widget:not(.error)>#error,
+#login_widget.error>div:not(#error) {
+    display: none;
+}
+
+#login_widget input#complete {
+    position: absolute;
+    top: 0;
+    z-index: -1;
+    color: rgba(var(--movim-font), 0.54);
+    box-shadow: none;
+    width: calc(100% - 3rem);
+}
+
+#login_error code {
+    display: block;
+    margin-top: 1rem;
+    max-height: 10rem;
+}

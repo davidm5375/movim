@@ -1,0 +1,26 @@
+<?php
+
+namespace Moxl\Xec\Action\Jingle;
+
+use Moxl\Stanza\Jingle;
+use Moxl\Xec\Action;
+
+class MessagePropose extends Action
+{
+    protected $_to;
+    protected $_id;
+    protected bool $_withVideo = false;
+
+    public function request()
+    {
+        $this->store();
+        $this->send(Jingle::messagePropose($this->_to, $this->_id, $this->_withVideo));
+    }
+
+    public function setWithVideo(bool $withVideo)
+    {
+        $this->_withVideo = $withVideo;
+
+        return $this;
+    }
+}

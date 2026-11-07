@@ -1,0 +1,140 @@
+<section id="visio_lobby">
+    <ul class="list thick">
+        <li>
+            {if="isset($contact)"}
+                <span class="primary icon bubble">
+                    <img src="{$contact->getPicture(\Movim\ImageSize::M)}">
+                </span>
+                <div>
+                    <p class="line">
+                        {if="$calling"}
+                            <i class="material-symbols icon blue">call</i>
+                            {$c->__('visiolobby.calling', $contact->truename)}
+                        {else}
+                            <i class="material-symbols icon blue">phone_callback</i>
+                            {$c->__('visiolobby.called', $contact->truename)}
+                        {/if}
+                    </p>
+                    <p>{$c->__('visiolobby.setup')}</p>
+                </div>
+            {else}
+                <span class="primary icon bubble">
+                    <img src="{$conference->getPicture(\Movim\ImageSize::M)}">
+                </span>
+                <div>
+                    <p class="line">
+                        {if="$calling"}
+                            <i class="material-symbols icon blue">call</i>
+                            {$c->__('visiolobby.muji_create', $conference->title)}
+                        {else}
+                            <i class="material-symbols icon blue">phone_callback</i>
+                            {$c->__('visiolobby.muji_join', $conference->title)}
+                        {/if}
+                    </p>
+                    <p>{$c->__('visiolobby.setup')}</p>
+                </div>
+            {/if}
+        </li>
+    </ul>
+    <div class="placeholder">
+        <i class="material-symbols">camera_video</i>
+        <h4>{$c->__('visiolobby.devices_disco')}</h4>
+    </div>
+    <form>
+        <div>
+            <ul class="list">
+                <li id="default_microphone" class="muted">
+                    <span class="primary icon gray">
+                        <i class="material-symbols enabled">settings_voice</i>
+                        <i class="material-symbols disabled">mic_off</i>
+                    </span>
+                    <div>
+                        <div class="select">
+                            <select name="default_microphone"></select>
+                        </div>
+                        <label for="default_microphone">{$c->__('visiolobby.microphone_label')}</label>
+                        <span class="supporting">
+                            {$c->__('visiolobby.no_mic_sound')}<br />
+                            {$c->__('visiolobby.no_mic_sound2')}
+                        </span>
+                    </div>
+                </li>
+                <li>
+                    <div id="mic_preview">
+                        <div class="level">
+                            <span class="disabled color green"></span>
+                            <span class="disabled color green"></span>
+                            <span class="disabled color green"></span>
+                            <span class="disabled color green"></span>
+                            <span class="disabled color green"></span>
+                            <span class="disabled color yellow"></span>
+                            <span class="disabled color yellow"></span>
+                            <span class="disabled color yellow"></span>
+                            <span class="disabled color yellow"></span>
+                            <span class="disabled color red"></span>
+                        </div>
+                    </div>
+                </li>
+                {if="$withvideo"}
+                    <li>
+                        <span class="primary icon gray">
+                            <i class="material-symbols">video_camera_back</i>
+                        </span>
+                        <div>
+                            <div class="select">
+                                <select name="default_camera"></select>
+                            </div>
+                            <label for="default_camera">{$c->__('visiolobby.camera_label')}</label>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="primary"></span>
+                        <div><video id="camera_preview" muted></video></div>
+                    </li>
+                {/if}
+            </ul>
+        </div>
+    </form>
+</section>
+<footer>
+    {if="isset($contact)"}
+        {if="$calling"}
+            <button onclick="VisioUtils.cancelLobby();" class="button flat red">
+                {$c->__('button.cancel')}
+            </button>
+            <button id="lobby_start" onclick="MovimVisio.init('{$fullJid|echapJS}', '{$contact->id}', null, {if="$withvideo"}true{else}false{/if}, false, null, '{$contact->truename}', '{$contact->getPicture(\Movim\ImageSize::L)}');" class="button color green disabled">
+                <i class="material-symbols">{if="$withvideo"}videocam{else}call{/if}</i>
+                {$c->__('button.call')}
+            </button>
+        {else}
+            <button onclick="VisioUtils.cancelLobby('{$fullJid|echapJS}', '{$id}');" class="button color red">
+                <i class="material-symbols">call_end</i>
+                {$c->__('button.refuse')}
+            </button>
+            <button id="lobby_start" onclick="MovimVisio.init('{$fullJid|echapJS}', '{$contact->id}', '{$id}', {if="$withvideo"}true{else}false{/if}, false, null, '{$contact->truename}', '{$contact->getPicture(\Movim\ImageSize::L)}');" class="button color green disabled">
+                <i class="material-symbols">{if="$withvideo"}videocam{else}call{/if}</i>
+                {$c->__('button.reply')}
+            </button>
+        {/if}
+    {elseif="isset($sfujid)"}
+        <button onclick="VisioUtils.cancelLobby();" class="button flat red">
+            {$c->__('button.cancel')}
+        </button>
+        <button id="lobby_start" onclick="MovimVisio.init('{$sfujid|echapJS}', '{$sfujid|echapJS}', null, {if="$withvideo"}true{else}false{/if}, false, '{$conference->conference}', '{$conference->title}', '{$conference->getPicture(\Movim\ImageSize::L)}');" class="button color green disabled">
+            <i class="material-symbols">{if="$withvideo"}videocam{else}call{/if}</i>
+            {$c->__('button.call')}
+        </button>
+    {else}
+        <button onclick="VisioUtils.cancelLobby();" class="button flat red">
+            {$c->__('button.cancel')}
+        </button>
+        <button id="lobby_start" onclick="Visio_ajaxMujiPrepare('{if="$calling"}{$conference->conference}{else}{$id|echapJS}{/if}', {if="$withvideo"}true{else}false{/if});" class="button color green disabled">
+            <i class="material-symbols">{if="$withvideo"}videocam{else}call{/if}</i>
+            {if="$calling"}
+                {$c->__('button.create')}
+            {else}
+                {$c->__('button.join')}
+            {/if}
+        </button>
+    {/if}
+</footer>

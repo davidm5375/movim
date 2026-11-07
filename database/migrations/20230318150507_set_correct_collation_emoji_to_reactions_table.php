@@ -17,6 +17,5 @@ class SetCorrectCollationEmojiToReactionsTable extends Migration
 
     public function down()
     {
-
     }
 }

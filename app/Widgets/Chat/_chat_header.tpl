@@ -1,0 +1,456 @@
+{if="$muc"}
+    <ul class="list middle">
+        <li>
+            <span class="primary icon active on_mobile_after
+                {if="$conference && $conference->isFromSpace()"}
+                    on_mobile
+                {/if}
+            "
+            id="chatheadercounter" onclick="Chat.get()"
+                {if="$counter > 0"}data-counter="{$counter}"{/if}>
+                <i class="material-symbols">arrow_back</i>
+            </span>
+
+            {if="$conference"}
+                {if="!$conference->isFromSpace()"}
+                    <span class="primary icon bubble active
+                        {if="!$conference->connected"}disabled{/if}"
+                        onclick="RoomsUtils_ajaxGetDrawer('{$conference->conference|echapJS}')">
+                        <img src="{$conference->getPicture()}">
+                {else}
+                    <span class="primary icon gray on_desktop">
+                        {if="$conference->call"}
+                            <i class="material-symbols">adaptive_audio_mic</i>
+                        {else}
+                            <i class="material-symbols">tag</i>
+                        {/if}
+                    </span>
+                {/if}
+            {elseif="!$conference"}
+                <span class="primary icon bubble active"
+                    onclick="RoomsUtils_ajaxGetDrawer('{$jid|echapJS}')">
+                    <img src="{$jid|avatarPlaceholder}">
+            {/if}
+            {if="$conference && !$conference->isFromSpace()"}
+                {if="$conference->isGroupChat()"}
+                    {$count = $conference->activeMembers()->count()}
+                    <span class="counter alt" data-mucreceipts="true">
+                        {if="$count > 99"}99+{else}{$count}{/if}
+                    </span>
+                {elseif="$conference->connected"}
+                    {$count = $conference->presences()->count()}
+                    <span class="counter alt" {if="$conference->presences()->count() < 10"}data-mucreceipts="true"{/if}>
+                        {if="$count > 99"}99+{else}{$count}{/if}
+                    </span>
+                {/if}
+            {/if}
+                </span>
+
+            {if="$conference && !$conference->isFromSpace() && $conference->info && $conference->info->related"}
+                {$related = $conference->info->related}
+                <span
+                    title="{$c->__('page.communities')} • {$related->name}"
+                    onclick="MovimUtils.reload('{$c->route('community', [$related->server, $related->node])}')"
+                    class="control icon bubble active small">
+                    <img src="{$related->getPicture(\Movim\ImageSize::M)}"/>
+                </span>
+            {/if}
+
+            {if="!$conference->isConferenceCall() && $c->database('pgsql')"}
+                <span class="control icon active" onclick="ChatActions_ajaxShowSearchDialog('{$jid|echapJS}', true)">
+                    <i class="material-symbols">manage_search</i>
+                </span>
+            {/if}
+
+            {if="$conference && !$conference->sfuPresence && $conference->isGroupChat() && !$conference->isFromSpace() && $conference->mujiPresences->isEmpty()"}
+                <span class="control icon active {if="$c->database('pgsql')"}divided{/if} {if="$c->currentCall()?->isStarted()"}disabled{/if}" onclick="Visio_ajaxGetMujiLobby('{$conference->conference}', true, false);">
+                    <i class="material-symbols">call</i>
+                </span>
+                <span class="control icon active {if="$c->currentCall()?->isStarted()"}disabled{/if}" onclick="Visio_ajaxGetMujiLobby('{$conference->conference}', true, true);">
+                    <i class="material-symbols">videocam</i>
+                </span>
+            {elseif="$conference && $conference->sfuPresence && $conference->sfuPresence->SFUUsersCount == 0"}
+                <!--<span class="control icon active {if="$c->database('pgsql')"}divided{/if} {if="$c->currentCall()?->isStarted()"}disabled{/if}" onclick="Visio_ajaxGetSFULobby('{$conference->sfuPresence->mucjid|echapJS}', '{$conference->conference}', true, false);">
+                    <i class="material-symbols">call</i>
+                </span>-->
+                <span class="control icon active {if="$c->currentCall()?->isStarted()"}disabled{/if}" onclick="Visio_ajaxGetSFULobby('{$conference->sfuPresence->mucjid|echapJS}', '{$conference->conference}', true, true);">
+                    <i class="material-symbols">video_call</i>
+                </span>
+            {/if}
+
+            {if="!$conference || !$conference->isFromSpace()"}
+                <span
+                    class="control icon show_context_menu active {if="$conference && !$conference->connected"}disabled{/if}"
+                    onclick="MovimTpl.showContextMenu()">
+                    <i class="material-symbols">more_vert</i>
+                </span>
+            {/if}
+
+            <div>
+                {if="$conference && $conference->mujiPresences->isNotEmpty()"}
+                    {if="$conference->presence->hasMuji()"}
+                        <button class="button oppose color red"
+                                onclick="Visio_ajaxLeaveMuji('{$conference->conference|echapJS}'); this.classList.add('disabled')">
+                            <i class="material-symbols blink">call_end</i>
+                        </button>
+                    {elseif="!$conference->isConferenceCall()"}
+                        <button class="button oppose color blue {if="$c->currentCall()?->isStarted()"}disabled{/if}"
+                                onclick="Visio_ajaxJoinMuji('{$conference->conference}', {if="$conference->mujiPresences->first()->hasVideoMuji()"}true{else}false{/if});">
+                            <i class="material-symbols">call</i> {$conference->mujiPresences->count()}
+                        </button>
+                    {/if}
+                {/if}
+                {if="$conference && $conference->sfuPresence"}
+                    {if="$c->currentCall()?->isJidInCall($conference->sfuPresence->mucjid)"}
+                        <button class="button oppose color red" onclick="Visio_ajaxRemoteGoodbye()">
+                            <i class="material-symbols icon {if="!$c->currentCall()->isAnswered()"}shake{/if}">call_end</i>
+                        </button>
+                    {elseif="$conference->sfuPresence->SFUUsersCount > 0"}
+                        <button class="button oppose color blue {if="$c->currentCall()?->isStarted()"}disabled{/if}"
+                                onclick="Visio_ajaxGetSFULobby('{$conference->sfuPresence->mucjid|echapJS}', '{$conference->conference}', true, true);">
+                            <i class="material-symbols">video_call</i> {$conference->sfuPresence->SFUUsersCount}
+                        </button>
+                    {/if}
+                {/if}
+                <p title="{$jid|echapJS}"
+                    {if="!$conference->isFromSpace()"}
+                        class="line active" onclick="RoomsUtils_ajaxGetDrawer('{$jid|echapJS}')"
+                    {else}
+                        class="line"
+                    {/if}>
+                    {if="$conference"}
+                        {$conference->title}
+                        {if="$conference->notify == 0"}
+                            <span class="second" title="{$c->__('room.notify_never')}">
+                                <i class="material-symbols">notifications_off</i>
+                            </span>
+                        {elseif="$conference->notify == 2"}
+                            <span class="second" title="{$c->__('room.notify_always')}">
+                                <i class="material-symbols">notifications_active</i>
+                            </span>
+                        {/if}
+                    {else}
+                        {$jid|echapJS}
+                    {/if}
+
+                    <span class="second">
+                        {if="$conference && $conference->isGroupChat()"}
+                            <i class="material-symbols">people_alt</i>
+                        {else}
+                            <i class="material-symbols">wifi_tethering</i>
+                        {/if}
+                    </span>
+
+                    {if="$conference && $conference->isGroupChat() && $subject = $conference->subject"}
+                        <span class="second" title="{$subject}">
+                            {$subject}
+                        </span>
+                    {/if}
+                </p>
+
+                <p class="line active">
+                    {if="$conference"}
+                        {if="$conference->mujiPresences->isNotEmpty()"}
+                            {if="$conference->presence->hasMuji()"}
+                                <i class="material-symbols icon green blink">call</i>
+                                {$c->__('visio.joined_call')}
+                            {else}
+                                <i class="material-symbols icon blue blink">call</i>
+                                {$c->__('visio.in_call')}
+                            {/if}
+                            <span class="second">
+                                <i class="material-symbols">schedule</i>
+                                {$c->prepareDate($conference->mujiPresences->first()->created_at, true)}
+                                -
+                                {$conference->mujiPresences->count()}
+                                <i class="material-symbols">people</i>
+                            </span>
+                            •
+                        {elseif="$conference->sfuPresence && $conference->sfuPresence->SFUUsersCount > 0"}
+                            {if="$c->currentCall()?->isJidInCall($conference->sfuPresence->mucjid)"}
+                                <i class="material-symbols icon green blink">video_call</i>
+                                {$c->__('visio.joined_call')}
+                            {else}
+                                <i class="material-symbols icon blue blink">video_call</i>
+                                {$c->__('visio.in_call')}
+                            {/if}
+                            <span class="second" title="{$c->prepareDate($conference->sfuPresence->SFUStartedAt)}" data-started-at="{$conference->sfuPresence->SFUStartedAt->toISOString()}">00:00</span>
+                            <span class="second">
+                                {$conference->sfuPresence->SFUUsersCount}
+                                <i class="material-symbols">people</i>
+                            </span>
+                            •
+                            {loop="$conference->sfuPresence->SFUUsers"}
+                                <span class="icon bubble tiny">
+                                    {if="array_key_exists('avatar', $value)"}
+                                        <img loading="lazy" src="{$value.avatar}">
+                                    {else}
+                                        <i class="material-symbols">phone</i>
+                                    {/if}
+                                </span><span>{if="array_key_exists('name', $value)"}{$value.name}{else}{$value.jid}{/if}</span>
+                            {/loop}
+                        {/if}
+                        {if="!$conference->connected"}
+                            {$c->__('button.connecting')}…
+                        {elseif="$conference->connected && $conference->isGroupChat() && !$conference->sfuPresence"}
+                            {$connected = $conference->otherPresences()->take(25)->get()}
+                            {loop="$connected"}
+                                <span onclick="Chat.quoteMUC('{$value->resource}', true);" class="icon bubble tiny">
+                                    <img src="{$value->conferencePicture}">
+                                </span><span onclick="Chat.quoteMUC('{$value->resource}', true);">{$value->resource}</span>
+                                {if="$key < $connected->count() -1"}
+                                {/if}
+                            {/loop}
+                        {elseif="!empty($conference->subject) && !$conference->sfuPresence"}
+                            <span onclick="RoomsUtils_ajaxGetDrawer('{$conference->conference|echapJS}')">{$conference->subject}</span>
+                        {/if}
+                    {/if}
+                </p>
+            </div>
+        </li>
+    </ul>
+
+    <ul class="list context_menu thin active">
+        {if="$conference && $conference->presence && !$anon"}
+            {if="$conference->presence->mucrole == 'moderator' || $conference->presence->mucaffiliation == 'owner'"}
+                <li class="subheader">
+                    <div>
+                        <p class="line">{$c->__('page.administration')}</p>
+                    </div>
+                </li>
+            {/if}
+            {if="$conference->presence->mucaffiliation == 'owner'"}
+                <li onclick="RoomsUtils_ajaxGetConfig('{$conference->conference|echapJS}')">
+                    <span class="primary icon gray">
+                        <a href="#" onclick="listIconClick(event)">
+                            <i class="material-symbols">settings</i>
+                        </a>
+                    </span>
+                    <div>
+                        <p>{$c->__('chatrooms.config')}</p>
+                    </div>
+                </li>
+            {/if}
+            {if="$conference->presence->mucrole == 'moderator'"}
+                <li onclick="RoomsUtils_ajaxGetSubject('{$conference->conference|echapJS}')">
+                    <span class="primary icon gray">
+                        <a href="#" onclick="listIconClick(event)">
+                            <i class="material-symbols">short_text</i>
+                        </a>
+                    </span>
+                    <div>
+                        <p>{$c->__('chatrooms.subject')}</p>
+                    </div>
+                </li>
+            {/if}
+            <hr />
+        {/if}
+
+        <li onclick="RoomsUtils_ajaxAdd('{$conference->conference|echapJS}');">
+            <span class="primary icon gray">
+                <i class="material-symbols">edit</i>
+            </span>
+            <div>
+                <p>{$c->__('button.edit')}</p>
+            </div>
+        </li>
+
+        {if="!empty($info->abuseaddresses)"}
+            {$parsed = parse_url($info->abuseaddresses[0])}
+            {if="$parsed['scheme'] == 'xmpp'"}
+                {if="isset($parsed['query']) && $parsed['query'] == 'join'"}
+                <li onclick="MovimUtils.reload('{$c->route('chat', [$parsed['path'], 'room'])}')">
+                {else}
+                <li onclick="MovimUtils.reload('{$c->route('chat', $parsed['path'])}')">
+                {/if}
+            {else}
+                <li onclick="MovimUtils.reload('{$info->abuseaddresses[0]}')">
+            {/if}
+                <span class="primary icon gray">
+                    <i class="material-symbols">report</i>
+                </span>
+                <div>
+                    <p>{$c->__('chat.report_abuse')}</p>
+                </div>
+            </li>
+        {/if}
+
+        <li onclick="Rooms_ajaxExit('{$jid|echapJS}'); {if="$anon"}Presence_ajaxLogout(){/if}">
+            <span class="primary icon gray">
+                <i class="material-symbols">logout</i>
+            </span>
+            <div>
+                <p>{$c->__('status.disconnect')}</p>
+            </div>
+        </li>
+    </ul>
+{else}
+    <ul class="list middle">
+        <li id="chat_header">
+            <span class="primary icon active on_mobile_after" id="chatheadercounter" onclick="Chat.get()"
+                {if="$counter > 0"}data-counter="{$counter}"{/if}>
+                <i class="material-symbols">arrow_back</i>
+            </span>
+
+            {$storiesCount = 0}
+
+            <span class="primary icon bubble active
+                {if="$roster"}
+                    {$storiesCount = $c->me->rosterStories($roster)->count()}
+                    {if="$roster->presence"}status {$roster->presence->presencekey}{/if}
+                    {if="$storiesCount > 0"}stories
+                        {if="$c->me->rosterStoriesAllSeen($roster)"}seen{/if}
+                    {/if}
+                {/if}
+            "
+            {if="$roster && $firstUnseenStory = $c->me->rosterFirstUnseenStory($roster)"}
+                onclick="StoriesViewer_ajaxHttpGet({$firstUnseenStory->id}); event.stopPropagation();"
+            {elseif="$storiesCount > 0"}
+                onclick="StoriesViewer_ajaxHttpGet({$c->me->rosterStories($roster)->first()->id}); event.stopPropagation();"
+            {else}
+                onclick="ChatActions_ajaxGetContact('{$contact->id|echapJS}')"
+            {/if}>
+                <img src="{if="$roster"}{$roster->getPicture()}{else}{$contact->getPicture()}{/if}">
+            </span>
+
+            {if="$c->database('pgsql')"}
+                <span class="control icon active" onclick="ChatActions_ajaxShowSearchDialog('{$jid|echapJS}')">
+                    <i class="material-symbols">manage_search</i>
+                </span>
+            {/if}
+
+            {$call = false}
+
+            {if="!$c->currentCall() || !$c->currentCall()->isStarted()"}
+                {if="$roster && $roster->presences->count() > 0"}
+                    {loop="$roster->presences"}
+                        {if="$value->capability && $value->capability->isJingleAudio() && $value->jid"}
+                            {$call = true}
+                            <span title="{$c->__('button.audio_call')}" class="control icon active {if="$c->database('pgsql')"}divided{/if} on_desktop"
+                                onclick="Visio_ajaxGetLobby('{$value->fullJid|echapJS}', true);">
+                                <i class="material-symbols">phone</i>
+                            </span>
+                        {/if}
+                        {if="$value->capability && $value->capability->isJingleVideo() && $value->jid"}
+                            {$call = true}
+                            <span title="{$c->__('button.video_call')}" class="control icon active on_desktop"
+                                onclick="Visio_ajaxGetLobby('{$value->fullJid|echapJS}', true, true);">
+                                <i class="material-symbols">videocam</i>
+                            </span>
+                            {break}
+                        {/if}
+                    {/loop}
+                {/if}
+            {/if}
+
+            <span class="control icon show_context_menu active"
+                onclick="MovimTpl.showContextMenu()">
+                <i class="material-symbols">more_vert</i>
+            </span>
+
+            <div>
+                {if="$c->currentCall()?->isJidInCall($jid)"}
+                    <button class="button oppose color {if="$c->currentCall()->isAnswered()"}red{else}dorange{/if}"
+                            onclick="Visio_ajaxRemoteGoodbye()">
+                        <i class="material-symbols icon {if="!$c->currentCall()->isAnswered()"}shake{/if}">call_end</i>
+                    </button>
+                {/if}
+                <p class="line active" onclick="ChatActions_ajaxGetContact('{$contact->id|echapJS}')">
+                    {if="$roster"}
+                        {$roster->truename}
+                    {elseif="strpos($contact->id, '/') != false"}
+                        {$contact->jid->resource}
+                    {else}
+                        {$contact->truename}
+                    {/if}
+
+                    {if="$c->me->isBlocked($contact)"}
+                        <span class="tag color red">{$c->__('blocked.title')}</span>
+                    {/if}
+                </p>
+
+                <p class="line active" onclick="ChatActions_ajaxGetContact('{$contact->id|echapJS}')">
+                    {if="$c->currentCall()->isJidInCall($jid)"}
+                        <i class="material-symbols icon green blink">phone_in_talk</i>
+                        {$c->__('visio.in_call')} •
+                    {/if}
+                    {if="$roster && $roster->presence && $roster->presence->seen"}
+                        {$c->__('last.title')} {$c->prepareDate($roster->presence->seen, true)}
+                    {elseif="$roster && $roster->presence && !empty($roster->presence->status)"}
+                        {$roster->presence->status}
+                    {elseif="$roster && $roster->presence"}
+                        {$roster->presence->presencetext}
+                    {else}
+                        {$contact->id}
+                    {/if}
+                </p>
+            </div>
+        </li>
+    </ul>
+    <ul class="list context_menu active">
+        {if="!$contact->isFromMuc()"}
+            <li onclick="MovimUtils.reload('{$c->route('contact', $contact->id)}')">
+                <span class="primary icon gray">
+                    <i class="material-symbols">person</i>
+                </span>
+                <div>
+                    <p class="line">{$c->__('chat.profile')}</p>
+                </div>
+            </li>
+        {/if}
+        {if="!empty($info->abuseaddresses)"}
+            {$parsed = parse_url($info->abuseaddresses[0])}
+            {if="$parsed['scheme'] == 'xmpp'"}
+                {if="isset($parsed['query']) && $parsed['query'] == 'join'"}
+                <li onclick="MovimUtils.reload('{$c->route('chat', [$parsed['path'], 'room'])}')">
+                {else}
+                <li onclick="MovimUtils.reload('{$c->route('chat', $parsed['path'])}')">
+                {/if}
+            {else}
+                <li onclick="MovimUtils.reload('{$info->abuseaddresses[0]}')">
+            {/if}
+                <span class="primary icon gray">
+                    <i class="material-symbols">report</i>
+                </span>
+                <div>
+                    <p class="line">{$c->__('chat.report_abuse')}</p>
+                </div>
+            </li>
+        {/if}
+        <li onclick="Chat_ajaxClearHistory('{$contact->id|echapJS}')">
+            <span class="primary icon"></span>
+            <div>
+                <p class="line">{$c->__('chat.clear_history')}</p>
+            </div>
+        </li>
+        <hr />
+        {if="$c->me->isBlocked($contact)"}
+            <li onclick="ChatActions_ajaxUnblock('{$contact->id|echapJS}')">
+                <span class="primary icon gray">
+                    <i class="material-symbols">check_circle</i>
+                </span>
+                <div>
+                    <p class="line">{$c->__('blocked.unblock_account')}</p>
+                </div>
+            </li>
+        {else}
+            <li onclick="ChatActions_ajaxBlock('{$contact->id|echapJS}'); Notifications_ajaxRefuse('{$contact->id|echapJS}');">
+                <span class="primary icon gray">
+                    <i class="material-symbols">block</i>
+                </span>
+                <div>
+                    <p class="line">{$c->__('blocked.block_account')}</p>
+                </div>
+            </li>
+        {/if}
+
+        <li onclick="Chats_ajaxClose('{$jid|echapJS}', true);">
+            <span class="primary icon gray">
+                <i class="material-symbols">close</i>
+            </span>
+            <div>
+                <p class="line">{$c->__('button.close')}</p>
+            </div>
+        </li>
+    </ul>
+{/if}

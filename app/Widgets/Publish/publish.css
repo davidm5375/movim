@@ -1,0 +1,89 @@
+#publishembeds li {
+    border: 1px solid rgba(var(--movim-font), 0.12);
+    border-radius: 0.5rem;
+}
+
+#publishembeds li {
+    padding-right: 0;
+}
+
+#publishpreview h3:first-child {
+    margin: 1rem 2rem 0;
+}
+
+#publish label span.save {
+    display: none;
+}
+
+#publish>div.block {
+    margin: 0 0.75rem;
+    padding-bottom: 1rem;
+}
+
+#publish label span.save.saved {
+    display: initial;
+}
+
+#publish textarea[name=content] {
+    min-height: 25rem;
+}
+
+#publish span.privacy form>div .checkbox>input[type="checkbox"]+label,
+#publish span.comments_disabled form>div .checkbox>input[type="checkbox"]+label {
+    top: 0.5rem;
+    left: 0.5rem;
+    height: 3rem;
+    width: 3rem;
+}
+
+section#sidebar:has(+#publish) {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+section#sidebar:has(+#publish div[data-type="article"] textarea[name="content"]:focus),
+section#sidebar:has(+#publish div[data-type="article"]):hover {
+    opacity: 1;
+}
+
+#publish span.privacy form>div .checkbox>input[type="checkbox"]:checked+label,
+#publish span.comments_disabled form>div .checkbox>input[type="checkbox"]:checked+label {
+    left: 2.5rem;
+}
+
+#publish span.privacy form>div .checkbox>input[type="checkbox"]+label i:before {
+    content: 'lock';
+}
+
+#publish span.privacy form>div .checkbox>input[type="checkbox"]:checked+label i:before {
+    content: 'wifi_tethering';
+}
+
+#publish span.comments_disabled form>div .checkbox>input[type="checkbox"]+label i:before {
+    content: 'insert_comment';
+}
+
+#publish span.comments_disabled form>div .checkbox>input[type="checkbox"]:checked+label i:before {
+    content: 'comments_disabled';
+}
+
+#publishreply {
+    margin-bottom: -1rem;
+}
+
+#publish form[data-type="brief"] div#title textarea {
+    min-height: 10rem;
+    padding-top: 1rem;
+    margin-bottom: 2rem;
+}
+
+#publish form[data-type="brief"] div#title label {
+    top: initial;
+    bottom: -3rem;
+    right: 0;
+}
+
+#publish #publish_open_link_preview:empty,
+#publish form[data-type="brief"] div#content {
+    display: none;
+}

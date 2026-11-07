@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -19,7 +20,7 @@ class Ajax extends Base
 
     public static function getInstance()
     {
-        if (!is_object(self::$instance)) {
+        if (! is_object(self::$instance)) {
             self::$instance = new Ajax;
         }
 
@@ -33,6 +34,7 @@ class Ajax extends Base
     {
         $buffer = '<script type="text/javascript" class="inline">';
         $buffer .= $this->genJsContent();
+
         return $buffer . "</script>\n";
     }
 
@@ -51,18 +53,22 @@ class Ajax extends Base
             $parlist = implode(',', $funcdef['params']);
 
             $buffer .= 'function ' . $funcdef['object'] . '_'
-                . $funcdef['funcname'] . "(" . $parlist . "){";
+                . $funcdef['funcname'] . '(' . $parlist . '){';
 
             $function = "MWSs('";
-            if ($funcdef['http'] === 1) $function = " return MWSa('";
-            if ($funcdef['http'] === 2) $function = " return MWSad('";
+            if ($funcdef['http'] === 1) {
+                $function = " return MWSa('";
+            }
+            if ($funcdef['http'] === 2) {
+                $function = " return MWSad('";
+            }
 
             $buffer .=
                 $function .
                 $funcdef['object'] . "','" .
                 $funcdef['funcname'] . "'" .
-                (!empty($funcdef['params']) ? ",[" . $parlist . "]" : '');
-            $buffer .= ")}";
+                (! empty($funcdef['params']) ? ',[' . $parlist . ']' : '');
+            $buffer .= ')}';
         }
 
         return $buffer;
@@ -90,14 +96,18 @@ class Ajax extends Base
     public function defineFunction(string $widget, string $funcname, array $params)
     {
         $http = 0;
-        if (preg_match('#^ajaxHttp#', $funcname)) $http = 1;
-        if (preg_match('#^ajaxHttpDaemon#', $funcname)) $http = 2;
+        if (preg_match('#^ajaxHttp#', $funcname)) {
+            $http = 1;
+        }
+        if (preg_match('#^ajaxHttpDaemon#', $funcname)) {
+            $http = 2;
+        }
 
         $this->funclist[$widget . $funcname] = [
             'object' => $widget,
             'funcname' => $funcname,
             'params' => $params,
-            'http' => $http
+            'http' => $http,
         ];
     }
 }

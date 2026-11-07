@@ -4,7 +4,7 @@ var MovimFavicon = {
     sizes: '128x128',
 
     counter: function (counterTab1, counterTab2) {
-        var counter = counterTab1 + counterTab2;
+        let counter = counterTab1 + counterTab2;
 
         link = document.querySelector('link[sizes="' + MovimFavicon.sizes + '"]');
 
@@ -36,9 +36,10 @@ var MovimFavicon = {
             var b = y + h;
 
             ctx.beginPath();
-            ctx.fillStyle = counterTab2 > 0
-                ? getComputedStyle(document.body).getPropertyValue('--movim-red')
-                : 'rgb(' + getComputedStyle(document.body).getPropertyValue('--movim-main') + ')';
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue(counterTab2 > 0
+                ? '--p-red'
+                : '--movim-accent'
+            );
             ctx.moveTo(x + radius, y);
             ctx.lineTo(r - radius, y);
             ctx.quadraticCurveTo(r, y, r, y + radius);
@@ -71,6 +72,4 @@ var MovimFavicon = {
     }
 }
 
-movimAddOnload(function () {
-    MovimFavicon.init();
-});
+MovimFavicon.init();

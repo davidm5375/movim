@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Widgets\CommunitySubscriptions;
+
+use App\Info;
+use App\Widgets\CommunitiesServer\CommunitiesServer;
+use Movim\Widget\Base;
+
+class CommunitySubscriptions extends Base
+{
+    public function load()
+    {
+        $this->addjs('communitysubscriptions.js');
+        $this->addcss('communitysubscriptions.css');
+    }
+
+    public function ajaxHttpGet()
+    {
+        $view = $this->tpl();
+        $view->assign('subscriptions', $this->me->subscriptions()
+            ->spaces(false)
+            ->communities()
+            ->notComments()
+            ->orderBy('server')->orderBy('node')
+            ->get());
+
+        $this->rpc('MovimTpl.fill', '#subscriptions', $view->draw('_communitysubscriptions'));
+    }
+
+    public function prepareTicket(Info $community)
+    {
+        return (new CommunitiesServer($this->me, sessionId: $this->sessionId))->prepareTicket($community);
+    }
+}

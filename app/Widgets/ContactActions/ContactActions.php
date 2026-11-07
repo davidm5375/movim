@@ -1,0 +1,229 @@
+<?php
+
+namespace App\Widgets\ContactActions;
+
+use App\Contact;
+use App\Message;
+use App\Roster;
+use App\Widgets\AdHoc\AdHoc;
+use App\Widgets\Chat\Chat;
+use App\Widgets\Chats\Chats;
+use App\Widgets\Post\Post;
+use Movim\Widget\Base;
+use Moxl\Xec\Action\Blocking\Block;
+use Moxl\Xec\Action\Blocking\Unblock;
+use Moxl\Xec\Payload\Packet;
+
+class ContactActions extends Base
+{
+    private $_picturesPagination = 20;
+    private $_linksPagination = 12;
+
+    public function load()
+    {
+        $this->addjs('contactactions.js');
+        $this->registerEvent('roster_additem_handle', 'onAdd', 'contact');
+        $this->registerEvent('roster_removeitem_handle', 'onDelete');
+        $this->registerEvent('roster_updateitem_handle', 'onUpdate');
+    }
+
+    public function onDelete(Packet $packet)
+    {
+        $this->toast($this->__('roster.deleted'));
+    }
+
+    public function onAdd(Packet $packet)
+    {
+        $this->toast($this->__('roster.added'));
+    }
+
+    public function onUpdate(Packet $packet)
+    {
+        $this->toast($this->__('roster.updated'));
+    }
+
+    public function ajaxGetDrawer($jid)
+    {
+        if (! validateJid($jid)) {
+            return;
+        }
+
+        $tpl = $this->tpl();
+        $tpl->assign('contact', Contact::firstOrNew(['id' => $jid]));
+
+        $picturesCount = 0;
+        $linksCount = 0;
+
+        if ($jid != $this->me->id) {
+            $picturesCount = Message::jid($this->me, $jid)
+                ->where('picture', true)
+                ->orderBy('published', 'desc')
+                ->count();
+            $linksCount = Message::jid($this->me, $jid)
+                ->where('picture', false)
+                ->whereNotNull('urlid')
+                ->count();
+            $tpl->assign('picturesCount', $picturesCount);
+            $tpl->assign('linksCount', $linksCount);
+            $tpl->assign('roster', $this->me->session->contacts()->where('jid', $jid)->first());
+        } else {
+            $tpl->assign('pictures', collect());
+            $tpl->assign('links', collect());
+            $tpl->assign('roster', null);
+        }
+
+        $tpl->assign('jid', $jid);
+        $tpl->assign('clienttype', getClientTypes());
+
+        $this->drawer('contact_drawer', $tpl->draw('_contactactions_drawer'));
+        $this->rpc('Tabs.create');
+
+        if ($picturesCount > 0) {
+            $this->rpc('ContactActions_ajaxHttpGetPictures', $jid);
+        }
+
+        if ($linksCount > 0) {
+            $this->rpc('ContactActions_ajaxHttpGetLinks', $jid);
+        }
+
+        if ($this->me->hasOMEMO()) {
+            $this->rpc('ContactActions.getDrawerFingerprints', $jid);
+        }
+
+        (new AdHoc($this->me, sessionId: $this->sessionId))->ajaxGet($jid);
+    }
+
+    public function ajaxGetDrawerFingerprints(string $jid, array $fingerprints)
+    {
+        $fingerprints = collect($fingerprints);
+
+        foreach ($fingerprints as $fingerprint) {
+            $fingerprint->fingerprint = base64ToFingerPrint($fingerprint->fingerprint);
+        }
+
+        $latests = Message::selectRaw('max(published) as latest, bundleid')
+            ->where('user_id', $this->me->id)
+            ->where('jidfrom', $jid)
+            ->groupBy('bundleid')
+            ->pluck('latest', 'bundleid');
+
+        foreach ($fingerprints as $fingerprint) {
+            $fingerprint->latest = $latests->has($fingerprint->bundleid)
+                ? $latests[$fingerprint->bundleid]
+                : null;
+        }
+
+        $tpl = $this->tpl();
+        $tpl->assign('fingerprints', $fingerprints);
+        $tpl->assign('clienttype', getClientTypes());
+
+        $this->rpc('MovimTpl.fill', '#omemo_fingerprints', $tpl->draw('_contactactions_drawer_fingerprints'));
+        $this->rpc('ContactActions.resolveSessionsStates', $jid);
+    }
+
+    public function ajaxChat(string $jid, ?bool $muc = false)
+    {
+        if (! validateJid($jid)) {
+            return;
+        }
+
+        if ($muc) {
+            $conference = $this->me->session->conferences()
+                ->where('conference', $jid)
+                ->with('info')
+                ->first();
+
+            if ($conference) {
+                $this->rpc('MovimUtils.reload', $conference->route);
+            } else {
+                $this->rpc('MovimUtils.reload', $this->route('chat', [$jid, 'room']));
+            }
+        } else {
+            $c = new Chats($this->me, sessionId: $this->sessionId);
+            $c->ajaxOpen($jid);
+
+            $this->rpc('MovimUtils.reload', $this->route('chat', $jid));
+        }
+    }
+
+    public function ajaxBlock(string $jid)
+    {
+        $block = $this->xmpp(new Block);
+        $block->setJid($jid);
+        $block->request();
+    }
+
+    public function ajaxUnblock(string $jid)
+    {
+        $block = $this->xmpp(new Unblock);
+        $block->setJid($jid);
+        $block->request();
+    }
+
+    public function ajaxHttpGetPictures($jid, $page = 0)
+    {
+        $tpl = $this->tpl();
+
+        $more = false;
+        $pictures = Message::jid($this->me, $jid)
+            ->where('picture', true)
+            ->orderBy('published', 'desc')
+            ->take($this->_picturesPagination + 1)
+            ->skip($this->_picturesPagination * $page)
+            ->get();
+
+        if ($pictures->count() == $this->_picturesPagination + 1) {
+            $pictures->pop();
+            $more = true;
+        }
+        $tpl->assign('pictures', $pictures);
+        $tpl->assign('more', $more);
+        $tpl->assign('page', $page);
+        $tpl->assign('jid', $jid);
+
+        $this->rpc('MovimTpl.append', '#contact_pictures', $tpl->draw('_contactactions_drawer_pictures'));
+    }
+
+    public function ajaxHttpGetLinks($jid, $page = 0)
+    {
+        $tpl = $this->tpl();
+
+        $more = false;
+        $links = Message::jid($this->me, $jid)
+            ->where('picture', false)
+            ->whereNotNull('urlid')
+            ->orderBy('published', 'desc')
+            ->take($this->_linksPagination + 1)
+            ->skip($this->_linksPagination * $page)
+            ->get();
+
+        if ($links->count() == $this->_linksPagination + 1) {
+            $links->pop();
+            $more = true;
+        }
+        $tpl->assign('links', $links);
+        $tpl->assign('more', $more);
+        $tpl->assign('page', $page);
+        $tpl->assign('jid', $jid);
+
+        $this->rpc('MovimTpl.append', '#contact_links', $tpl->draw('_contactactions_drawer_links'));
+    }
+
+    public function prepareVcard(Contact $contact, ?Roster $roster = null)
+    {
+        return $this->view('_contactactions_vcard', [
+            'contact' => $contact,
+            'roster' => $roster,
+        ]);
+    }
+
+    public function prepareEmbedUrl(Message $message)
+    {
+        return (new Chat($this->me, sessionId: $this->sessionId))->prepareEmbed($message->resolvedUrl, $message);
+    }
+
+    public function prepareTicket(\App\Post $post)
+    {
+        return (new Post($this->me, sessionId: $this->sessionId))->prepareTicket($post);
+    }
+}

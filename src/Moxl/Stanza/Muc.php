@@ -1,0 +1,179 @@
+<?php
+
+namespace Moxl\Stanza;
+
+use Moxl\Utils;
+
+class Muc
+{
+    public static function setSubject(string $id, string $to, string $subject)
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $message = $dom->createElementNS(Utils::JABBER_CLIENT_XMLNS, 'message');
+        $dom->appendChild($message);
+        $message->setAttribute('to', str_replace(' ', '\40', $to));
+        $message->setAttribute('id', $id);
+        $message->setAttribute('type', 'groupchat');
+
+        $message->appendChild($dom->createElement('subject', $subject));
+
+        return $dom;
+    }
+
+    public static function destroy(string $to)
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#owner', 'query');
+
+        $destroy = $dom->createElement('destroy');
+        $destroy->setAttribute('jid', $to);
+        $query->appendChild($destroy);
+
+        return $query;
+    }
+
+    public static function setRole($nick, $role)
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#admin', 'query');
+
+        $item = $dom->createElement('item');
+        $item->setAttribute('nick', $nick);
+        $item->setAttribute('role', $role);
+        $query->appendChild($item);
+
+        return $query;
+    }
+
+    public static function getConfig()
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#owner', 'query');
+
+        return $query;
+    }
+
+    public static function setConfig(array $data)
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#owner', 'query');
+        $dom->appendChild($query);
+
+        $x = $dom->createElement('x');
+        $x->setAttribute('xmlns', 'jabber:x:data');
+        $x->setAttribute('type', 'submit');
+        $query->appendChild($x);
+
+        Utils::injectConfigInX($x, $data);
+
+        return $query;
+    }
+
+    public static function changeAffiliations(array $affiliations, ?string $reason = null)
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#admin', 'query');
+        $dom->appendChild($query);
+
+        foreach ($affiliations as $jid => $affiliation) {
+            $item = $dom->createElement('item');
+            $item->setAttribute('affiliation', $affiliation);
+            $item->setAttribute('jid', $jid);
+            $query->appendChild($item);
+
+            if ($reason) {
+                $reason = $dom->createElement('reason', $reason);
+                $item->appendChild($reason);
+            }
+        }
+
+        return $query;
+    }
+
+    public static function createMujiChat()
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#owner', 'query');
+        $dom->appendChild($query);
+
+        $x = $dom->createElement('x');
+        $x->setAttribute('xmlns', 'jabber:x:data');
+        $x->setAttribute('type', 'submit');
+        $query->appendChild($x);
+
+        Utils::injectConfigInX($x, [
+            'FORM_TYPE' => 'http://jabber.org/protocol/muc#roomconfig',
+            'muc#roomconfig_persistentroom' => 'false',
+            'muc#roomconfig_membersonly' => 'false',
+            'muc#roomconfig_whois' => 'anyone',
+        ]);
+
+        return $query;
+    }
+
+    public static function createGroupChat(string $name, array $extraConfig = [])
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#owner', 'query');
+        $dom->appendChild($query);
+
+        $x = $dom->createElement('x');
+        $x->setAttribute('xmlns', 'jabber:x:data');
+        $x->setAttribute('type', 'submit');
+        $query->appendChild($x);
+
+        $config = [
+            'FORM_TYPE' => 'http://jabber.org/protocol/muc#roomconfig',
+            'muc#roomconfig_roomname' => $name,
+            'muc#roomconfig_persistentroom' => 'true',
+            'muc#roomconfig_changesubject' => 'false',
+            'muc#roomconfig_membersonly' => 'true',
+            'muc#roomconfig_whois' => 'anyone',
+            'muc#roomconfig_publicroom' => 'false',
+            // 'muc#roomconfig_allowpm' => 'false'
+        ];
+
+        $config += $extraConfig;
+
+        Utils::injectConfigInX($x, $config);
+
+        return $query;
+    }
+
+    public static function createChannel($name)
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#owner', 'query');
+        $dom->appendChild($query);
+
+        $x = $dom->createElement('x');
+        $x->setAttribute('xmlns', 'jabber:x:data');
+        $x->setAttribute('type', 'submit');
+        $query->appendChild($x);
+
+        Utils::injectConfigInX($x, [
+            'FORM_TYPE' => 'http://jabber.org/protocol/muc#roomconfig',
+            'muc#roomconfig_roomname' => $name,
+            'muc#roomconfig_persistentroom' => 'true',
+            'muc#roomconfig_changesubject' => 'false',
+            'muc#roomconfig_membersonly' => 'false',
+            'muc#roomconfig_whois' => 'moderators',
+            'muc#roomconfig_publicroom' => 'true',
+            // 'muc#roomconfig_allowpm' => 'anyone'
+        ]);
+
+        return $query;
+    }
+
+    public static function getAffiliations(string $affiliation)
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $query = $dom->createElementNS('http://jabber.org/protocol/muc#admin', 'query');
+
+        $item = $dom->createElement('item');
+        $item->setAttribute('affiliation', $affiliation);
+        $query->appendChild($item);
+
+        return $query;
+    }
+}

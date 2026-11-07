@@ -1,0 +1,42 @@
+{if="count($subscriptions) > 0"}
+    <ul class="list active large">
+        <li class="subheader large">
+            <div>
+                <p>
+                    <span class="info">{$subscriptions|count}</span>
+                    {$c->__('page.communities')}
+                </p>
+            </div>
+        </li>
+        {loop="$subscriptions"}
+            <li title="{$value->server} - {$value->node}" onclick="MovimUtils.reload('{$c->route('community', [$value->server, $value->node])}')">
+                {if="$value->info"}
+                    <span class="primary icon bubble">
+                        <img src="{$value->info->getPicture(\Movim\ImageSize::M)}"/>
+                    </span>
+                {else}
+                    <span class="primary icon bubble color {$value->node|stringToColor}">
+                        {$value->node|firstLetterCapitalize}
+                    </span>
+                {/if}
+                <span class="control icon gray">
+                    <i class="material-symbols">chevron_right</i>
+                </span>
+                <div>
+                    <p class="line">
+                        {if="$value->info && $value->info->name"}
+                            {$value->info->name}
+                        {elseif="$value->name"}
+                            {$value->name}
+                        {else}
+                            {$value->node}
+                        {/if}
+                    </p>
+                    {if="$value->info && $value->info->description"}
+                        <p class="line">{$value->info->description|strip_tags}</p>
+                    {/if}
+                </div>
+            </li>
+        {/loop}
+    </ul>
+{/if}

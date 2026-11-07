@@ -1,0 +1,330 @@
+<?php
+
+namespace App\Widgets\Post;
+
+use App\Contact;
+use App\Info;
+use App\Post as AppPost;
+use App\Widgets\ContactActions\ContactActions;
+use Movim\Widget\Base;
+use Moxl\Xec\Action\Microblog\CommentPublish;
+use Moxl\Xec\Action\Microblog\CommentsGet;
+use Moxl\Xec\Action\Pubsub\GetItem;
+use Moxl\Xec\Payload\Packet;
+use Respect\Validation\Validator;
+
+class Post extends Base
+{
+    public function load()
+    {
+        $this->addjs('post.js');
+        $this->addcss('post.css');
+        $this->registerEvent('microblog_commentsget_handle', 'onComments', 'post');
+        $this->registerEvent('microblog_commentsget_error', 'onCommentsError');
+        $this->registerEvent('microblog_commentpublish_error', 'onCommentPublishError');
+        $this->registerEvent('pubsub_postdelete_handle', 'onDelete', 'post');
+        $this->registerEvent('pubsub_getitem_errorpresencesubscriptionrequired', 'onPresenceSubscriptionRequired');
+        $this->registerEvent('post_refreshed', 'onHandle', 'post');
+        $this->registerEvent('post_comment_published', 'onCommentPublished', 'post');
+        $this->registerEvent('chat_counter', 'onCounter', 'post');
+    }
+
+    public function onCounter(Packet $packet)
+    {
+        $this->rpc('MovimUtils.setDataItem', '#postcounter', 'counter', $packet->content);
+    }
+
+    public function onHandle(Packet $packet)
+    {
+        $post = AppPost::find($packet->content);
+
+        if ($post) {
+            if ($post->isComment()) {
+                $parent = $post->getParent();
+                $this->rpc(
+                    'MovimTpl.fill',
+                    '#post_widget.' . cleanupId($parent->nodeid) . ' #comments',
+                    $this->prepareComments($parent)
+                );
+                $this->rpc('Post.checkCommentAction');
+            } else {
+                $this->rpc(
+                    'MovimTpl.fill',
+                    '#post_widget.' . cleanupId($post->nodeid),
+                    $this->preparePost($post)
+                );
+                $this->rpc('MovimUtils.enhanceArticlesContent');
+            }
+        }
+    }
+
+    public function onCommentPublished(Packet $packet)
+    {
+        $post = AppPost::find($packet->content);
+
+        if ($post?->isComment()) {
+            if ($parent = $post->getParent()) {
+                $this->rpc(
+                    'MovimTpl.fill',
+                    '#post_widget.' . cleanupId($parent->nodeid) . ' #comments',
+                    $this->prepareComments($parent)
+                );
+            }
+
+            if ($post->isLike()) {
+                $this->toast($packet->content
+                    ? $this->__('post.comment_like_published')
+                    : $this->__('post.comment_published'));
+            }
+        }
+    }
+
+    public function onCommentPublishError()
+    {
+        $this->toast($this->__('post.comment_publish_error'));
+    }
+
+    public function onComments(Packet $packet)
+    {
+        $post = AppPost::find($packet->content);
+
+        if ($post) {
+            $this->rpc(
+                'MovimTpl.fill',
+                '#post_widget.' . cleanupId($post->nodeid) . ' #comments',
+                $this->prepareComments($post)
+            );
+            $this->rpc('Post.checkCommentAction');
+        }
+    }
+
+    public function onPresenceSubscriptionRequired(Packet $packet)
+    {
+        $view = $this->tpl();
+        $view->assign('contact', Contact::firstOrNew(['id' => $packet->content]));
+        $this->rpc('MovimTpl.fill', '#post_widget', $view->draw('_post_subscription_required'));
+    }
+
+    public function onCommentsError(Packet $packet)
+    {
+        $view = $this->tpl();
+        $view->assign('post', AppPost::find($packet->content));
+        $this->rpc('MovimTpl.fill', '#comments', $view->draw('_post_comments_error'));
+    }
+
+    public function onDelete(Packet $packet)
+    {
+        $this->rpc('Post.refreshComments');
+    }
+
+    public function ajaxGetContact($jid)
+    {
+        $c = new ContactActions($this->me, sessionId: $this->sessionId);
+        $c->ajaxGetDrawer($jid);
+    }
+
+    public function ajaxGetPost(string $server, string $node, string $nodeid)
+    {
+        $p = AppPost::where('server', $server)
+            ->where('node', $node)
+            ->where('nodeid', $nodeid)
+            ->with('tags')
+            ->first();
+
+        $gi = $this->xmpp(new GetItem);
+        $gi->setTo($server)
+            ->setNode($node)
+            ->setId($nodeid)
+            ->request();
+
+        if (!$p) {
+            $this->rpc('MovimTpl.fill', '#post_widget', $this->prepareNotFound());
+        }
+    }
+
+    public function ajaxGetNotFound()
+    {
+        $this->rpc('MovimTpl.fill', '#post_widget', $this->prepareNotFound());
+    }
+
+    public function ajaxGetPostComments(string $server, string $node, string $id)
+    {
+        $post = AppPost::where('server', $server)
+            ->where('node', $node)
+            ->where('nodeid', $id)
+            ->first();
+
+        if ($post) {
+            $this->requestComments($post);
+        }
+    }
+
+    public function ajaxShare(string $server, string $node, string $id)
+    {
+        $this->rpc('MovimUtils.redirect', $this->route('publish', [$server, $node, $id, 'share']));
+    }
+
+    public function requestComments(AppPost $post)
+    {
+        if ($post->id == null) {
+            return;
+        }
+
+        AppPost::whereNotNull('parent_id')
+            ->where('parent_id', $post->id)
+            ->delete();
+
+        $c = $this->xmpp(new CommentsGet);
+        $c->setTo($post->commentserver)
+            ->setId($post->commentnodeid)
+            ->setParentId($post->id)
+            ->request();
+    }
+
+    public function publishComment($comment, $to, $node, $id)
+    {
+        if (
+            ! Validator::stringType()->notEmpty()->isValid($comment)
+            || ! Validator::stringType()->length(6, 128)->noWhitespace()->isValid($id)
+        ) {
+            return;
+        }
+
+        $p = AppPost::where('server', $to)
+            ->where('node', $node)
+            ->where('nodeid', $id)
+            ->first();
+
+        if ($p) {
+            $cp = $this->xmpp(new CommentPublish);
+            $cp->setTo($p->commentserver)
+                ->setFrom($this->me->id)
+                ->setId($p->commentnodeid)
+                ->setTitle(htmlspecialchars(rawurldecode($comment)))
+                ->setParentId($p->id)
+                ->request();
+        }
+    }
+
+    public function ajaxPublishComment($form, $to, $node, $id)
+    {
+        $comment = trim($form->comment->value);
+
+        if ($comment != '♥') {
+            $this->publishComment($comment, $to, $node, $id);
+        }
+    }
+
+    public function prepareComments(AppPost $post, ?bool $public = false)
+    {
+        return $this->view('_post_comments', [
+            'post' => $post,
+            'public' => $public,
+            'hearth' => addEmojis('♥'),
+        ]);
+    }
+
+    public function prepareNotFound()
+    {
+        return $this->view('_post_not_found');
+    }
+
+    public function preparePost(AppPost $post, $public = false, $card = false, $requestComments = true)
+    {
+        if (isset($post)) {
+            $view = $this->tpl();
+
+            $commentsDisabled = false;
+
+            if (
+                $post->hasCommentsNode()
+                && ! $public && ! $card
+            ) {
+                if ($requestComments) {
+                    $this->rpc('Post_ajaxGetPostComments', $post->server, $post->node, $post->nodeid); // Broken in case of repost
+                }
+            } elseif (! $card) {
+                $viewd = $this->tpl();
+                $viewd->assign('post', $post);
+
+                if ($requestComments) {
+                    $commentsDisabled = $viewd->draw('_post_comments_error');
+                }
+            }
+
+            $view->assign('commentsdisabled', $commentsDisabled);
+            $view->assign('public', $public);
+            $view->assign('reply', $post->isReply() ? $post->getReply() : false);
+            $view->assign('repost', $post->isRecycled() ? Contact::find($post->server) : false);
+
+            $view->assign('nsfw', $this->me ? $this->me->nsfw : false);
+            $view->assign('post', $post);
+
+            if (! $card && $this->me) {
+                $view->assign('counter', $this->me->unreads(cached: true));
+            }
+
+            return ($card)
+                ? $view->draw('_post_card')
+                : $view->draw('_post');
+        }
+
+        return $this->prepareNotFound();
+    }
+
+    public function prepareTicket(AppPost $post, $public = false)
+    {
+        $view = $this->tpl();
+        $view->assign('post', $post);
+        $view->assign('public', $public);
+
+        return $view->draw('_post_ticket');
+    }
+
+    public function preparePostLinks(AppPost $post)
+    {
+        $view = $this->tpl();
+        $view->assign('post', $post);
+
+        return $view->draw('_post_links');
+    }
+
+    public function preparePostReply(AppPost $post)
+    {
+        if (! $post->isReply()) {
+            return '';
+        }
+
+        $view = $this->tpl();
+        $view->assign('reply', $post->getReply());
+
+        return $view->draw('_post_reply');
+    }
+
+    public function preparePreviousNext(AppPost $post)
+    {
+        $view = $this->tpl();
+        $view->assign('post', $post);
+
+        return $view->draw('_post_prevnext');
+    }
+
+    public function preparePreviousNextBack(AppPost $post)
+    {
+        $view = $this->tpl();
+        $view->assign('post', $post);
+        $view->assign('info', Info::where('server', $post->server)
+            ->where('node', $post->node)
+            ->first());
+
+        return $view->draw('_post_prevnext_back');
+    }
+
+    public function display()
+    {
+        $this->view->assign('nodeid', false);
+        if (Validator::stringType()->length(3, 256)->isValid($this->get('i'))) {
+            $this->view->assign('nodeid', $this->get('i'));
+        }
+    }
+}

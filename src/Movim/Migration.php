@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -8,7 +9,6 @@ namespace Movim;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Phinx\Migration\AbstractMigration;
-use Movim\Bootstrap;
 
 class Migration extends AbstractMigration
 {
@@ -17,7 +17,7 @@ class Migration extends AbstractMigration
 
     public function init()
     {
-        if (!defined('DOCUMENT_ROOT')) {
+        if (! defined('DOCUMENT_ROOT')) {
             $bootstrap = new Bootstrap;
             $bootstrap->boot(true);
         }
@@ -31,9 +31,6 @@ class Migration extends AbstractMigration
             case 'mysql':
                 $this->schema->getConnection()->unprepared('SET foreign_key_checks = 1');
                 break;
-            /*case 'sqlite':
-                $this->schema->getConnection()->unprepared('PRAGMA foreign_keys = on');
-                break;*/
         }
     }
 
@@ -43,9 +40,6 @@ class Migration extends AbstractMigration
             case 'mysql':
                 $this->schema->getConnection()->unprepared('SET foreign_key_checks = 0');
                 break;
-            /*case 'sqlite':
-                $this->schema->getConnection()->unprepared('PRAGMA foreign_keys = off');
-                break;*/
         }
     }
 }

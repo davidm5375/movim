@@ -1,0 +1,943 @@
+var MovimJingleSession = function (jid, fullJid, id, name, avatarUrl) {
+    this.id = id ?? crypto.randomUUID();
+    this.jid = jid;
+    this.fullJid = fullJid;
+    this.tracksTypes = {};
+    this.tracksScreen = {};
+    this.name = name;
+    this.avatarUrl = avatarUrl;
+    this.audioLevel = 0;
+    this.lastPostMessage = 0;
+
+    this.audioSharingSender = null;
+    this.screenSharingSender = null;
+
+    this.pc = new RTCPeerConnection({
+        iceServers: MovimVisio.services,
+        bundlePolicy: 'max-bundle',
+        iceCandidatePoolSize: 10
+    });
+
+    this.screenSharingPc = null; // RTCPc specific for the SFU
+
+    this.adaptToNetworkCondition = setInterval(() => {
+        VisioUtils.adaptToNetworkCondition(this.pc);
+    }, 5000);
+
+    this.participant = document.createElement('div');
+    this.participant.dataset.jid = this.jid;
+    this.participant.classList.add('participant');
+
+    document.querySelector('#participants').appendChild(this.participant);
+
+    this.participant.classList.add('audio_off');
+    this.participant.classList.add('screen_off');
+    this.participant.classList.add('video_off');
+
+    this.remoteScreenVideo = document.createElement('video');
+    this.remoteScreenVideo.classList.add('screen');
+    this.remoteScreenVideo.autoplay = true;
+    this.remoteScreenVideo.disablePictureInPicture = true;
+    this.remoteScreenVideo.poster = BASE_URI + 'theme/img/empty.png';
+    this.participant.appendChild(this.remoteScreenVideo);
+
+    this.remoteVideo = document.createElement('video');
+    this.remoteVideo.autoplay = true;
+    this.remoteVideo.disablePictureInPicture = true;
+    this.remoteVideo.poster = BASE_URI + 'theme/img/empty.png';
+    this.remoteVideo.muted = true;
+    this.participant.appendChild(this.remoteVideo);
+
+    this.remoteAudio = document.createElement('audio');
+    this.remoteAudio.autoplay = true;
+    this.participant.appendChild(this.remoteAudio);
+
+    this.remoteScreenAudio = document.createElement('audio');
+    this.remoteScreenAudio.classList.add('screen');
+    this.remoteScreenAudio.autoplay = true;
+    this.participant.appendChild(this.remoteScreenAudio);
+
+    this.callStatus = document.createElement('div')
+    this.callStatus.classList.add('status');
+    this.participant.appendChild(this.callStatus);
+
+    this.audioOffStatus = document.createElement('span');
+    this.audioOffStatus.classList.add('audio_off');
+    this.callStatus.appendChild(this.audioOffStatus);
+
+    this.videoOffStatus = document.createElement('span');
+    this.videoOffStatus.classList.add('video_off');
+    this.callStatus.appendChild(this.videoOffStatus);
+
+    this.screenStatus = document.createElement('span');
+    this.screenStatus.classList.add('screen');
+    this.callStatus.appendChild(this.screenStatus);
+
+    // Pin button
+    this.pin = document.createElement('span');
+    this.pin.classList.add('pin');
+    this.participant.appendChild(this.pin);
+
+    this.pin.addEventListener('click', e => {
+        VisioUtils.toggleMode(true);
+
+        if (MovimJingles.pinned == this.jid) {
+            MovimJingles.pinned = null;
+            Visio_ajaxHttpUnpin();
+        } else {
+            MovimJingles.pinned = this.jid;
+
+            if (this.name) {
+                Visio_ajaxHttpPin(this.name);
+            }
+        }
+
+        MovimJingles.checkActiveSpeaker();
+    })
+
+    // Audio control button
+    this.audioControl = document.createElement('span');
+    this.audioControl.classList.add('audio_control', 'max');
+    this.participant.appendChild(this.audioControl);
+
+    this.audioControl.addEventListener('click', e => {
+        this.audioControlRangeInput.value = (this.audioControlRangeInput.value > 0) ? 0 : 1;
+        this.setAudioLevel();
+    })
+
+    let audioControlRange = document.createElement('div');
+    audioControlRange.classList.add('audio_control_range');
+    this.participant.appendChild(audioControlRange);
+
+    this.audioControlRangeInput = document.createElement('input');
+    this.audioControlRangeInput.type = 'range';
+    this.audioControlRangeInput.min = 0;
+    this.audioControlRangeInput.max = 1;
+    this.audioControlRangeInput.step = 0.1;
+    this.audioControlRangeInput.value = 10;
+
+    this.audioControlRangeInput.addEventListener('input', () => {
+        this.setAudioLevel();
+    });
+
+    audioControlRange.appendChild(this.audioControlRangeInput);
+
+    this.screenQualityInterval = setInterval(() => {
+        this.callStatus.classList.remove('screen_hd', 'screen_fhd');
+        if (!this.participant.classList.contains('screen_off')) {
+            if (this.remoteScreenVideo.videoWidth >= 1920) {
+                this.callStatus.classList.add('screen_fhd');
+            } else if (this.remoteScreenVideo.videoWidth >= 1280) {
+                this.callStatus.classList.add('screen_hd');
+            }
+        }
+    }, 3000);
+
+    if (this.name) {
+        this.callStatus.dataset.name = this.name;
+    }
+
+    if (this.avatarUrl) {
+        let background = document.createElement('img');
+        background.classList.add('avatar');
+        background.src = this.avatarUrl;
+        this.participant.prepend(background);
+    }
+
+    this.pc.ontrack = event => {
+        var srcObject = null;
+
+        if (event.streams && event.streams[0]) {
+            srcObject = event.streams[0];
+        } else {
+            srcObject = new MediaStream();
+            srcObject.addTrack(event.track);
+        }
+
+        if (event.track.kind == 'audio') {
+            if (this.tracksScreen[event.transceiver.mid]) {
+                this.remoteScreenAudio.srcObject = srcObject;
+                this.tracksTypes['mid' + event.transceiver.mid] = 'audio_screen';
+            } else {
+                this.remoteAudio.srcObject = srcObject;
+                this.participant.classList.remove('audio_off');
+                this.handleRemoteAudio();
+                this.tracksTypes['mid' + event.transceiver.mid] = 'audio';
+            }
+        } else if (event.track.kind === 'video') {
+            if (this.tracksScreen[event.transceiver.mid]) {
+                this.remoteScreenVideo.srcObject = srcObject;
+                this.tracksTypes['mid' + event.transceiver.mid] = 'video_screen';
+                this.remoteScreenVideo.oncanplay = event => {
+                    this.participant.classList.remove('screen_off');
+                }
+            } else {
+                this.remoteVideo.srcObject = srcObject;
+                this.tracksTypes['mid' + event.transceiver.mid] = 'video';
+                this.participant.classList.remove('video_off');
+            }
+        }
+    }
+
+    this.pc.onnegotiationneeded = event => {
+        if (this.pc.localDescription) {
+            this.oldLocalDescription = this.pc.localDescription.sdp;
+
+            this.pc.getTransceivers().forEach(transceiver => {
+                if (transceiver.sender.track && transceiver.sender.track.kind === 'video') {
+                    VisioUtils.setVideoCodecPreferences(transceiver);
+                }
+            });
+
+            this.pc.createOffer()
+                .then(offer => {
+                    offer.sdp = this.maybeInjectScreenCategory(offer.sdp);
+                    return this.pc.setLocalDescription(offer)
+                }).then(() => this.updateContent())
+                .catch(err => MovimUtils.logError(err));
+        }
+    };
+
+    this.pc.onicecandidate = event => {
+        let candidate = event.candidate;
+        if (candidate && candidate.candidate && candidate.candidate.length > 0) {
+            Visio_ajaxCandidate(this.fullJid, this.id, event.candidate);
+        }
+    };
+
+    /**
+     * Add all the existing tracks
+     */
+
+    if (MovimVisio.sfu == null) {
+        MovimVisio.localStream.getTracks().forEach(track => {
+            this.pc.addTrack(track, MovimVisio.localStream);
+        });
+
+        if (MovimVisio.screenSharing.srcObject) {
+            this.enableScreenSharing();
+        }
+    }
+
+    Notif.userJoinedCall();
+    MovimJingles.checkActiveSpeaker();
+}
+
+MovimJingleSession.prototype.setAudioLevel = function () {
+    this.remoteAudio.volume = parseFloat(this.audioControlRangeInput.value);
+    this.remoteScreenAudio.volume = parseFloat(this.audioControlRangeInput.value);
+
+    this.audioControl.classList.remove('max', 'middle', 'low', 'mute');
+
+    if (this.audioControlRangeInput.value == 1) {
+        this.audioControl.classList.add('max');
+    } else if (this.audioControlRangeInput.value >= 0.5) {
+        this.audioControl.classList.add('middle');
+    } else if (this.audioControlRangeInput.value >= 0.1) {
+        this.audioControl.classList.add('low');
+    } else {
+        this.audioControl.classList.add('mute');
+    }
+}
+
+MovimJingleSession.prototype.handleRemoteAudio = async function () {
+    this.remoteAudioContext = new AudioContext();
+
+    try {
+        var remoteMicrophone = this.remoteAudioContext.createMediaStreamSource(
+            this.remoteAudio.srcObject
+        );
+
+        await this.remoteAudioContext.audioWorklet.addModule(BASE_URI + 'scripts/movim_jingle_session_audio_worklet.js');
+        const audioWorkletNode = new AudioWorkletNode(this.remoteAudioContext, 'jinglesession-audioworklet');
+        remoteMicrophone.connect(audioWorkletNode);
+
+        audioWorkletNode.port.onmessage = (e) => {
+            this.processRemoteAudioMessage(e.data);
+        };
+
+    } catch (error) {
+        MovimUtils.logError(error);
+        return;
+    }
+}
+
+/**
+ * In some clients, such as Dino, the buffer is stopped when the microphone is muted
+ * we detect that there and send a clear message properly
+ */
+MovimJingleSession.prototype.clearRemoteAudioMessage = function () {
+    const second = 1000;
+    const secondAgo = Date.now() - second;
+
+    if (this.lastPostMessage < secondAgo) {
+        this.processRemoteAudioMessage({
+            "isMuteStep": 5,
+            "level": 0,
+            "published": Date.now()
+        });
+    }
+}
+
+MovimJingleSession.prototype.processRemoteAudioMessage = function (message) {
+    if (message.isMuteStep >= 5) {
+        this.participant.classList.add('audio_off');
+    } else {
+        this.participant.classList.remove('audio_off');
+    }
+
+    this.lastPostMessage = message.published;
+    this.audioLevel = message.level;
+    this.participant.style.setProperty('--level', message.level);
+
+    if (message.level > 0) {
+        clearTimeout(this.clearRemoteAudioMessageId);
+        this.clearRemoteAudioMessageId = setTimeout(this.clearRemoteAudioMessage.bind(this), 2000);
+    }
+}
+
+MovimJingleSession.prototype.terminate = function (reason, muji) {
+    if (MovimVisio.sfu == null) {
+        Visio_ajaxTerminate(this.fullJid, this.id, reason, muji);
+    }
+    this.close();
+}
+
+MovimJingleSession.prototype.close = function () {
+    clearInterval(this.adaptToNetworkCondition);
+    clearInterval(this.screenQualityInterval);
+
+    Notif.userLeftCall();
+
+    if (this.pc) {
+        this.pc.close();
+        this.pc = null;
+    }
+
+    if (this.remoteAudioContext) {
+        this.remoteAudioContext.close();
+        this.remoteAudioContext = null;
+    }
+
+    let participant = document.querySelector('.participant[data-jid="' + this.jid + '"]');
+    if (participant) participant.remove();
+
+    let remoteVideoStream = this.remoteVideo.srcObject;
+    if (remoteVideoStream) {
+        remoteVideoStream.getTracks().forEach(track => track.stop());
+        remoteVideoStream = null;
+    }
+
+    let remoteAudioStream = this.remoteAudio.srcObject;
+    if (remoteAudioStream) {
+        remoteAudioStream.getTracks().forEach(track => track.stop());
+        remoteAudioStream = null;
+    }
+}
+
+MovimJingleSession.prototype.onCandidate = function (candidate, mid, mlineindex) {
+    const iceCandidate = new RTCIceCandidate({
+        // filter the a=candidate lines
+        'candidate': candidate.split(/\n/).filter(line => {
+            return line.startsWith('a=candidate');
+        }).join('').substring(2),
+        'sdpMid': mid,
+        'sdpMLineIndex': mlineindex
+    });
+
+    // When we share our own screen have some candidates from the SFU for our PC
+    if (this.jid == MovimVisio.sfu && MovimVisio.screenshareSFUPc) {
+        MovimVisio.screenshareSFUPc.addIceCandidate(iceCandidate).catch(error => MovimUtils.logError(error));
+    }
+
+    if (this.screenSharingPc) {
+        // In this case we send the candidate to both pcs, and let it sort it out ¯\_(ツ)_/¯
+        this.screenSharingPc.addIceCandidate(iceCandidate).catch(error => MovimUtils.logError(error));
+    } else if (this.pc && this.pc.remoteDescription) {
+        this.pc.addIceCandidate(iceCandidate).catch(error => MovimUtils.logError(error));
+    }
+}
+
+MovimJingleSession.prototype.onContentAdd = function (sdp, mids) {
+    remoteDescription = this.pc.remoteDescription.sdp;
+    remoteDescription += sdp.match('m=[^]*');
+    remoteDescription = remoteDescription.replace(/^a=group.*/m, sdp.match(/a=group.*/)[0]);
+
+    this.maybeDetectTracksScreen(sdp);
+
+    this.pc.setRemoteDescription({ 'sdp': remoteDescription + "\n", 'type': 'offer' })
+        .then(() => {
+            this.pc.createAnswer()
+                .then(answer => this.pc.setLocalDescription(answer))
+                .then(() => Visio_ajaxContentAccept(this.fullJid, this.id, this.pc.localDescription.sdp))
+                .catch(MovimUtils.logError);
+        })
+        .catch(error => MovimUtils.logError(error));
+}
+
+MovimJingleSession.prototype.onContentModify = function (sdp, mid) {
+    // TODO, implement mid
+    this.maybeDetectTracksScreen(sdp);
+
+    this.pc.setRemoteDescription({ 'sdp': sdp + "\n", 'type': 'offer' })
+        .then(() => {
+            this.pc.createAnswer()
+                .then(answer => this.pc.setLocalDescription(answer))
+                .then(() => Visio_ajaxContentAccept(this.fullJid, this.id, this.pc.localDescription.sdp))
+                .catch(MovimUtils.logError);
+        })
+        .catch(error => MovimUtils.logError(error));
+}
+
+MovimJingleSession.prototype.onContentRemove = function (sdp, mids) {
+    remoteDescription = this.pc.remoteDescription.sdp;
+    mids.forEach(mid => delete this.tracksScreen[mid]);
+
+    let parts = remoteDescription.split('m=');
+    let filtered = [];
+
+    parts.forEach(part => {
+        let mid = part.match(/a=mid:(.*)/);
+        if (!mid || !mids.includes(mid[1])) {
+            filtered.push(part)
+        }
+    });
+
+    remoteDescription = filtered.join('m=');
+    this.pc.setRemoteDescription({ 'sdp': sdp + "\n", 'type': 'offer' })
+        .then(() => {
+            this.pc.createAnswer()
+                .then(answer => this.pc.setLocalDescription(answer))
+                .then(() => Visio_ajaxContentAccept(this.fullJid, this.id, this.pc.localDescription.sdp))
+                .catch(MovimUtils.logError);
+        })
+        .catch(error => MovimUtils.logError(error));
+}
+
+MovimJingleSession.prototype.sessionInitiate = function (fullJid, id, mujiRoom) {
+    this.id = id;
+    this.fullJid = fullJid;
+
+    this.pc.getTransceivers().forEach(transceiver => {
+        if (transceiver.sender.track.kind === 'video') {
+            VisioUtils.setVideoCodecPreferences(transceiver)
+        }
+    });
+
+    this.pc.createOffer()
+        .then(offer => this.pc.setLocalDescription(offer))
+        .then(() => Visio_ajaxSessionInitiate(this.fullJid, this.pc.localDescription, id, mujiRoom));
+}
+
+MovimJingleSession.prototype.updateContent = function () {
+    let oldMedias = this.oldLocalDescription.match(MovimVisio.bundleRegex)[2].split(' ');
+    let newMedias = this.pc.localDescription.sdp.match(MovimVisio.bundleRegex)[2].split(' ');
+
+    let createdMedias = newMedias.filter((e) => !oldMedias.includes(e));
+    let destroyedMedias = oldMedias.filter((e) => !newMedias.includes(e));
+
+    let changed = false;
+    let localDescription = this.maybeInjectScreenCategory(this.pc.localDescription.sdp);
+
+    if (createdMedias.length > 0) {
+        changed = true;
+        Visio_ajaxContentAdd(this.fullJid, localDescription, this.id, createdMedias);
+    }
+
+    if (destroyedMedias.length > 0) {
+        changed = true;
+        Visio_ajaxContentRemove(this.fullJid, this.oldLocalDescription, this.id, destroyedMedias);
+    }
+
+    // Nothing added, nothing removed, lets update everything...
+    if (changed == false) {
+        Visio_ajaxContentModify(this.fullJid, localDescription, this.id);
+    }
+}
+
+MovimJingleSession.prototype.onAcceptSDP = function (sdp) {
+    this.maybeDetectTracksScreen(sdp);
+
+    this.pc.setRemoteDescription({ 'sdp': sdp + "\n", 'type': 'answer' })
+        .catch(error => {
+            let visio = document.querySelector('#visio');
+            Visio_ajaxGoodbye(visio.dataset.jid, this.id, 'incompatible-parameters');
+
+            MovimUtils.logError(error);
+        });
+}
+
+MovimJingleSession.prototype.onInitiateSDP = function (sdp) {
+    this.maybeDetectTracksScreen(sdp);
+
+    this.pc.setRemoteDescription({ 'sdp': sdp + "\n", 'type': 'offer' })
+        .then(() => {
+            this.pc.createAnswer()
+                .then(answer => this.pc.setLocalDescription(answer))
+                .then(() => {
+                    if (MovimVisio.sfu != null) {
+                        Visio_ajaxContentAccept(
+                            this.fullJid,
+                            this.id,
+                            this.maybeInjectScreenCategory(this.pc.localDescription.sdp),
+                            this.jid
+                        );
+                    } else {
+                        Visio_ajaxSessionAccept(
+                            this.fullJid,
+                            this.id,
+                            this.maybeInjectScreenCategory(this.pc.localDescription.sdp)
+                        );
+                    }
+                })
+                .catch(MovimUtils.logError);
+        }).catch(error => MovimUtils.logError(error));
+}
+
+/**
+ * With the SFU we can't have the screen as a new content, so we have to build a completely
+ * new RTPPc
+ */
+MovimJingleSession.prototype.onSFUScreenSharingPropose = function (sdp) {
+    this.maybeDetectTracksScreen(sdp);
+
+    this.screenSharingPc = new RTCPeerConnection({
+        iceServers: MovimVisio.services,
+        bundlePolicy: 'max-bundle',
+        iceCandidatePoolSize: 10
+    });
+
+    this.screenSharingPc.ontrack = event => {
+        var srcObject = null;
+
+        if (event.streams && event.streams[0]) {
+            srcObject = event.streams[0];
+        } else {
+            srcObject = new MediaStream();
+            srcObject.addTrack(event.track);
+        }
+
+        if (event.track.kind == 'audio') {
+            if (this.tracksScreen[event.transceiver.mid]) {
+                this.remoteScreenAudio.srcObject = srcObject;
+                this.tracksTypes['sfu_screen_mid' + event.transceiver.mid] = 'audio_screen';
+            }
+        } else if (event.track.kind === 'video') {
+            if (this.tracksScreen[event.transceiver.mid]) {
+                this.remoteScreenVideo.srcObject = srcObject;
+                this.tracksTypes['sfu_screen_mid' + event.transceiver.mid] = 'video_screen';
+                this.remoteScreenVideo.oncanplay = event => {
+                    this.participant.classList.remove('screen_off');
+                }
+            }
+        }
+    }
+
+    this.screenSharingPc.onicecandidate = event => {
+        let candidate = event.candidate;
+        if (candidate && candidate.candidate && candidate.candidate.length > 0) {
+            Visio_ajaxCandidate(this.fullJid, this.id, event.candidate);
+        }
+    };
+
+    this.screenSharingPc.setRemoteDescription({ 'sdp': sdp + "\n", 'type': 'offer' })
+        .then(this.screenSharingPc.createAnswer()
+            .then(answer => this.screenSharingPc.setLocalDescription(answer))
+            .then(() => {
+                Visio_ajaxContentAccept(
+                    this.fullJid,
+                    this.id,
+                    this.maybeInjectScreenCategory(this.screenSharingPc.localDescription.sdp),
+                    this.jid
+                )
+            })
+            .catch(MovimUtils.logError));
+}
+
+MovimJingleSession.prototype.onSFUScreenSharingTerminate = function () {
+    if (this.screenSharingPc) {
+        this.screenSharingPc.close();
+        this.screenSharingPc = null;
+    }
+
+    this.participant.classList.add('screen_off');
+
+    Object.keys(MovimJingles.sessions[this.jid].tracksTypes).forEach(
+        key => {
+            if (key.startsWith('sfu_screen_mid')) {
+                delete MovimJingles.sessions[this.jid].tracksTypes[key]
+            }
+        }
+    );
+}
+
+MovimJingleSession.prototype.enableScreenSharing = function () {
+    MovimVisio.screenSharing.srcObject.getTracks().forEach(track => {
+        if (track.kind == 'video') {
+            if (this.screenSharingSender) {
+                this.screenSharingSender.replaceTrack(track).then(() => {
+                    this.unmute(track);
+                });
+            } else {
+                this.screenSharingSender = this.pc.addTrack(track);
+            }
+        } else {
+            if (this.audioSharingSender) {
+                this.audioSharingSender.replaceTrack(track).then(() => {
+                    this.unmute(track);
+                });
+            } else {
+                this.audioSharingSender = this.pc.addTrack(track);
+            }
+        }
+    });
+}
+
+MovimJingleSession.prototype.disableScreenSharing = function () {
+    if (this.pc && MovimVisio.screenSharing.srcObject) {
+        MovimVisio.screenSharing.srcObject.getTracks().forEach(track => this.mute(track));
+    }
+}
+
+MovimJingleSession.prototype.resolveTransceiver = function (track) {
+    const transceiver = this.pc.getTransceivers().find(transceiver => transceiver.sender.track && transceiver.sender.track.id == track.id);
+    return transceiver ?? null;
+}
+
+MovimJingleSession.prototype.mute = function (track) {
+    const transceiver = this.resolveTransceiver(track);
+    if (transceiver) {
+        Visio_ajaxMute(this.fullJid, this.id, 'mid' + transceiver.mid);
+    }
+}
+
+MovimJingleSession.prototype.unmute = function (track) {
+    const transceiver = this.resolveTransceiver(track);
+    if (transceiver) {
+        Visio_ajaxUnmute(this.fullJid, this.id, 'mid' + transceiver.mid);
+    } else if (track.kind == 'video') {
+        this.pc.addTrack(track);
+    }
+}
+
+MovimJingleSession.prototype.onMute = function (name) {
+    if (this.tracksTypes[name]) {
+        if (this.tracksTypes[name] == 'audio') {
+            this.participant.classList.add('audio_off');
+        }
+
+        if (this.tracksTypes[name] == 'video') {
+            this.participant.classList.add('video_off');
+        }
+
+        if (this.tracksTypes[name] == 'video_screen') {
+            this.participant.classList.add('screen_off');
+        }
+    }
+}
+
+MovimJingleSession.prototype.onUnmute = function (name) {
+    if (this.tracksTypes[name]) {
+        if (this.tracksTypes[name] == 'audio') {
+            this.participant.classList.remove('audio_off');
+        }
+
+        if (this.tracksTypes[name] == 'video') {
+            this.participant.classList.remove('video_off');
+        }
+
+        if (this.tracksTypes[name] == 'video_screen') {
+            this.participant.classList.remove('screen_off');
+        }
+    }
+}
+
+MovimJingleSession.prototype.insertDtmf = function (s) {
+    var rtc = this.pc.getSenders().find(rtc => rtc.track && rtc.track.kind == 'audio');
+
+    if (!rtc || !rtc.dtmf.canInsertDTMF) return;
+
+    rtc.dtmf.insertDTMF(s);
+}
+
+/**
+ * Detect RFC4796 content attribute
+ */
+MovimJingleSession.prototype.maybeDetectTracksScreen = function (sdp) {
+    sdp.split('m=').forEach(media => {
+        let content = media.match(/a=content:(.*)/);
+        if (content && content.includes('slides')) {
+            let mid = media.match(/a=mid:(.*)/);
+            this.tracksScreen[mid[1]] = true;
+        }
+    });
+}
+
+/**
+ * Inject RFC4796 content attribute to respect XEP-0507: Jingle Content Category
+ */
+MovimJingleSession.prototype.maybeInjectScreenCategory = function (sdp) {
+    if (this.audioSharingSender?.track || this.screenSharingSender?.track) {
+        let ids = [];
+        if (this.audioSharingSender) ids.push(this.audioSharingSender.track.id);
+        if (this.screenSharingSender) ids.push(this.screenSharingSender.track.id);
+
+        sdp = sdp.split('m=').map(media => {
+            let mid = media.match(MovimVisio.midRegex);
+            if (mid != null) {
+                const transceiver = this.pc.getTransceivers().find(transceiver => transceiver.mid == mid[1]);
+                if (transceiver) {
+                    if (ids.includes(transceiver.sender.track.id)) {
+                        return media + 'a=content:slides' + "\n";
+                    }
+                }
+            }
+
+            return media;
+        }).join('m=');
+    }
+
+    return sdp;
+}
+
+var MovimJingles = {
+    sessions: {},
+    pinned: null,
+
+    startCalls: function (mujiRoom) {
+        for (const jid of Object.keys(MovimJingles.sessions)) {
+            MovimJingles.onProceed(jid, MovimJingles.sessions[jid].fullJid, MovimJingles.sessions[jid].id, mujiRoom);
+        }
+    },
+
+    initSession: function (jid, fullJid, id, name, avatarUrl) {
+        if (Object.keys(MovimJingles.sessions).includes(jid)) {
+            return;
+        }
+
+        if (!MovimVisio.localStream) {
+            throw Error('localStream is not ready');
+        };
+
+        MovimJingles.sessions[jid] = new MovimJingleSession(jid, fullJid, id, name, avatarUrl);
+        return MovimJingles.sessions[jid].id;
+    },
+
+    checkActiveSpeaker: function () {
+        let maxLevel = 0;
+        let maxJid = null;
+
+        for (const jid of Object.keys(MovimJingles.sessions)) {
+            if (maxLevel < MovimJingles.sessions[jid].audioLevel) {
+                maxLevel = MovimJingles.sessions[jid].audioLevel;
+                maxJid = jid;
+            }
+
+            MovimJingles.sessions[jid].participant.classList.remove('active', 'pinned');
+        }
+
+        // Pinned has priority
+        if (MovimJingles.pinned && MovimJingles.sessions[MovimJingles.pinned]) {
+            MovimJingles.sessions[MovimJingles.pinned].participant.classList.add('active', 'pinned');
+            return;
+        }
+
+        if (maxJid != null) {
+            MovimJingles.sessions[maxJid].participant.classList.add('active');
+        } else if (Object.values(MovimJingles.sessions).length > 0) {
+            Object.values(MovimJingles.sessions)[MovimVisio.sfu != null ? 1 : 0]?.participant.classList.add('active');
+        }
+    },
+
+    onManageTrack: function (stream, enable) {
+        for (const jid of Object.keys(MovimJingles.sessions)) {
+            MovimJingles.sessions[jid].onManageTrack(stream, enable);
+        }
+    },
+
+    enableScreenSharing: function () {
+        for (const jid of Object.keys(MovimJingles.sessions)) {
+            MovimJingles.sessions[jid].enableScreenSharing();
+        }
+    },
+
+    disableScreenSharing: function () {
+        for (const jid of Object.keys(MovimJingles.sessions)) {
+            MovimJingles.sessions[jid].disableScreenSharing();
+        }
+    },
+
+    enableAudio: function (enable = true) {
+        MovimVisio.localStream.getTracks().filter(track => track.kind == 'audio').forEach(track => {
+            track.enabled = enable;
+
+            for (const jid of Object.keys(MovimJingles.sessions)) {
+                if (enable) {
+                    MovimJingles.sessions[jid].unmute(track);
+                } else {
+                    MovimJingles.sessions[jid].mute(track);
+                }
+            }
+        });
+    },
+
+    enableVideo: function (enable = true) {
+        MovimVisio.mujiPublish();
+
+        MovimVisio.localStream.getTracks().filter(track => track.kind == 'video').forEach(track => {
+            track.enabled = enable;
+
+            for (const jid of Object.keys(MovimJingles.sessions)) {
+                if (enable) {
+                    MovimJingles.sessions[jid].unmute(track);
+                } else {
+                    MovimJingles.sessions[jid].mute(track);
+                }
+            }
+        });
+    },
+
+    insertDtmf: function (s) {
+        for (const jid of Object.keys(MovimJingles.sessions)) {
+            MovimJingles.sessions[jid].insertDtmf(s);
+        }
+    },
+
+    onCandidate: function (jid, candidate, mid, mlineindex, sid) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Candidate from a non initiated session ' + jid); return;
+        }
+
+        if (sid && sid === MovimVisio.screenshareSid) {
+            MovimVisio.onScreenshareCandidate(candidate, mid, mlineindex);
+            return;
+        }
+
+        MovimJingles.sessions[jid].onCandidate(candidate, mid, mlineindex);
+    },
+
+    onInitiateSDP: function (jid, sdp, sid) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Initiate SDP from a non initiated session ' + jid); return;
+        }
+
+        // Put the real sid
+        MovimJingles.sessions[jid].id = sid;
+        MovimJingles.sessions[jid].onInitiateSDP(sdp);
+    },
+
+    onAcceptSDP: function (jid, sdp, sid) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Accept SDP from a non initiated session ' + jid); return;
+        }
+
+        if (sid && sid === MovimVisio.screenshareSid) {
+            MovimVisio.onScreenshareAcceptSDP(sdp);
+            return;
+        }
+
+        MovimJingles.sessions[jid].onAcceptSDP(sdp);
+    },
+
+    onProceed: function (jid, fullJid, id, mujiRoom) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Proceed from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].sessionInitiate(fullJid, id, mujiRoom);
+    },
+
+    onMute: function (jid, name) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Mute from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].onMute(name);
+    },
+
+    onUnmute: function (jid, name) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Unmute from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].onUnmute(name);
+    },
+
+    onContentAdd: function (jid, sdp, mid) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Content add from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].onContentAdd(sdp, mid);
+    },
+
+    onContentModify: function (jid, sdp, mid) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Content modify from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].onContentModify(sdp, mid);
+    },
+
+    onContentRemove: function (jid, sdp, mid) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('Content remove from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].onContentRemove(sdp, mid);
+    },
+
+    onSFUScreenSharingPropose: function (jid, sdp) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('SFU screen sharing propose from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].onSFUScreenSharingPropose(sdp);
+    },
+
+    onSFUScreenSharingTerminate: function (jid) {
+        if (MovimJingles.sessions[jid] == undefined) {
+            console.log('SFU screen sharing terminate from a non initiated session ' + jid); return;
+        }
+
+        MovimJingles.sessions[jid].onSFUScreenSharingTerminate();
+    },
+
+    terminate: function (jid, reason) {
+        if (MovimJingles.sessions[jid] == undefined) return;
+
+        let visio = document.querySelector('#visio');
+        MovimJingles.sessions[jid].terminate(reason, (visio.dataset.muji == 'true'));
+        delete MovimJingles.sessions[jid];
+    },
+
+    onTerminate: function (jid) {
+        if (MovimJingles.sessions[jid] == undefined) return;
+
+        MovimJingles.sessions[jid].close();
+        delete MovimJingles.sessions[jid];
+
+        let visio = document.querySelector('#visio');
+
+        // No sessions left
+        if (Object.keys(MovimJingles.sessions).length == 0) {
+            if (visio.dataset.muji == 'false') {
+                Visio_ajaxClear();
+            } else {
+                let state = document.querySelector('p.state');
+                if (state) {
+                    state.innerText = MovimVisio.variables.no_participants_left;
+                }
+            }
+        }
+    },
+
+    terminateAll: function (reason) {
+        for (const jid of Object.keys(MovimJingles.sessions)) {
+            MovimJingles.terminate(jid, reason);
+        }
+
+        MovimJingles.pinned = null;
+        Visio_ajaxClear();
+    }
+}

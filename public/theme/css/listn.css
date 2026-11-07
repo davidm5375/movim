@@ -1,5 +1,5 @@
-ul.list > * > li,
-ul.list > li {
+ul.list>*>li,
+ul.list>li {
     clear: both;
     display: flex;
     align-items: center;
@@ -9,24 +9,34 @@ ul.list > li {
     transition: background-color 0.15s ease;
 }
 
-ul.list.compact > li {
-    flex-direction: column;
-    align-items: flex-start;
+ul.list:not(.divided)>li {
+    border-radius: 1rem;
 }
 
-header:not(.big) > ul.list > li,
-nav > ul.list > li,
-ul.list.fill > li,
-ul.list.fill:not(.padded_top_bottom).flex,
-ul.list.controls > li {
+ul.list.compact>li:not(.subheader) {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.5rem 1rem;
+}
+
+ul.list.compact>li>div {
+    width: 100%;
+}
+
+ul.list.compact>li>span.chip {
+    position: absolute;
+    inset-inline-end: 1rem;
+}
+
+ul.list.controls>li {
     padding: 0;
 }
 
-article header > ul.list li {
+article header>ul.list li {
     padding: 0 1rem;
 }
 
-ul.list li > * {
+ul.list li>* {
     order: 2;
     flex: 1;
     min-width: 0;
@@ -34,62 +44,74 @@ ul.list li > * {
     transition: background-color 0.15s ease, filter 0.15s ease;
 }
 
-ul.list li:not(.subheader) > *:not(.primary):not(.control):not(.bubble):not(.main) {
+ul.list li:not(.subheader)>div {
     padding: 0.25rem 0;
 }
 
-ul.list.thin li:not(.subheader) > *:not(.primary):not(.control):not(.bubble):not(.main) {
+ul.list.thin li:not(.subheader)>div {
     padding: 0;
 }
 
-ul.list.middle li:not(.subheader) > *:not(.primary):not(.control):not(.bubble):not(.main) {
+ul.list.middle li:not(.subheader)>div {
     padding: 0.75rem 0;
 }
 
-ul.list.thick li:not(.subheader) > *:not(.primary):not(.control):not(.bubble):not(.main) {
+ul.list.thick li:not(.subheader)>div {
     padding: 1.5rem 0;
 }
 
 /* Active list items */
 
-ul.list.active li:hover:not(.subheader),
-ul.list.active.all li:hover,
-ul.list li.active:hover,
-ul.list.active li.active:not(.subheader),
-ul.tabs > li:hover {
+ul.list.active>li:hover:not(.subheader),
+ul.list.active.all>li:hover,
+ul.list>li.active:hover,
+ul.list.active>li.active:not(.subheader),
+ul.tabs>li:hover {
+    cursor: pointer;
+    user-select: none;
+}
+
+ul.list.active>li:hover:not(.subheader):not(.color),
+ul.list.active.all>li:hover:not(.color),
+ul.list>li.active:hover:not(.color),
+ul.list.active>li.active:not(.subheader):not(.color),
+ul.tabs>li:hover {
     background-color: rgba(var(--movim-element-action), 0.1);
+}
+
+ul.list>li>span.active:hover {
     cursor: pointer;
     user-select: none;
 }
 
-ul.list li > span.active:hover {
-    cursor: pointer;
-    user-select: none;
-}
-
-ul.list li > span.bubble.active:hover {
+ul.list>li>span.bubble.active:hover {
     filter: grayscale(25%);
 }
 
-ul.list li > span:not(.bubble).active:hover {
+ul.list>li>span:not(.bubble).active:hover,
+ul.list>li>div.bubble:not(.file):hover {
+    cursor: pointer;
     background-color: rgba(var(--movim-element-action), 0.1);
 }
 
 /* Clicked list items */
 
-ul.list.active li:active:not(.subheader),
-ul.list.active.all li:active,
-ul.tabs > li:active {
+ul.list.active>li:active:not(.subheader):not(.color),
+ul.list.active.all>li:active:not(.color),
+ul.tabs>li:active:not(.color) {
     background-color: rgba(var(--movim-element-action), 0.2);
 }
 
 
-ul.list li > span.bubble.active:active {
+ul.list>li>span.bubble.active:active {
     filter: grayscale(50%);
 }
 
-ul.list li > span:not(.bubble).active:active {
+ul.list>li>span:not(.bubble).active:active,
+ul.list>li>div.bubble:not(.file):active {
+    cursor: pointer;
     background-color: rgba(var(--movim-element-action), 0.2);
+    font-variation-settings: 'FILL' 1;
 }
 
 /* Main elements */
@@ -99,203 +121,193 @@ ul.list li .primary {
     height: 5rem;
     line-height: 5rem;
     flex: 0 0 5rem;
+    justify-content: center;
 }
 
+ul.list li .primary:not(.bubble)[onclick] {
+    flex: 0 0 6.5rem;
+    margin-inline-start: -1.5rem;
+}
 
-ul.list.compact > li .primary {
+ul.list li.primary ul.list.compact>li .primary {
     width: 5rem;
 }
 
-ul.list li > span.primary {
+ul.list li>span.primary {
     order: 1;
 }
 
-ul.list li > span.control {
+ul.list li>span.control {
     order: 3;
 }
 
-ul.list li > span.control:last-of-type {
-    margin-right: -1.5rem;
+ul.list li.invite:not(.subheader)>span.primary+span.primary {
+    margin-left: -2rem;
 }
 
-*[dir="rtl"] ul.list li > span.control:last-of-type {
-    margin-right: 0;
-    margin-left: -1.5rem;
+ul.list:not(.navigation):not(.card) li>span.control:last-of-type:not(:has(>.checkbox)):not(.toggleable) {
+    margin-inline-end: -1.5rem;
 }
 
-header > ul.list li > span.control:last-of-type,
-nav > ul.list li > span.control:last-of-type,
-ul.list.fill li > span.control:last-of-type,
-ul.list.controls li > span.control:last-of-type {
+header>ul.list li>span.control:last-of-type,
+nav>ul.list li>span.control:last-of-type,
+ul.list.controls li>span.control:last-of-type {
     margin-right: 0;
 }
 
-ul.list li > span.thumb {
+ul.list li>span.thumb {
     flex: 0 0 7rem;
 }
 
-ul.list li:not(.subheader) .control:not(.bubble):not(.thumb),
-ul.list li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
+ul.list:not(.context_menu):not(.navigation) li:not(.subheader) .control:not(.bubble):not(.thumb),
+ul.list:not(.context_menu):not(.navigation) li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
     padding: 0.25rem 0.5rem;
 }
 
-ul.list li:not(.subheader) .control.bubble,
-ul.list li:not(.subheader) .primary.bubble:not(.small) {
-    margin: 0.25rem 0.5rem;
-}
-
-ul.list.thin li:not(.subheader) .control:not(.bubble):not(.thumb),
-ul.list.thin li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
-    padding: 0 0.5rem;
-}
-
-ul.list.thin li:not(.subheader) .control.bubble,
-ul.list.thin li:not(.subheader) .primary.bubble:not(.small) {
+ul.list:not(.navigation) li:not(.subheader) .control.bubble,
+ul.list:not(.navigation) li:not(.subheader) .primary.bubble:not(.small) {
     margin: 0 0.5rem;
 }
 
-ul.list.middle li:not(.subheader) .control:not(.bubble):not(.thumb),
-ul.list.middle li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
+ul.list:not(.navigation) li:not(.subheader) .primary.stories.bubble {
+    margin: 0;
+    padding: 0.5rem;
+}
+
+ul.list.thin:not(.navigation) li:not(.subheader) .control:not(.bubble):not(.thumb),
+ul.list.thin:not(.navigation) li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
+    padding: 0 0.5rem;
+}
+
+ul.list.middle:not(.navigation) li:not(.subheader) .control:not(.bubble):not(.thumb),
+ul.list.middle:not(.navigation) li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
     padding: 1rem 0.5rem;
 }
 
-ul.list.middle li:not(.subheader) .control.bubble,
-ul.list.middle li:not(.subheader) .primary.bubble:not(.small) {
-    margin: 1rem 0.5rem;
-}
-
-ul.list.thick li:not(.subheader) .control:not(.bubble):not(.thumb),
-ul.list.thick li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
+ul.list.thick:not(.navigation) li:not(.subheader) .control:not(.bubble):not(.thumb),
+ul.list.thick:not(.navigation) li:not(.subheader) .primary:not(.bubble):not(.thumb):not(.small) {
     padding: 1.75rem 0.5rem;
 }
 
-ul.list.thick li:not(.subheader) .control.bubble,
-ul.list.thick li:not(.subheader) .primary.bubble:not(.small) {
-    margin: 1.75rem 0.5rem;
+ul.list li .primary~*:not(.primary):not(.control):not(.bubble) {
+    margin-inline-start: 1rem;
 }
 
-ul.list li .primary ~ *:not(.primary):not(.control):not(.bubble) {
-    margin-left: 1rem;
+ul.list.compact li .primary~*:not(.primary):not(.control):not(.bubble) {
+    margin-inline-start: 0.5rem;
+    padding-bottom: 0;
 }
 
-*[dir="rtl"] ul.list li .primary ~ *:not(.primary):not(.control):not(.bubble) {
-    margin-left: 0;
-    margin-right: 1rem;
+ul.list:not(.gallery) li:not(.story)>.control~*:not(.primary):not(.control):not(.bubble) {
+    margin-inline-end: 1rem;
 }
 
-ul.list.compact li .primary ~ *:not(.primary):not(.control):not(.bubble) {
-    margin-left: 0.5rem;
-}
-
-*[dir="rtl"] ul.list.compact li .primary ~ *:not(.primary):not(.control):not(.bubble) {
-    margin-left: 0;
-    margin-right: 0.5rem;
-}
-
-ul.list:not(.gallery) li .control ~ *:not(.primary):not(.control):not(.bubble) {
-    margin-right: 1rem;
-}
-
-*[dir="rtl"] ul.list:not(.gallery) li .control ~ *:not(.primary):not(.control):not(.bubble)  {
-    margin-right: 0;
-    margin-left: 1rem;
-}
-
-ul.list li .primary > a,
-ul.list li .control > a {
+ul.list li .primary>a,
+ul.list li .control>a {
     display: block;
+}
+
+/* Safari fix */
+ul.list li .primary.bubble>a {
+    height: 5rem;
+}
+
+ul.list li .primary.small.bubble>a {
+    height: 4rem;
 }
 
 /* Truncated content */
 
-ul.list li.subheader > div > p,
-ul.list li > div > p.line {
+ul.list li.subheader>div>p,
+ul.list li>div>span.supporting.line,
+ul.list li>div>p.line {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
 }
 
-ul.list li > div > p.line.two {
+ul.list li>div>p.line.two {
     white-space: initial;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
 }
 
-ul.list li > div > p > span.second {
-    color: gray;
+ul.list li>div>p>span.second {
     margin-left: 0.5rem;
 }
 
-ul.list li > div > p > span.second.sticked {
+ul.list li>div>p>span.second.sticked {
     margin-left: 0;
 }
 
-ul.list li > div > p > span.info,
-ul li div.bubble:after {
-    float: right;
+ul.list li>div>p>span.info,
+ul.list li>div.bubble:after {
+    float: inline-end;
     font-size: 1.5rem;
-    color: gray;
     margin-left: 0.5rem;
-}
-
-*[dir="rtl"] ul.list li > div > p > span.info {
-    float: left;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Size automagicaly the content */
 
-ul.list li > div > p {
+ul.list li>div>p {
     box-sizing: border-box;
     width: auto;
 }
 
-ul.list li > div > p.active:hover {
+ul.list li>div>p.active:hover {
     cursor: pointer;
 }
 
-ul.list > * > li > div > p:first-of-type,
-ul.list > li > div > p:first-of-type {
-    line-height: 5.5rem;
-    font-size: 3rem;
-}
-
-ul.list > * > li > div > p.all:first-of-type,
-ul.list > li > div > p.all:first-of-type {
+ul.list>*>li>div>p:first-of-type,
+ul.list>li>div>p:first-of-type,
+ul.list>li>div>p.brief {
     line-height: 3rem;
-    padding: 1.25rem 0;
-}
-
-ul.list li > div > p.normal {
     font-size: 2rem;
 }
 
-ul.list li > div > p.bold {
+ul.list>*>li>div>p:not(:first-of-type):not(.brief),
+ul.list>li>div>p:not(:first-of-type):not(.brief) {
+    line-height: 2.5rem;
+    font-size: 1.75rem;
+}
+
+ul.list>*>li>div>p:not(.all),
+ul.list>li>div>p:not(.all) {
+    max-height: 7.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+ul.list>*>li>div>p:only-child,
+ul.list>li>div>p:only-child {
+    line-height: 5.5rem;
+}
+
+ul.list>*>li>div>p.all,
+ul.list>li>div>p.all {
+    line-height: 3rem;
+}
+
+ul.list li:not(.subheader)>div:has(>p.brief:not(.line)) {
+    padding-bottom: 0.5rem;
+}
+
+ul.list li>div>p.brief {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+ul.list li>div>p.bold {
     font-weight: bold;
 }
 
-ul.list li > div > p.center {
+ul.list li>div>p.center {
     text-align: center;
-}
-
-ul.list li > div > p:nth-last-of-type(3),
-ul.list li > div > p:nth-last-of-type(2) {
-    line-height: 3rem;
-    font-size: 2rem;
-    padding: 0;
-}
-
-ul.list li > div > p:nth-last-of-type(3) + p:not(.normal),
-ul.list li > div > p:nth-last-of-type(2) + p:not(.normal) {
-    line-height: 2.5rem;
-    font-size: 1.75rem;
-    max-height: 7.5rem;
-    overflow: hidden;
-}
-
-ul.list li > div > p:nth-last-of-type(3) + p.all,
-ul.list li > div > p:nth-last-of-type(2) + p.all {
-    max-height: 100%;
 }
 
 /* Subheader */
@@ -305,10 +317,103 @@ ul.list li.subheader {
     user-select: none;
 }
 
-ul.list li.subheader > div > p {
+ul.list li.subheader>div>p {
     font-size: 1.75rem;
     line-height: 5rem;
-    font-weight: 600;
+    font-weight: 700;
+}
+
+ul.list li.subheader span.chip {
+    flex: 0 0 auto;
+}
+
+ul.list li.subheader.sticky {
+    position: sticky;
+    top: 0;
+    background-color: rgb(var(--movim-background-main));
+    z-index: 1;
+}
+
+/* Search forms */
+
+ul.list:has(>li.search) {
+    padding-top: 1rem;
+}
+
+ul.list>li.main form div:after,
+ul.list>li.comment form div:after,
+ul.list>li.search form div:after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(var(--movim-background));
+    transition: background-color 0.2s ease-in-out;
+    position: absolute;
+    top: 0;
+    border-radius: 3rem;
+    pointer-events: none;
+}
+
+ul.list>li.comment form div:after {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+ul.list>li.comment form div,
+ul.list>li.search form div {
+    min-height: 0;
+}
+
+ul.list>li.main.edit form div:before,
+ul.list>li.comment form div:before,
+ul.list>li.search form div:before {
+    font-family: 'Material Symbols';
+    content: "\e8b6";
+    display: block;
+    font-size: 3rem;
+    color: rgba(var(--movim-font), 0.5);
+    position: absolute;
+    left: 1.5rem;
+    line-height: 6rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+
+ul.list>li.comment form div::before {
+    content: "\e261";
+    color: white;
+    z-index: 1;
+}
+
+ul.list>li.search.searching form div:before {
+    content: "\e863";
+    animation: spin 2s linear infinite;
+}
+
+ul.list>li.comment form input,
+ul.list>li.search form input {
+    margin-right: 2rem;
+    margin-left: 5.5rem;
+    box-shadow: none;
+    padding: 1.75rem 0;
+    line-height: 2rem;
+    max-width: calc(100% - 7rem);
+}
+
+ul.list>li.comment form input:focus,
+ul.list>li.search form input:focus {
+    box-shadow: none;
+}
+
+ul.list>li.main form div:focus-within:after,
+ul.list>li.search form div:focus-within:after {
+    box-shadow: var(--elevation-1);
+    background-color: rgba(var(--movim-background), 0.8);
+}
+
+ul.list>li.comment form div:focus-within::after {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Tabs */
@@ -324,57 +429,82 @@ ul.tabs {
     user-select: none;
 }
 
+ul.tabs.reversed {
+    border-top: 1px solid rgba(var(--movim-font), 0.12);
+    border-bottom: 0;
+    padding-bottom: 0.75rem;
+}
+
 ul.tabs:empty {
     display: none;
 }
 
-ul.tabs.wide > li {
+ul.tabs.wide>li {
     width: 33.33%;
     float: left;
+}
+
+ul.tabs.wide.two>li {
+    width: 50%;
 }
 
 ul.tabs:hover {
     overflow-x: auto;
 }
 
-ul.tabs > li {
+ul.tabs>li {
     display: inline-block;
     white-space: nowrap;
     font-size: 1.75rem;
-    font-weight: 600;
+    font-weight: 700;
     opacity: 0.6;
-    height: 5.5rem;
+    height: 100%;
     box-sizing: border-box;
     border-radius: 1rem 1rem 0 0;
 }
 
-ul.tabs > li > * {
-    padding: 0 3rem;
-    box-sizing: border-box;
-    display: block;
+ul.tabs.reversed>li {
+    border-radius: 0 0 1rem 1rem;
 }
 
-ul.tabs > li > * > i {
+ul.tabs>li>* {
+    padding: 0 3rem;
+    box-sizing: border-box;
+    display: inline-block;
+    width: 100%;
+}
+
+ul.tabs>li>*:hover {
+    text-decoration: none;
+}
+
+ul.tabs>li>*>i {
     font-size: 2.5rem;
 }
 
-ul.tabs.narrow > li {
+ul.tabs.narrow>li {
     min-width: 8rem;
 }
 
-ul.tabs.narrow > li > * {
+ul.tabs.narrow>li>* {
     padding: 0 1rem;
 }
 
-ul.tabs > li.active {
+ul.tabs>li.active {
     opacity: 1;
+    font-variation-settings: 'FILL' 1;
     border-bottom-width: 2px;
-    border-bottom-style: solid;
+    border-style: solid;
+}
+
+ul.tabs.reversed>li.active {
+    border-top-width: 2px;
+    border-bottom-width: 0;
 }
 
 /* Bubble */
 
-ul li div.bubble {
+ul.list li>div.bubble {
     position: relative;
     box-sizing: border-box;
     display: block;
@@ -382,15 +512,17 @@ ul li div.bubble {
     max-width: calc(100% - 11.5rem);
     flex: 0 0 auto;
     margin: 0 1.5rem;
+    padding: 0;
     min-height: 5rem;
+    transition: transform 0.1s, background 0.3s ease, box-shadow 0.3s ease;
 }
 
-ul li div.bubble div[dir="rtl"] {
+ul.list li>div.bubble div[dir="rtl"] {
     text-align: right;
 }
 
-ul li div.bubble:not(.sticker):not(.file),
-ul li div.bubble.file div.audio_player {
+ul.list li>div.bubble:not(.file),
+ul.list li>div.bubble.file div.audio_player {
     padding: 1rem 1rem 1rem 1.5rem;
     border-radius: 0 1rem 1rem;
     line-height: 2.75rem;
@@ -398,47 +530,66 @@ ul li div.bubble.file div.audio_player {
     margin-bottom: 1.5rem;
 }
 
-ul li div.bubble.sticker,
-ul li div.bubble.file {
-    margin-bottom: 1rem;
+ul.list li>div.bubble.file div.audio_player {
+    margin-bottom: 3rem;
+    padding: 0 0.5rem;
 }
 
-ul li div.bubble ul.card p:not(.line):not(:last-child) {
+ul.list li>div.bubble ul.card p:not(.line):not(:last-child) {
     display: block;
 }
 
-ul li div.bubble ul.card p:last-child {
+ul.list li>div.bubble ul.card p:not(.line):last-child {
     white-space: inherit;
     display: block;
 }
 
-ul li div.bubble p {
+ul.list li>div.bubble>div>p {
     overflow: hidden;
     display: inline;
     max-width: 100%;
     min-width: 20rem;
     font-size: 1.75rem;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
     white-space: pre-wrap;
     word-break: normal;
     position: relative;
 }
 
-ul li div.bubble p.retracted,
-ul li div.bubble p.encrypted {
+ul.list li>div.bubble>div>p i {
+    vertical-align: middle;
+    margin-top: -0.25rem;
+}
+
+ul.list li>div.bubble:not(.file)>div>p:empty {
+    display: none;
+}
+
+ul.list li>div.bubble:not(.file) p {
+    margin-right: 1rem;
+}
+
+ul.list li>div.bubble:not(.file) p:has(i.icon) {
+    white-space: inherit;
+}
+
+ul.list li>div.bubble p.retracted,
+ul.list li>div.bubble p.encrypted {
     opacity: 0.5;
 }
 
-ul li div.bubble p.previewable {
+ul.list li>div.bubble p.previewable {
     display: block;
+    min-width: 0;
+    margin-bottom: 0.5rem;
 }
 
-ul li div.bubble p.code {
+ul.list li>div.bubble p pre {
     display: inline-block;
-    margin: 0;
+    margin-bottom: 0;
 }
 
-ul li div.bubble span.resource {
+ul.list li>div.bubble span.resource {
     display: none;
 }
 
@@ -447,99 +598,65 @@ ul li:not(.oppose):not(.sequel) div.bubble div:first-child span.resource {
     line-height: 2.5rem;
 }
 
-ul li.oppose div.bubble.file {
-    word-break: break-all;
+ul.list li>div.bubble:not(.file),
+ul.list li>div.bubble.file div.audio_player {
+    background-color: rgb(var(--movim-background));
 }
 
-ul li.oppose div.bubble:not(.sticker):not(.file),
+ul li.oppose div.bubble:not(.file),
 ul li.oppose div.bubble.file div.audio_player {
-    background-color: rgba(var(--movim-background-main), 0.5);
-    border-color: rgba(var(--movim-background-main), 0.5);
+    background-color: rgba(var(--movim-background), 0.5);
+    border-color: rgba(var(--movim-background), 0.5);
     border-radius: 1rem 0 1rem 1rem;
-    padding: 1rem 1rem 1rem 1.5rem;
+    padding-right: 1.5rem;
 }
 
-ul li div.bubble.file div.audio_player,
-ul li.oppose div.bubble.file div.audio_player {
-    padding: 0.5rem;
-    margin-bottom: 0.25rem;
-}
-
-ul li div.bubble p i.icon {
+ul.list li>div.bubble p i.icon {
     margin-right: 0.25rem;
-}
-
-ul li div.bubble span.info {
-    float: right;
-    clear: right;
-    padding-left: 1rem;
-}
-
-ul li div.bubble span.info:empty {
-    min-height: 2.5rem;
-}
-
-ul li div.bubble > div:last-child span.info {
-    padding-right: 5rem;
-}
-
-
-ul li div.bubble:not(.file) > div:last-child span.info {
-    height: 2.25rem;
-}
-
-ul li.oppose div.bubble.file > div:last-child span.info {
-    height: 2.5rem;
-}
-
-ul li div.bubble span.info:empty {
-    padding-left: 0;
-}
-
-ul li div.bubble:after {
-    content: attr(data-publishedprepared);
-    line-height: 1.5rem;
-    right: 1rem;
-    bottom: 1rem;
-    position: absolute;
-    pointer-events: none;
-}
-
-ul li div.bubble.sticker:after,
-ul li div.bubble.file:after {
-    right: 0;
-    bottom: 0.5rem;
 }
 
 ul li .quote {
     font-style: italic;
 }
 
-ul li div.bubble:not(.sticker):not(.file):before {
+ul.list li>div.bubble:not(.file):before {
     content: "";
     position: absolute;
     top: 0;
-    left: -1.5rem;
-    border: 0.8rem solid transparent;
-    border-top-color: inherit;
-    border-right-color: rgb(var(--movim-background-main));
+    left: -1.6rem;
+    width: 1.6rem;
+    height: 1.6rem;
+    background-color: rgb(var(--movim-background));
+    mask-image: url(../img/bubble_mask.svg);
+    mask-size: 100%;
+    transition: background-color 0.3s ease;
 }
 
-ul li.oppose div.bubble:not(.sticker):not(.file):before {
+ul.list li>div.bubble:not(.file):hover:before,
+ul li.oppose div.bubble:not(.file):hover:before {
+    background-color: rgba(var(--movim-element-action), 0.1);
+}
+
+ul.list li>div.bubble:not(.file):active:before,
+ul li.oppose div.bubble:not(.file):active:before {
+    background-color: rgba(var(--movim-element-action), 0.2);
+}
+
+ul li.oppose div.bubble:not(.file):before {
     left: initial;
-    right: -1.5rem;
-    border-right-color: transparent;
-    border-left-color: inherit;
+    right: -1.6rem;
+    background-color: rgba(var(--movim-background), 0.5);
+    mask-image: url(../img/bubble_mask_oppose.svg);
 }
 
 /* Date separator */
 
-ul li.date {
+ul>li.date {
     min-height: 0;
     text-align: center;
 }
 
-ul li.date > div > p.normal {
+ul>li.date>div>p:only-child {
     line-height: 2.5rem;
     font-size: 1.5rem;
     display: inline-block;
@@ -548,13 +665,13 @@ ul li.date > div > p.normal {
     padding: 0 2rem;
 }
 
-ul li.date:first-of-type > div > p.normal {
+ul>li.date:first-of-type>div>p:only-child {
     margin-top: 1rem;
 }
 
 ul.list li.separator:not(.subheader):not(.date) {
     display: block;
-    border-top: 0.15rem dashed #BBB;
+    border-top: 0.15rem dashed 0.15rem dashed rgba(var(--movim-font), 0.5);
     margin-bottom: 0.7rem;
     margin-top: -0.7rem;
 }
@@ -568,7 +685,7 @@ ul.list.controls {
     justify-content: space-between;
 }
 
-ul.list.controls > li {
+ul.list.controls>li {
     width: 100%;
     margin: 0;
     box-sizing: border-box;
@@ -582,7 +699,7 @@ ul.list.controls i {
 
 .icon.tiny {
     font-size: 1.8rem;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 /* Menu */
@@ -592,7 +709,7 @@ header ul.context_menu {
     overflow: hidden;
     position: absolute;
     top: 0;
-    right: 0;
+    inset-inline-end: 0;
     margin: 0.5rem;
     z-index: 3;
     box-shadow: var(--elevation-2);
@@ -600,9 +717,14 @@ header ul.context_menu {
     transform: translateY(-5%);
     opacity: 0;
     pointer-events: none;
+    min-width: 25rem;
 }
 
 header ul.list.context_menu li {
+    padding: 0 0.5rem;
+}
+
+header ul.list.context_menu li.subheader {
     padding: 0 2rem;
 }
 
@@ -614,21 +736,21 @@ header ul.context_menu.shown {
 
 /* Divided */
 
-ul.list li.divided:not(.spaced),
-ul.list li.divided.spaced:after,
-*.divided:not(.spaced):not(li) > *:not(:last-child):not(.subheader),
-*.divided.spaced > *:not(:last-child):not(.subheader):after {
+ul.list li.divided:after,
+*.divided:not(.spaced):not(li)>*:not(:last-child):not(.subheader):after,
+*.divided.spaced>*:not(:last-child):not(.subheader):after {
+    position: absolute;
+    inset-inline-end: 0;
+    bottom: 0;
+    content: "";
+    display: block;
+    width: 100%;
     border-bottom-width: 1px;
     border-bottom-style: solid;
 }
 
 ul.list li.divided.spaced:after,
-*.divided.spaced > *:not(:last-child):after {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    content: "";
-    display: block;
+*.divided.spaced>*:not(:last-child):not(.subheader):after {
     width: calc(100% - 8.5rem);
 }
 
@@ -646,4 +768,48 @@ ul.list li span.control.divided:before {
 ul li img.preview {
     max-width: 100%;
     margin: 1rem 0;
+}
+
+/* Common between Rooms and Space Rooms */
+
+ul.rooms.list>li:has(ul) {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+ul.rooms.list>li>ul:has(li:nth-child(2)) {
+    padding-bottom: 1rem;
+}
+
+ul.rooms.list>li>ul>li:not(:first-child)>span.icon,
+ul.rooms.list>li>ul>li:not(:first-child)>div>p {
+    line-height: 4rem;
+    height: 4rem;
+}
+
+ul.rooms.list>li>ul>li:not(:first-child)>span.icon:first-child {
+    line-height: 4.5rem;
+    margin-right: 0;
+    margin-left: 2rem;
+}
+
+ul.rooms.list>li>ul>li:not(:first-child)>span.icon:nth-child(2) {
+    margin: 0;
+    transform: scale(0.75);
+}
+
+ul.rooms.list>li>ul>li:not(:first-child)>div>p>span.info {
+    font-size: 2rem;
+    margin-left: 1.5rem;
+}
+
+ul.rooms.list>li>ul>li:not(:first-child)>div>p>span.info.live {
+    background-color: var(--p-red);
+    color: white;
+    padding: 0 1rem;
+    border-radius: 1rem;
+    box-shadow: var(--elevation-4);
+    line-height: 3.5rem;
+    margin-top: 0.25rem;
+    font-variation-settings: 'FILL' 1;
 }

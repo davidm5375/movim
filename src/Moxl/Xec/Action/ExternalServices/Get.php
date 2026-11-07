@@ -1,0 +1,49 @@
+<?php
+
+namespace Moxl\Xec\Action\ExternalServices;
+
+use Moxl\Stanza\ExternalServices;
+use Moxl\Xec\Action;
+
+class Get extends Action
+{
+    protected string $_to;
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(ExternalServices::request(), to: $this->_to, type: 'get');
+    }
+
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        $services = [];
+        foreach ($stanza->services->service as $service) {
+            if (in_array($service['type'], ['stun', 'turn'])) {
+                $item = [
+                    'host' => (string) $service['host'],
+                    'port' => (string) $service['port'],
+                    'transport' => (string) $service['transport'],
+                    'type' => (string) $service['type'],
+                ];
+
+                if ($service['username'] && $service['password']) {
+                    $item['username'] = (string) $service['username'];
+                    $item['password'] = (string) $service['password'];
+                }
+
+                array_push($services, $item);
+            }
+        }
+
+        if (! empty($services)) {
+            $this->pack($services);
+            $this->deliver();
+        }
+    }
+
+    public function error(string $errorId, ?string $message = null)
+    {
+        $this->deliver();
+    }
+}

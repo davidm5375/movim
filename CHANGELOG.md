@@ -1,7 +1,479 @@
 Movim Changelog
 ================
 
-v0.21 (trunk)
+v0.35.6 (master)
+---------------------------
+* In a call a user is now having the same layout as all the others participants
+
+v0.35.5
+---------------------------
+* Fix message correction
+* Fix the Pubsub post headline handling
+* Modernize the Draw widget code
+* Modernize and refactor the avatar/image manipulation Javascript
+* Modernize the INSTALL.md and README.md files
+* Move to https://github.com/delonium/movim-container/ for the advised Movim container
+* XEP-0084 Avatars are now published with pubsub#access_model = open
+
+v0.35.4
+---------------------------
+* Fix the Chat file upload
+
+v0.35.3
+---------------------------
+* Fixing SetAffiliations in Spaces
+
+v0.35.2
+---------------------------
+* Suggest emojis when adding a reaction based on the message context (body and existing emojis)
+* Bump minimum PHP version requirement to 8.4
+* Remove explodeJid and replace it with the Movim\Jid class
+* Add GALENER_XMPP_IP (default to 127.0.0.1) and drop the DNS resolution from GALENER_XMPP_HOST
+* Allow subjects to be set on Space rooms
+* Enable MAM for Spaces MUCs by default for Prosody and ejabberd (hacky but it works)
+* Remove MovimUtils.textareaAutoheight replaced by field-sizing: content; in the CSS
+* Add support for XEP-xxxx: Bookmarks Hierarchy
+* Close Muji and Jingle calls properly if the tabs are closed or the page reloaded, based on the #1641 pull request
+* Implement XEP-0092: Software Version completely, display the server information in the Account Configuration tab and rely on it to configura MAM in the Spaces
+* Fully refactor the URL resolution system to be non-blocking (remove the await)
+* Refactor the message sending flow to improve how some network or request issues are handled
+
+v0.35.1
+---------------------------
+* Re-adapt the UI colours and CSS cleanup
+* New composing bubble in the chat
+* Drop addHashtagsLinks and addUrls and introduce linkify with a propre HTML parser instead of regexs
+* Fix CSS redraw page blink issues when soft loading pages
+* Don't rely on the Bookmark name anymore but only the MUC title from the configuration instead
+* Fix MUC configuration refresh
+* Simplify and modernize the MUC administration and configuration flows, refactor and cleanup the related translations
+* Close properly the Galener Connection and prevent some race conditions
+* Complete the daemon.php galener status with a detailed report of the Galener status if launched
+
+v0.35
+---------------------------
+* Implement XEP-0490: Message Displayed Synchronization, only for Group Chats
+* Add Galener and the SFU support in the Movim Voice system
+
+v0.34.1
+---------------------------
+* Add a SSRFSafeConnector to the URL resolvers to prevent SSRF attacks
+* Fix 1-to-1 call flow and corretly display the ringing state
+* Fix XSS via Space invitation
+* Protected properly the Picture resolver
+* Validate the Cookies format
+* Refactor some complex SQL requests to bind paramaters properly
+* Register the Websockets Push Endpoints in the Linker and use it to know exactly which push subscriptions we should trigger
+* Add a setting in the Admin to configure the SSRF whitelist
+
+v0.34
+---------------------------
+* Remove the templater
+* Remove the invitation based Muji system and drop the XEP-0482: Call Invites
+* Conference calls UI improvements
+* Forbid the usage of non Controller Widgets via Ajax calls using a strict Controller widget list verification
+* Improved files enclosure support in Posts
+* Detect if an uploaded file "failed" (is empty)
+* Fix #1444 Don't overwrite unknown vCard4 elements when handling them in Movim
+* Allow webcam and screen sharing to be started in audio video calls
+* Fix joining of screen sharing sessions
+* Session management fixes
+* New sounds notifications
+
+v0.33.1
+---------------------------
+* Fix the SpaceMenu add flow
+
+v0.33
+---------------------------
+* Add a Shortcuts widget to quickly access the 3 most recent notified chats and chatrooms
+* Implement XEP-0317: Hats and display it in the MUC navigation bar and in a new MUC participant card
+* Jingle and Video-conference fixes
+* Add share_target support in the Manifest and Share widget
+* Handle calls when having multiple browsers connected on one Movim session, allow all the browser to hang-up the current call
+* Disable password change and account deletion if the server doesn't have jabber:iq:register
+* Improve and complete the Notification and Push Notification code (badge, tag...) and use the Service Worker as the default way to handle them
+* Fix missing session_id index (mandatory for the MariaDB foreign key)
+* Move all the XMPP related code to a Linker class
+* Inject the User context in the Widgets, Moxl Actions and Moxl Payloads
+* Upgrade to Twemoji 17.0.2
+* Rely on Carbon for the dates
+* Optimize page loading
+* Implement XEP-0507: Jingle Content Category
+* Enable audio sharing (when available) when doing screen sharing, refactor the jingle contents handling
+* Add a maxsessions admin setting to limit the maximum amount of connected sessions on the instance
+* Spaces (and everything related)
+* Swipe to reply on mobile
+* Cards for attached messages in chat (divyaranjan1905)
+* New ClearImagesCache daemon command
+* Improve the general Movim accessiblity by implementing WCAG rules.
+
+v0.32.1
+---------------------------
+* Fix a content parsing issue when handling Atom articles
+
+v0.32
+---------------------------
+* Add a copy external link button on the Posts
+* Improve the Communities discovery flow when visiting a server
+* Add a MAMEarliest table to keep track of the earliest message when requesting MAM
+* Improve the contact block/unblock flows
+* Add a me() utils
+* Add a ContactBlogConfig widget to notify the user about a Private blog configuration
+* Fix #1270 Add PeerTube embedding support in Posts
+* Refactor the embbeding code and optimize the eager loading of attachments in Posts
+* Add a "Scroll to Message in History" feature
+* Implement full text search of Message bodies using the PostgreSQL tsvector and tssearch features
+* Refactor the Public URL/Public Blog flow and texts
+* Implement XEP-0390: Entity Capabilities 2.0
+* Refactor all the OMEMO related code, drop the Bundles table, handle most of the logic in the JS, refactor the fingerprints resolver, cleanup
+* Fix #1459 Allow public posts to be read without Javascript enabled
+* Fix #1460 Change geturl and seturl to text in Upload table
+* Try to Resolve Pubsub Posts from incoming messages if they are not present in the database
+* Implement the Jingle Finish event
+* disco#info the bookmarked rooms that don't have an Info yet
+* Fix and refactor Disco Request resolution
+* Fix Message Retraction in chatrooms
+* Completely delete the User (and related data) when someone is leaving the instance
+* Fix user clear when unregistering from a Chatroom
+* Implement XEP-0300: Use of Cryptographic Hash Functions in XMPP
+* Implement XEP-0492: Chat notification settings
+* Fix #1473 Fix and refactor the Pubsub services discovery form
+* Add a templater worker and start to offload some widget calls to it
+* Refactor and simplify the internal events system, enforce Packet everywhere
+* Remove the necessity to launch the Login page to cache the BASE_URI for the daemon launch
+* Containerfile and podman-compose test scripts
+* Fix #1433 Use directly the Carbon object and not createFromFormat() in Contact::isOld()
+* Allow chatroom admins to configure the user voice, related to #1478
+* Material Design 3 CSS changes
+* Enforce Packet parameters in all the Widgets
+* Drop php-curl dependency and replace it with reactphp/http
+* Use Github Flavored Markdown to support a more advanced Markdown format
+* Add a pusher worker that is handling all the WebPush notifications
+* Improve the upload progress status, detect when the file is handled by the PHP and return the XMPP progress status
+* Add an AvatarHandler worker that is taking care of requesting and saving the Avatar and Banner URLs and base64 avatars
+* Refactor and cleanup the Url resolving flow and remove the EmbedLight object
+* Allow multi-pick when sharing a Post with contacts
+* Cleanup and refactor of the Posts and Stories events handling
+* Move from a Presence based to a Follow based subscription system for the Blogs
+* Introduce the nav bar in the Chat desktop
+* WebRTC video-streams optimizations
+
+v0.31
+---------------------------
+* Implement XEP-0433: Extended Channel Search to replace the historical implementation
+* Allow to search Channels in the global directory directly from the Search bar
+* Introducing the URL Resolver Worker, that resolves the shared URLs in a non-blocking and concurrential way
+* Refactor the Ad-Hoc widget and move it into the contacts and MUCs drawers
+* Fix #1437 Generalize the instance nickname usage on the public blog and syndication feed, add a warning message if the instance nickname is changed
+* Rename the config page to configuration
+* Fix XMPP URI handling in Share
+* Add Pronouns support in vCard4
+* Add a toggle state to the Chat page buttons to switch quickly between one-to-one and rooms
+* Redesign the subscription page
+* Add WebRTC multi-track support
+* Implement Jingle content-modify to refresh the whole SDP and allow simultanous screen sharing
+* Add a placeholder if a Post is not accessible without a contact subscription
+* Add a little helper in the Publish widget when publishing publicly and the blog is configured on presence
+* Add SDP to Jingle and Jingle to SDP debug tool
+* Check the required PHP extensions before starting the daemon
+* Fix #1452 Use a textNode to change password to automatically escape the characters
+* Remove the Location widget
+
+v0.30.1
+---------------------------
+* Wait 2min for the pong in ChatroomPings before timing out, it seems that some services are realllyyyy slow to reply
+* Remove HTTP ranges in the Picture proxy and simply stop Curl when the download is above the declared file size, small refactor
+* Redesign the avatar and banner edition layout
+* Enable animated WebP pictures support in the images proxyfier
+* Implement XEP-0392: Consistent Color Generation
+* Refactor the color system and adapt the internal palette
+* Dropping support for MySQL, only MariaDB and PostgreSQL are supported by now
+
+v0.30
+---------------------------
+* Limit the jid, name and group name to 256 character max in the Roster to allow it to be saved in the DB
+* Implement XEP-0272: Multiparty Jingle (Muji)
+* Implement XEP-0482: Call Invites
+* Upgrade to fabiang/sasl 2.0
+* Fix DTMF numpad during Jingle calls
+* Fix #1384 Add a preview of the open link URL in Publish
+* Fix #1410 Add support of shortcodes containing numbers for custom emojis
+* Add support of content type HTML in Atom elements
+* Show reactions details when opening the message details box
+* Do not display the reactions if a message was retracted
+* Add Active Speaker mode in Muji calls
+* Redesign and unify the emojis picker view
+* Add support for the Unicode 15.1 emojis release through Twemoji 15.1
+* Add Stories status on the avatars
+* Add support of several simultanous Muji invites in MUC chatrooms
+* Important color management CSS cleanup
+* Add Accent Color in the Configuration
+* Remove XEP-0107: User Mood support
+* Update and complete the DOAP file
+
+v0.29.2
+---------------------------
+* Set minimum PHP version to PHP 8.2, update the dependencies
+* Rename and append a hash when uploading files that have a very long file name
+* Prepend files name with post_, chat_ and story_ before upload to simplify server file cleaning expliration
+* Fix ordering when the Pubsub service doesn't return them "last-published-first" like with Prosody
+* Remove the echapJid helper
+* Reconcile the nullable state in some tables
+* Update fabiang/sasl to fix Update of the SASL SCRAM Downgrade protection XEP #17
+
+v0.29.1
+---------------------------
+* Replace the timer with a Date in the Dictaphone
+* Only launch the StoriesViewer localy to prevent some timer sync issues
+* Allow Stories publication without a camera enabled (file selection only)
+* Fix #1381 Use the correct peer_name when initiating the TLS connection
+* First changes for upcoming PHP 8.4 support
+* Fix #1386 Do a manual query to delete the subscription to prevent using the composite primary key in Eloquent
+* Close the StoriesViewer using the Esc button or by clicking outside the Story
+* Add mucjid in the Presence "primary key", an actual key for PostgreSQL and an unique hash column for MySQL (3072 key length limit)
+* Fix #1357 Rewrite the PresenceBufferSaver delete request that was not generating the correct SQL code (using OR and not AND in it)
+* Update the translations
+
+v0.29
+---------------------------
+* Don't notify twice when a Post is edited
+* Fix the buggy Post comment notification
+* Fix #1325 Safari not applying classic CSS...
+* Fix related message files saving code when saving a message
+* Replace mt_rand with random_int in generateKey()
+* Directly redirect to the login page if the user is not authenticated
+* Rewrite the resolveChats function resolve and order properly the missing chats in the open_chats table
+* Add a boot() method to the Base widget class to allow tasks registration
+* Clear Chats widget cache during the night
+* Completely replace the offset parameter with a Session Timezone set on Login
+* Use composite foreign keys for several relationships
+* Add presences in the AdminSessions widget
+* Make title and updated mandatory in Post to respect the Atom RFC4287
+* Improve Brief posts handling
+* Add Brief/Article tabs in the Publish widget and load the form using Ajax
+* Improve Posts ticket layout
+* Fix Contacts invitation handling and notification counter
+* XEP-0410: MUC Self-Ping, add timeout ping support (when the connection is lost and the pong is never sent)
+* Fix #1371 Make members and presences ordering in Group and Public Rooms similar
+* CSS and view cleanup, refactorize and remove some useless classes
+* Cleanup and simplify the CSS
+* Fix #1046 Corrupted WEBP images for Imagick 7, thanks to @TheBluestBird help (PR #1122)
+* Pubsub Stories feature, StoriesPublish, StoriesViewer and Stories widget
+* Move the URI handling to a dedicated XMPPUri class
+
+v0.28
+---------------------------
+* Complete the gateway support and add AdHoc commands in the Configuration
+* Fix several import, namespace issues and typos
+* Fix #1315 Drop foreign keys and recreate them just after some MySQL migrations
+* Fix #1194 Ensure that we loop once we found the last nickname available during the tab-search
+* Add a lobby view
+* Change the conferencing flow by integrating the devices configuration before launching the call
+* Remove the VisioConfig widget
+* Fix the screen sharing and webcam switch buttons
+* CSS and UI fixes
+* Handle the session_down event to disconnect the call properly when the browser is not reachable after a while
+* Fix #1182 Carbons for received messages were ignored
+* Fix #1361 Change the url column to text in the message_files table and use a generated hash column for the unique constraint
+* Refactor the Search results layout to be more coherent with the rest of the UI
+* Prevent the Draw widget to be loaded at each page change
+* Redesign the admin page form
+* Handle unreachable servers errors properly in CommunitiesServer
+* Fix the camera switch on Android devices during call
+* Fix Audio notifications configuration and move it to the Configuration tab
+* Redesign the Push Notifications tab
+
+v0.27.1
+---------------------------
+* Fix the one-to-one chats order (last updated on top)
+
+v0.27
+---------------------------
+* Fix the chatroom search bar
+* Fix some CSS
+* CSS fixes, remove the .list selector on cards
+* Fix the reply and reaction button position in chat bubbles
+* Fix emojis alias validation (lyn1337)
+* Refactor the invitation system to rely on the subscribe presences, add a new column to the presences table
+* Add a new section in the Notifications to take care of not managed roster contacts
+* Remove the Popup, move it back to the main tab
+* Add DTMF tone support
+* Make the call persistant while navigating
+* Create a CurrentCall singleton to track the call state for the whole UI
+* Integrate Call State in Chat, Chats, ContactData and ContactActions
+* Implement Retract of XEP-0353: Jingle Message Initiation
+* Handle the switch between the floating view and discussion view
+* Add blinking "in call" icon when in call
+* Ensure to have a proper navigation between the different modes (float, chat and fullscreen) in the whole Movim UI
+* Better handling of MUC self-presences, fix an issues where several codes are present
+* Upgrade the dependencies libraries
+* Move the Movim configuration to a new movim:configuration node, use XEP-0004: Data Form to handle the data
+* Add a missing cascade foreign key between the sessions and users table
+* Remove the VisioLink and Onboarding popup and related code
+* Remove the Cache model and related table, move the remaining data in the users and open_chats table
+
+v0.26
+---------------------------
+* New filters design for the Chats and Rooms
+* Don't send notifications for incoming invitations and messages of unknown contacts
+* Fix audio and video file handling in the chat
+* Comply with the PSR-4 autoloading standard
+* Fix #1330 Use base64 encode/decode when sharing urls using the universal share button
+* Fix the URL embed feature in Publish
+* Update XEP-0424: Message Retraction to 0.4.1
+* Update XEP-0425: Moderated Message Retraction to 0.3.0
+* Replace \code with ```codeblock``` support in the chat messages
+* Add support of custom inline emojis through XEP-0231: Bits of Binary
+* Refactor the stickers and custom emojis by moving them in the database
+* Add an importEmojisPack command to import Mastodon/Pleroma emojis pack
+* Fix #1314 Picture: images with & in URL are broken
+* Fix #1334 Use PHP_BINARY in php exec to call the proper PHP version internaly
+* Fix #1340 Use the proper public link when displaying the ticket on public pages
+
+v0.25.1
+---------------------------
+* Fix #1327 Use string casting for senders attribute
+* Fix URL handling when path is containing empty values //
+* Fix SendTo contact/chatroom Post sharing
+* Improve Link and Image previews using thumbhash in the Chats widget
+
+v0.25
+---------------------------
+* Fix #974 Wrong certificate expected when using SRV records
+* Move the Message files to the SQL database
+* Add thumbhash support when uploading images in the chat
+* Fix #1164 Implement XEP-0410: MUC Self-Ping (Schrödinger's Chat) basic behavior
+* Fix #1317 Handle properly the from attribute from MAM messages
+* Set a priority of XEP-0319: Last User Interaction in Presence over XEP-0203: Delayed Delivery
+* Refactor the prepareDate and prepareTime functions
+* Fix #1292 Apply nightmode if the browser is asking for it
+* Proxify the uploaded files through an internal proxy to prevent CORS requirement
+* Update the translations
+
+v0.24.1
+---------------------------
+* Fix #1311 Use another control character as the null character is forbidden in bcrypt passwords
+* Fix an error in the Notifications widget view
+* Disable the send button when sending a comment
+* Add a placeholder when there is no subscribed communities in SendTo
+* Fix properly the Chat cards CSS margin with the next elemen
+
+v0.24
+---------------------------
+* Fix #1261 Issues with decrypting own's OMEMO messages within MUC
+* Implement XEP-0386: Bind 2
+* Implement XEP-0388: Extensible SASL Profile
+* Allow comments to be disabled during the publication flow
+* Fix the Drawer anchor navigation
+* Implement the new Search input from Material 3
+* Add a "beginning of conversation" placeholder
+* Fix and cleanup the Websocket connectivity behavior
+* Remove the Websocket ping system
+* Fix some soft navigation issues
+* Fix #1274 by handling properly Visio URL parameters and base64 the from to prevent some escaping issues
+* Introduce MovimEvent to centralize the frontend window and body related event, refactorize and cleanup the related code
+* Implement XEP-0474: SASL SCRAM Downgrade Protection
+
+v0.23
+---------------------------
+* Add the message menu in the Picture preview
+* Move the info logic from the JS to the CSS
+* Refactor and cleanup the info for stickers messages
+* Move the file message related logic to the Message model
+* Refactor the Stickers and File display and cleanup the related CSS
+* Complete the Manifest content to have a better PWA integration
+* Start the implementation of https://xmpp.org/extensions/xep-0444.html#disco-restricted for MUC
+* Add pagination on room presences list to prevent performances issues in large chatrooms
+* Drop Twitter integration (byebye Elon)
+* Fix #1254 Implement XEP-0191: Blocking Command to replace the internal system
+* Drop the Caps widget, replaced by the DOAP system by the XSF
+* Upgrade the icon pack from MaterialIcons to MaterialSymbols
+* Add support of online/offline browser events to quick disconnect/reconnect on network change
+* Implement MAM history retrieval for MUCs and contacts
+* Migrate the Tenor implementation to the v2 of the API
+* Fix #1231 Trailing whitespace in msid?
+
+v0.22.5
+---------------------------
+* Improving some image thumbnail support
+* Add support of animated GIF in the picture thumbnailer
+* Fix #1233 Movim doesn't correctly set the group SDP attribute
+* Fix #1234 Disable the chat textarea when the user is a visitor
+* Fix #1222 Adding a sentence in the INSTALL.md to ask to deploy Movim as a domain or subdomain
+* Save the Pubsub affiliations in the database, allow Communities owners to edit the articles
+* Fix #1236 Use the proper JID for the Global MUC search
+
+v0.22.4
+---------------------------
+* Remove the public/picture/ directory to use only the main index.php entrypoint
+* Cleanup and simplify the avatar and picture handling code
+* Add a CleatTemplatesCache command and call it when starting the daemon
+* Fix Atom parsing and ensure compatibility with ActivityPub bridges
+* Move the edit message action from the header menu to the message actions box
+
+v0.22.3
+---------------------------
+* Fix #1220 Use relative path for public/cache/ for JS and CSS files
+* Implement XEP-0425: Message Moderation
+* Improve the avatars picture quality upload, 512x512
+
+v0.22.2
+---------------------------
+* Slightly redesign the menu CSS
+* Fix avatar refresh filter resolution in PresenceBufferSaver
+* Add a small Scheduler to spread the avatar query in time
+* Fix empty avatars in chatrooms
+* Fix chatroom Administration panel access
+
+v0.22.1
+---------------------------
+* Group-up the confidentiality setting in the config and clarify the wording
+* Completely hide the blog and the link to it if the profile is not public
+* UI fixes
+* Move from cboden/ratchet to plesk/ratchetphp
+* Fix the Bookmark2 set action
+* Big performance improvement in Conference::subject and User::unreads DB queries
+* Fix the Moxl Handler to only return an IQ error when the incoming IQ request was not handled at all
+* Handle the a=msid SDP lines and inject the values into the related XEP-0339 source parameters, fix Conversations video-calls
+* Add lazy loading for some avatars and pictures
+* Add a specific index in messages table for unreads messages counting
+
+v0.22
+---------------------------
+ * Enable blog privacy feature, can be switched between private (presence only) and open
+ * Fix vcard-temp refresh
+ * Fix #1177 Refresh Ad-Hoc commande list when command finished
+ * Fix #1163 Ad-hoc command returns only one item (Prosŏdy)
+ * Add a same-origin check for non-internal connected Websockets
+ * Fix #1160 Disable OMEMO completely for an account
+ * Fix #1189 Add missed and refused calls events
+ * Upgrade to PHP 8.1+
+ * Cleanup and refactor the icon counters and status CSS
+ * Fix #1212 Movim is sending incorrect value in 'senders' attribute of XEP-0294 #1212
+ * Fix #1213 During Jingle A/V RTP calls, Movim is not building extmap attribute correctly
+ * Fix #1214 Movim is incorrectly generating XEP-0339 <source> element
+ * Refactor the internal URL system to move the pages in the path part and not in the parameter part anymore
+ * Redirect the old URLs to the new URL system
+ * Refactor the avatar handling system to always fallback to an SVG picture
+ * Simplify and cleanup the views
+ * New Colors and AvatarPlaceholder widgets
+ * Refactor and cleanup the Moxl Stanza classes
+ * Fixing XEP-0077: In-Band Registration support and cleaning old code
+ * Introduce a view counter for Posts, show the counter above 3 views
+ * Slightly update the chat bubbles design and introduce a new way to interact with them and perform actions (reactions, reply...)
+ * Ensure that publish-options errors are handled and that the node is re-configured properly
+ * Add a workaround for https://github.com/processone/ejabberd/issues/3044#issuecomment-1605349858, disable the publish-options element when republishing to prevent ejabberd error
+ * Move the SVG placeholder avatars under pictures/ to allow proper web server caching
+ * Factorize the Community tickets in a unique template, move to a card layout
+
+v0.21.1
+---------------------------
+ * Fix #1183 compileOpcache fails with php8.1
+ * Only load required database so when launching sessions
+ * Complete the ?infos page to support join.movim.eu
+
+v0.21
 ---------------------------
  * Implement XEP-0461: Message Replies
  * Add PWA Push Notification support through the service worker
@@ -142,6 +614,7 @@ v0.19
  * Firebase Push notification integration for the official client
  * Allow image pasting in Movim to trigger the Upload
  * Allow global drag & drop in Movim to upload a file
+ * Allow messages bubble to be clicked to trigger the message drawer
 
 v0.18
 ---------------------------
@@ -312,7 +785,7 @@ v0.14.1
  * Display Gateway connection status
  * CSS fixes in Forms
  * Disable the dropdown in Form if there is only one choice
- * Add support for embeded images in Forms (for CAPTCHA)
+ * Add support for embedded images in Forms (for CAPTCHA)
  * Chat bubbles a bit more compact
  * Display single emojis as small stickers
  * Display chat states in MUC, handle the chat states with a new ChatStates class

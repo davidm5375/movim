@@ -1,0 +1,117 @@
+<?php
+
+namespace Moxl\Stanza;
+
+use App\User;
+use DOMElement;
+use Moxl\Utils;
+
+class Presence
+{
+    /*
+     * The presence builder
+     */
+    public static function maker(
+        ?User $me = null,
+        ?string $from = null,
+        ?string $to = null,
+        ?string $status = null,
+        ?string $show = null,
+        int $priority = 0,
+        ?string $type = null,
+        bool $muc = false,
+        bool $mujiPreparing = false,
+        ?DOMElement $muji = null,
+        ?int $last = 0,
+        ?string $mavSince = null,
+        ?bool $withCaps = true
+    ) {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $root = $dom->createElementNS(Utils::JABBER_CLIENT_XMLNS, 'presence');
+        $dom->appendChild($root);
+
+        if ($from) {
+            $root->setAttribute('from', $from);
+        } elseif ($me && $me->session) {
+            $root->setAttribute('from', $me->id . '/' . $me->session->resource);
+            $root->setAttribute('id', linker($me->session->id)->session->get('id'));
+        }
+
+        if ($to) {
+            $root->setAttribute('to', $to);
+        }
+
+        if ($type) {
+            $root->setAttribute('type', $type);
+        }
+
+        if ($status) {
+            $status = $dom->createElement('status', $status);
+            $root->appendChild($status);
+        }
+
+        if ($show) {
+            $show = $dom->createElement('show', $show);
+            $root->appendChild($show);
+        }
+
+        if ($priority != 0) {
+            $priority = $dom->createElement('priority', $priority);
+            $root->appendChild($priority);
+        }
+
+        if ($muji != null) {
+            $root->append($dom->importNode($muji, true));
+        }
+
+        // https://xmpp.org/extensions/xep-0319.html#last-interact
+        if ($last > 0) {
+            $timestamp = time() - $last;
+            $idle = $dom->createElementNS('urn:xmpp:idle:1', 'idle');
+            $idle->setAttribute('since', gmdate('c', $timestamp));
+            $root->appendChild($idle);
+        }
+
+        if ($mujiPreparing) {
+            $muji = $dom->createElementNS('urn:xmpp:jingle:muji:0', 'muji');
+            $muji->appendChild($dom->createElement('preparing'));
+            $root->appendChild($muji);
+        }
+
+        if ($muc) {
+            $x = $dom->createElementNS('http://jabber.org/protocol/muc', 'x');
+
+            // History is now always handled by MAM
+            $history = $dom->createElement('history');
+            $history->setAttribute('maxchars', 0);
+            $x->appendChild($history);
+
+            $mav = $dom->createElement('mav');
+            $mav->setAttribute('xmlns', 'urn:xmpp:muc:affiliations:1');
+            if ($mavSince != null) {
+                $mav->setAttribute('since', $mavSince);
+            }
+            $x->appendChild($mav);
+
+            $root->appendChild($x);
+        }
+
+        if ($withCaps) {
+            $c = $dom->createElementNS('urn:xmpp:caps', 'c');
+            $hash = $dom->createElement('hash', Utils::getOwnCapabilityHash());
+            $hash->setAttribute('xmlns', 'urn:xmpp:hashes:2');
+            $hash->setAttribute('algo', Utils::CAPABILITY_HASH_ALGORITHM);
+
+            $c->appendChild($hash);
+            $root->appendChild($c);
+
+            $c = $dom->createElementNS('http://jabber.org/protocol/caps', 'c');
+            $c->setAttribute('hash', 'sha-1');
+            $c->setAttribute('node', 'https://movim.eu/');
+            $c->setAttribute('ver', Utils::generateCaps());
+            $root->appendChild($c);
+        }
+
+        return $dom;
+    }
+}

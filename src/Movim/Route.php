@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,99 +7,102 @@
 
 namespace Movim;
 
-use Movim\Controller\Base;
 use App\User;
+use Movim\Controller\Base;
 
 class Route extends Base
 {
-    public $_routes;
-    private $_page;
-    private $_redirect;
+    public array $routes = [
+        'about' => ['x'],
+        'account' => false,
+        'admin' => false,
+        'ajax' => false,
+        'ajaxd' => false,
+        'blog' => ['f', 'i'],
+        'chat' => ['f', 'r'],
+        'colors' => false,
+        'community' => ['s', 'n', 'i'],
+        'configuration' => false,
+        'contact' => ['s'],
+        'disconnect' => ['err'],
+        'explore' => ['s'],
+        'feed' => ['s', 'n'],
+        'help' => false,
+        'infos' => false,
+        'login' => ['i'],
+        'main' => false,
+        'manifest' => false,
+        'news' => false,
+        'node' => ['s', 'n', 'i'],
+        'notfound' => false,
+        'picture' => ['url'],
+        'post' => ['s', 'n', 'i'],
+        'publish' => false,
+        'register' => ['s', 'err'],
+        'room' => ['r'],
+        'share' => ['url'],
+        'space' => ['s', 'n', 'r'],
+        'subscriptions' => false,
+        'system' => false,
+        'tag' => ['t', 'i'],
+        'upload' => ['f'],
+    ];
+    private ?string $_page = null;
+    private ?string $_redirect = null;
 
-    public function __construct()
+    public function __construct(public ?User $user = null)
     {
-        $this->_routes = [
-                'about'         => ['x'],
-                'account'       => false,
-                'accountnext'   => ['s', 'err'],
-                'ajax'          => false,
-                'ajaxd'         => false,
-                'admin'         => false,
-                'blog'          => ['f', 'i'],
-                'chat'          => ['f', 'r'],
-                'community'     => ['s', 'n', 'i', 'q'],
-                'conf'          => false,
-                'contact'       => ['s'],
-                'disconnect'    => ['err'],
-                'explore'       => ['s'],
-                'feed'          => ['s', 'n'],
-                'help'          => false,
-                'infos'         => false,
-                'login'         => ['i'],
-                'main'          => false,
-                'manifest'      => false,
-                'notfound'      => false,
-                'node'          => ['s', 'n', 'i'],
-                'news'          => false,
-                'post'          => ['s', 'n', 'i'],
-                'picture'       => ['url'],
-                'popuptest'     => false,
-                'publish'       => ['s', 'n', 'i', 'rs', 'rn', 'ri'],
-                'room'          => ['r'],
-                'share'         => ['url'],
-                'subscriptions' => false,
-                'system'        => false,
-                'tag'           => ['t', 'i'],
-                'visio'         => ['f', 's'],
-                'visioaudio'    => ['f', 's'],
-            ];
     }
 
-    public function find($page = null)
+    public function find(?string $page = null)
     {
-        $this->fix($_GET, $_SERVER['QUERY_STRING']);
+        $path = explode('/', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
-        $gets = array_keys($_GET);
-        $uri = reset($gets);
-        unset($_GET[$uri]);
-        $request = explode('/', $uri);
+        if ($page != null) {
+            $this->_page = $page;
+        } elseif (isset($path[1]) && isset($this->routes[$path[1]])) {
+            $this->_page = $path[1];
 
-        /**
-         * For all the pages loaded using soft reload we remove the first element of the
-         * array. This ensure to have a different URL between the normal load and soft load
-         * and therefore prevent the browser to load the wrong page
-         */
-        if ($request[0] == 'soft') {
-            array_shift($request);
-        }
+            if (is_array($this->routes[$this->_page])) {
+                array_shift($path);
+                array_shift($path);
 
-        $this->_page = $page ?? array_shift($request);
+                $i = 0;
+                foreach ($this->routes[$this->_page] as $key) {
+                    if (isset($path[$i])) {
+                        $_GET[$key] = $path[$i];
+                    }
 
-        $route = isset($this->_routes[$this->_page])
-            ? $this->_routes[$this->_page]
-            : null;
-
-        if (count($request)
-            && is_array($route)
-        ) {
-            $i = 0;
-            foreach ($route as $key) {
-                if (isset($request[$i])) {
-                    $_GET[$key] = $request[$i];
+                    $i++;
                 }
-                $i++;
+            }
+        } else {
+            // Old url format, lets redirect
+            $this->fix($_GET, $_SERVER['QUERY_STRING']);
+
+            $gets = array_keys($_GET);
+            $uri = reset($gets);
+            unset($_GET[$uri]);
+            $request = explode('/', $uri);
+
+            $page = array_shift($request);
+
+            foreach ($request as $key => $value) {
+                $request[$key] = rawurldecode($value);
+            }
+
+            if ($page > 0 && isset($this->routes[$page])) {
+                header('Location: ' . Route::urlize($page, $request));
+                exit;
             }
         }
 
         if (empty($this->_page) || $this->_page == 'main') {
             $this->_page = null;
-
-            $user = User::me();
-
-            $this->_redirect = (isLogged() && $user->chatmain)
+            $this->_redirect = ($this->user?->chatmain)
                 ? 'chat'
                 : 'news';
-        } else if (!isset($this->_routes[$this->_page])) {
+        } elseif (! isset($this->routes[$this->_page])) {
             $this->_page = null;
             $this->_redirect = 'notfound';
         }
@@ -111,17 +115,14 @@ class Route extends Base
         return $this->_redirect;
     }
 
-    public static function urlize(string $page, $params = false, array $get = [], $tab = false)
+    public static function urlize(string $page, $params = null, array $get = [], $tab = false): ?string
     {
-        $routes = (new Route)->_routes;
+        $routes = (new Route)->routes;
 
         if (isset($routes[$page])) {
-            $uri = BASE_URI . '?'. $page;
+            $uri = BASE_URI . $page;
 
-            // Specific case for picture that is in a subdirectory for caching purposes
-            if ($page == 'picture') {
-                $uri = BASE_URI . 'picture/?'.rawurlencode($params);
-            } elseif ($params != false) {
+            if ($params != null) {
                 if (is_array($params)) {
                     foreach ($params as $value) {
                         $uri .= '/' . rawurlencode($value ?? '');
@@ -131,12 +132,14 @@ class Route extends Base
                 }
             }
 
-            $get = ($get !== []) ? '&'.http_build_query($get) : '';
-            $tab = ($tab != false) ? '#'.$tab : '';
+            $get = ($get !== []) ? '?' . http_build_query($get) : '';
+            $tab = ($tab != false) ? '#' . $tab : '';
 
-            return $uri.$get.$tab;
+            return $uri . $get . $tab;
         } else {
-            throw new \Exception(__('Route not set for the page %s', $page));
+            logError('Route not set for the page ' . $page);
+
+            return null;
         }
     }
 
@@ -156,7 +159,7 @@ class Route extends Base
 
         parse_str($source, $post);
         foreach ($post as $key => $val) {
-            $target[ hex2bin($key) ] = $val;
+            $target[hex2bin($key)] = $val;
         }
     }
 }

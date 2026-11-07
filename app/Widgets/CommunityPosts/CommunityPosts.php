@@ -1,0 +1,297 @@
+<?php
+
+namespace App\Widgets\CommunityPosts;
+
+use App\Contact;
+use App\Info;
+use App\Post as AppPost;
+use App\Widgets\ContactActions\ContactActions;
+use App\Widgets\Post\Post;
+use Movim\Widget\Base;
+use Moxl\Xec\Action\Pubsub\GetItems;
+use Moxl\Xec\Payload\Packet;
+
+class CommunityPosts extends Base
+{
+    private $_paging = 12;
+    private $_beforeAfter = 'b=';
+
+    public function load()
+    {
+        $this->registerEvent('pubsub_getitems_handle', 'onItemsId');
+        $this->registerEvent('pubsub_getitems_error', 'onItemsError');
+        $this->registerEvent('pubsub_getitemsid_error', 'onItemsError');
+        $this->registerEvent('pubsub_setconfig_handle', 'onConfigSaved', 'community');
+        $this->registerEvent('pubsub_getitems_errorpresencesubscriptionrequired', 'onItemsErrorPresenceSubscriptionRequired');
+        $this->registerEvent('post_resolved', 'onPostResolved');
+        $this->registerEvent('post_comment_published', 'onCommentPublished');
+
+        $this->addjs('communityposts.js');
+    }
+
+    public function onItemsId(Packet $packet)
+    {
+        [$origin, $node, $ids, $first, $last, $count, $paginated, $before, $after]
+            = array_values($packet->content);
+
+        $this->displayItems($origin, $node, $ids, $first, $last, $count, $before, $after);
+    }
+
+    public function onCommentPublished(Packet $packet)
+    {
+        $comment = AppPost::find($packet->content);
+
+        if (! $comment) {
+            return;
+        }
+
+        if ($comment->isLike()) {
+            $this->toast($packet->content
+                ? $this->__('post.comment_like_published')
+                : $this->__('post.comment_published'));
+        }
+
+        // Full refresh for now
+        if ($parent = $comment->getParent()) {
+            $info = Info::where('server', $parent->server)
+                ->where('node', $parent->node)
+                ->first();
+
+            $this->rpc(
+                'MovimTpl.fill',
+                '#' . cleanupId($parent->nodeid),
+                $info && $info->isGallery()
+                    ? $this->prepareTicket($parent)
+                    : $this->preparePost($parent)
+            );
+        }
+    }
+
+    public function onPostResolved(Packet $packet)
+    {
+        $post = AppPost::find($packet->content);
+
+        $info = Info::where('server', $post->server)
+            ->where('node', $post->node)
+            ->first();
+
+        $this->rpc(
+            'MovimTpl.replace',
+            '#' . cleanupId($post->nodeid),
+            $info->isGallery()
+                ? $this->prepareTicket($post)
+                : $this->preparePost($post)
+        );
+    }
+
+    public function onConfigSaved(Packet $packet)
+    {
+        $this->rpc('CommunityPosts.getItems');
+    }
+
+    public function onItemsErrorPresenceSubscriptionRequired(Packet $packet)
+    {
+        [$origin, $node] = array_values((array) $packet->content);
+
+        $view = $this->tpl();
+        $view->assign('contact', Contact::firstOrNew(['id' => $origin]));
+
+        $this->rpc(
+            'MovimTpl.fill',
+            '#communityposts.' . slugify('c' . $origin . '_' . $node),
+            $view->draw('_communityposts_presencerequired')
+        );
+    }
+
+    public function onItemsError(Packet $packet)
+    {
+        [$origin, $node] = array_values($packet->content);
+
+        if ($node != AppPost::MICROBLOG_NODE) {
+            if ($this->me->subscriptions()
+                ->where('server', $origin)
+                ->where('node', $node)
+                ->first()
+            ) {
+                $this->rpc('CommunityAffiliations_ajaxDelete', $origin, $node, true);
+                $this->rpc('CommunityAffiliations_ajaxGetAffiliations', $origin, $node);
+            } else {
+                Info::where('server', $origin)->where('node', $node)->delete();
+                $this->ajaxClear();
+            }
+        } else {
+            $this->displayItems($origin, $node, first: true);
+        }
+    }
+
+    private function displayItems(
+        string $origin,
+        string $node,
+        ?array $ids = [],
+        ?string $first = null,
+        ?string $last = null,
+        ?int $count = 0,
+        ?string $before = null,
+        ?string $after = null
+    ) {
+        if (! validateServerNode($origin, $node)) {
+            return;
+        }
+
+        $html = $this->prepareCommunity($origin, $node, 0, $ids, $first, $last, $count, $before, $after);
+
+        $this->rpc(
+            'MovimTpl.fill',
+            '#communityposts.' . slugify('c' . $origin . '_' . $node),
+            $html
+        );
+        $this->rpc('MovimUtils.enhanceArticlesContent');
+
+        if ($node == AppPost::MICROBLOG_NODE && ! empty($ids)) {
+            $this->rpc('MovimUtils.removeClass', '#contact_follow', 'hide');
+        }
+    }
+
+    public function ajaxGetContact($jid)
+    {
+        $c = new ContactActions($this->me, sessionId: $this->sessionId);
+        $c->ajaxGetDrawer($jid);
+    }
+
+    public function ajaxGetItems(string $origin, string $node, $before = 'empty')
+    {
+        if (! validateServerNode($origin, $node)) {
+            return;
+        }
+
+        $r = $this->xmpp(new GetItems);
+        $r->setTo($origin)
+            ->setNode($node)
+            ->setPaging($this->_paging);
+
+        if ($before !== null) {
+            $r = (strpos($before, $this->_beforeAfter) === 0)
+                ? $r->setAfter(substr($before, strlen($this->_beforeAfter)))
+                : $r->setBefore($before);
+        }
+
+        $r->request();
+    }
+
+    public function ajaxClear()
+    {
+        $html = $this->prepareEmpty();
+        $this->rpc('MovimTpl.fill', '#communityposts', $html);
+    }
+
+    public function prepareEmpty($origin = '')
+    {
+        $view = $this->tpl();
+        $view->assign('me', $origin == $this->me->id);
+
+        return $view->draw('_communityposts_empty');
+    }
+
+    public function preparePost($p)
+    {
+        return (new Post($this->me, sessionId: $this->sessionId))->preparePost($p, false, true);
+    }
+
+    public function prepareTicket($p)
+    {
+        return (new Post($this->me, sessionId: $this->sessionId))->prepareTicket($p);
+    }
+
+    private function prepareCommunity(
+        string $origin,
+        string $node,
+        int $page = 0,
+        ?array $ids = [],
+        ?string $first = null,
+        ?string $last = null,
+        ?int $count = 0,
+        ?string $before = null,
+        ?string $after = null
+    ) {
+        $ids = is_array($ids) ? $ids : [];
+        foreach ($ids as $key => $id) {
+            if (empty($id)) {
+                unset($ids[$key]);
+            }
+        }
+
+        if (empty($ids)) {
+            return $this->prepareEmpty($origin);
+        }
+
+        $posts = AppPost::where('server', $origin)->where('node', $node)
+            ->whereIn('nodeid', $ids)->get();
+        $postsWithKeys = [];
+
+        if ($posts->isNotEmpty()) {
+            $posts = resolveInfos($posts);
+
+            foreach ($posts as $key => $post) {
+                $postsWithKeys[$post->nodeid] = $post;
+            }
+        }
+
+        $info = Info::where('server', $origin)
+            ->where('node', $node)
+            ->first();
+
+        $view = $this->tpl();
+
+        $view->assign('server', $origin);
+        $view->assign('node', $node);
+        $view->assign('page', $page);
+        $view->assign('ids', $ids);
+        $view->assign('posts', $postsWithKeys);
+        $view->assign('before', $before);
+        $view->assign('after', $after);
+        $view->assign('info', $info);
+        $view->assign('subscription', $this->me->subscriptions()
+            ->where('server', $origin)
+            ->where('node', $node)
+            ->first());
+        $view->assign('paging', $this->_paging);
+
+        $view->assign('publicposts', ($ids == false)
+            ? AppPost::where('server', $origin)
+                ->where('node', $node)
+                ->where('open', true)
+                ->orderBy('published', 'desc')
+                ->skip($page * $this->_paging)
+                ->take($this->_paging)
+                ->get()
+            : false);
+
+        $view->assign('first', $first);
+        $view->assign('last', $last);
+        $view->assign('count', $count);
+
+        if ($first) {
+            $view->assign('previouspage', $this->route(
+                $node == AppPost::MICROBLOG_NODE
+                    ? 'contact' : 'community',
+                [$origin, $node, $this->_beforeAfter . $first]
+            ));
+        }
+
+        $view->assign('nextpage', $this->route(
+            $node == AppPost::MICROBLOG_NODE
+                ? 'contact' : 'community',
+            [$origin, $node, $last]
+        ));
+
+        $html = $view->draw('_communityposts');
+
+        return $html;
+    }
+
+    public function display()
+    {
+        $node = $this->get('n') ?? AppPost::MICROBLOG_NODE;
+        $this->view->assign('class', slugify('c' . $this->get('s') . '_' . $node));
+    }
+}

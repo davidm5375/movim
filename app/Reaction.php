@@ -3,11 +3,11 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use Movim\Jid;
 
 class Reaction extends Model
 {
     protected $primaryKey = 'message_mid';
-
     protected $casts = [
         'created_at' => 'datetime:Y-m-d H:i:s',
         'updated_at' => 'datetime:Y-m-d H:i:s',
@@ -15,11 +15,24 @@ class Reaction extends Model
 
     public function message()
     {
-        return $this->belongsTo('App\Message');
+        return $this->belongsTo(Message::class);
     }
 
     public function contact()
     {
-        return $this->hasOne('App\Contact', 'id', 'jidfrom');
+        return $this->hasOne(Contact::class, 'id', 'jidfrom');
+    }
+
+    public function getTruenameAttribute()
+    {
+        if ($this->contact) {
+            return $this->contact->truename;
+        }
+
+        if (str_contains($this->jidfrom, '@')) {
+            return (new Jid($this->jidfrom))->username;
+        } else {
+            return $this->jidfrom;
+        }
     }
 }

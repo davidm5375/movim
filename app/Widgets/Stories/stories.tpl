@@ -1,0 +1,1 @@
+<div id="stories" class="spin"></div>

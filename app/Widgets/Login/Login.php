@@ -1,0 +1,347 @@
+<?php
+
+namespace App\Widgets\Login;
+
+use App\Configuration;
+use App\Contact;
+use App\EncryptedPassword;
+use App\Invite;
+use App\Session;
+use App\User;
+use App\Widgets\Presence\Presence;
+use Defuse\Crypto\Crypto;
+use Defuse\Crypto\Key;
+use League\CommonMark\GithubFlavoredMarkdownConverter;
+use Movim\Cookie;
+use Movim\Widget\Base;
+use Moxl\Stanza\Stream;
+use Moxl\Xec\Action\Storage\Get;
+use Moxl\Xec\Payload\Packet;
+use Respect\Validation\Validator;
+
+class Login extends Base
+{
+    public function load()
+    {
+        $this->addcss('login.css');
+        $this->addjs('login.js');
+
+        $this->registerEvent('session_start_handle', 'onStart'); // Bind 1
+        $this->registerEvent('sasl2success', 'onStart'); // Bind 2 - SASL2
+        $this->registerEvent('saslsuccess', 'onSASLSuccess');
+        $this->registerEvent('saslfailure', 'onSASLFailure');
+        $this->registerEvent('sasl2failure', 'onSASLFailure');
+        $this->registerEvent('socket_connected', 'onConnected');
+        $this->registerEvent('storage_get_handle', 'onConfig');
+        $this->registerEvent('storage_get_error', 'onConfig');
+        $this->registerEvent('ssl_error', 'onFailAuth');
+        $this->registerEvent('dns_error', 'onDNSError');
+        $this->registerEvent('connection_error', 'onConnectionError');
+        $this->registerEvent('streamerror', 'onFailAuth');
+    }
+
+    public function onStart(Packet $packet)
+    {
+        $this->xmpp(new Get)->request();
+    }
+
+    public function onConnected()
+    {
+        $this->toast($this->__('connection.socket_connected'));
+    }
+
+    public function onSASLSuccess(Packet $packet)
+    {
+        $this->toast($this->__('connection.authenticated'));
+    }
+
+    public function onConfig(Packet $packet)
+    {
+        $p = new Presence(user: $this->me, sessionId: $this->sessionId);
+        $p->start();
+
+        $this->rpc('MovimUtils.reloadThis');
+    }
+
+    public function display()
+    {
+        $configuration = Configuration::get();
+
+        if (! empty($configuration->info)) {
+            $converter = new GithubFlavoredMarkdownConverter([
+                'html_input' => 'strip',
+                'allow_unsafe_links' => false,
+            ]);
+
+            $this->view->assign('info', $converter->convert($configuration->info));
+        }
+
+        $this->view->assign('banner', $configuration->banner);
+        $this->view->assign('whitelist', $configuration->xmppwhitelist);
+
+        if (
+            isset($configuration->xmppdomain)
+            && ! empty($configuration->xmppdomain)
+        ) {
+            $this->view->assign('domain', $configuration->xmppdomain);
+        } else {
+            $this->view->assign('domain', 'movim.eu');
+        }
+
+        $this->view->assign('invitation', null);
+
+        if (
+            $this->get('i')
+            && Validator::length(8)->isValid($this->get('i'))
+        ) {
+            $invitation = Invite::find($this->get('i'));
+
+            if ($invitation) {
+                $this->view->assign('invitation', $invitation);
+                $this->view->assign('contact', Contact::firstOrNew(['id' => $invitation->user_id]));
+            }
+        }
+
+        $started = (int) requestAPI('started');
+
+        $this->view->assign('pop', User::count());
+        $this->view->assign('admins', User::where('admin', true)->get());
+        $this->view->assign('connected', $started);
+        $this->view->assign('maxsessions', $configuration->maxsessions);
+        $this->view->assign('maxsessionsreached', ($configuration->maxsessions > 0 && $started >= $configuration->maxsessions));
+        $this->view->assign('error', $this->prepareError());
+
+        if (
+            isset($_SERVER['PHP_AUTH_USER'])
+            && isset($_SERVER['PHP_AUTH_PW'])
+            && Validator::email()->length(6, 40)->isValid($_SERVER['HTTP_EMAIL'])
+        ) {
+            [$username, $host] = explode('@', $_SERVER['HTTP_EMAIL']);
+            $this->view->assign('httpAuthHost', $host);
+            $this->view->assign('httpAuthUser', $_SERVER['HTTP_EMAIL']);
+            $this->view->assign('httpAuthPassword', $_SERVER['PHP_AUTH_PW']);
+        }
+    }
+
+    public function showErrorBlock($error, ?string $errorMessage = null)
+    {
+        $this->me?->encryptedPasswords()->delete();
+
+        $this->rpc('Login.clearQuick');
+        $this->rpc('MovimTpl.fill', '#error', $this->prepareError($error, $errorMessage));
+        $this->rpc('MovimUtils.addClass', '#login_widget', 'error');
+    }
+
+    public function prepareError(string $error = 'default', ?string $errorMessage = null)
+    {
+        $view = $this->tpl();
+
+        $key = 'error.' . $error;
+        $error_text = $this->__($key);
+
+        if ($error_text == $key) {
+            $view->assign('error', $this->__('error.default'));
+        } else {
+            $view->assign('error', $error_text);
+        }
+
+        $view->assign('errormessage', $errorMessage);
+
+        return $view->draw('_login_error');
+    }
+
+    public function onFailAuth()
+    {
+        $this->showErrorBlock('fail_auth');
+    }
+
+    public function onDNSError()
+    {
+        $this->showErrorBlock('dns');
+    }
+
+    public function onConnectionError(Packet $packet)
+    {
+        $this->showErrorBlock('connection', errorMessage: $packet->content);
+    }
+
+    public function onSASLFailure(Packet $packet)
+    {
+        switch ($packet->content) {
+            case 'invalid-mechanism':
+            case 'malformed-request':
+                $error = 'mechanism';
+                break;
+            case 'not-authorized':
+            case 'bad-auth':
+                $error = 'wrong_account';
+                break;
+            case 'bad-protocol':
+            default:
+                $error = 'fail_auth';
+                break;
+        }
+
+        $this->showErrorBlock($error);
+    }
+
+    public function ajaxLogin($form, string $sessionId, string $timezone)
+    {
+        $username = strtolower($form->username->value);
+        $password = $form->password->value;
+        $this->doLogin($username, $password, $timezone, $sessionId);
+    }
+
+    public function ajaxHTTPLogin(string $login, string $password, string $sessionId, string $timezone)
+    {
+        $this->doLogin($login, $password, $timezone, $sessionId);
+    }
+
+    public function ajaxQuickLogin(
+        string $deviceId,
+        string $login,
+        string $key,
+        string $timezone,
+        ?string $sessionId = null,
+        ?bool $check = false
+    ) {
+        if ($sessionId == null) {
+            return;
+        }
+
+        if (! validateJid($login)) {
+            $this->showErrorBlock('login_format');
+
+            return;
+        }
+
+        try {
+            $key = Key::loadFromAsciiSafeString($key);
+            $user = User::find($login);
+
+            if ($user) {
+                $ciphertext = $user->encryptedPasswords()->find($deviceId);
+
+                if ($ciphertext) {
+                    if ($check) {
+                        $this->rpc('Login.quickLoginRegister');
+
+                        return;
+                    }
+
+                    $ciphertext->touch();
+                    $password = Crypto::decrypt($ciphertext->data, $key);
+
+                    $this->doLogin(
+                        login: $login,
+                        password: $password,
+                        sessionId: $sessionId,
+                        timezone: $timezone,
+                        deviceId: $deviceId
+                    );
+                } else {
+                    $this->rpc('Login.clearQuick');
+                }
+            } else {
+                $this->rpc('Login.clearQuick');
+            }
+        } catch (\Exception $e) {
+            $this->rpc('Login.clearQuick');
+        }
+    }
+
+    private function doLogin(
+        string $login,
+        string $password,
+        string $timezone,
+        ?string $sessionId = null,
+        ?string $deviceId = null
+    ) {
+        $configuration = Configuration::get();
+
+        if (! validateJid($login)) {
+            $this->showErrorBlock('login_format');
+
+            return;
+        }
+
+        if (! Validator::stringType()->length(1, 128)->isValid($password)) {
+            $this->showErrorBlock('password_format');
+
+            return;
+        }
+
+        if (! validateCookie($sessionId)) {
+            $this->showErrorBlock('password_format');
+
+            return;
+        }
+
+        $started = (int) requestAPI('started');
+        if ($configuration->maxsessions > 0 && $started >= $configuration->maxsessions) {
+            $this->showErrorBlock('max_sessions_reached');
+
+            return;
+        }
+
+        [$username, $host] = explode('@', $login);
+
+        if (
+            ! empty($configuration->xmppwhitelist)
+            && ! in_array($host, $configuration->xmppwhitelist)
+        ) {
+            $this->showErrorBlock('unauthorized');
+
+            return;
+        }
+
+        // We check if we already have an open session
+        $here = Session::where('username', $username)->where('host', $host)->first();
+
+        $user = User::firstOrNew(['id' => $login]);
+        $user->init();
+        $user->save();
+
+        if ($deviceId == null) {
+            $rkey = Key::createNewRandomKey();
+            $deviceId = generateKey();
+
+            $key = new EncryptedPassword;
+            $key->user_id = $login;
+            $key->id = $deviceId;
+            $key->data = Crypto::encrypt($password, $rkey);
+            $key->save();
+
+            $this->rpc('Login.setQuick', $deviceId, $login, $host, $rkey->saveToAsciiSafeString());
+        }
+
+        if ($here && password_verify(Session::hashSession($username, $password, $host), $here->hash)) {
+            $this->rpc('Login.setCookie', $here->id, date(DATE_COOKIE, Cookie::getTime()));
+            $this->rpc('MovimUtils.redirect', $this->route('main'));
+
+            return;
+        } elseif (Session::where('username', $username)->where('host', $host)->exists()) {
+            $this->showErrorBlock('wrong_account');
+
+            return;
+        }
+
+        $s = new Session;
+        $s->init(
+            username: $username,
+            password: $password,
+            host: $host,
+            sessionId: $sessionId,
+            timezone: $timezone
+        );
+        $s->save();
+
+        linker($s->id)->attachUser(User::where('id', $login)->first());
+        linker($s->id)->authentication->username = $username;
+        linker($s->id)->authentication->password = $password;
+        linker($s->id)->timezone = $timezone;
+
+        // We start the XMPP session
+        linker($s->id)->writeXMPP(Stream::init(to: $host, from: $login));
+    }
+}

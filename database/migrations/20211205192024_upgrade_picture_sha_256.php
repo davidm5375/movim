@@ -8,13 +8,9 @@ class UpgradePictureSha256 extends Migration
 {
     public function up()
     {
-        $this->disableForeignKeyCheck();
-
-        // Database related contanct
-        Contact::truncate();
+        // Database related contancs
+        Contact::query()->delete();
         Info::whereNotNull('avatarhash')->delete();
-
-        $this->enableForeignKeyCheck();
 
         // Destroy all the picture cache
         foreach (glob(PUBLIC_CACHE_PATH . '*.jpg', GLOB_NOSORT) as $path) {
@@ -28,6 +24,5 @@ class UpgradePictureSha256 extends Migration
 
     public function down()
     {
-
     }
 }

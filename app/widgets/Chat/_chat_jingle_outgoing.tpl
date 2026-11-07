@@ -1,1 +1,0 @@
-<i class="material-icons icon blue">call</i> {$c->__('chat.jingle_outgoing')}

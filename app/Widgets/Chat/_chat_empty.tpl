@@ -1,0 +1,59 @@
+<div class="placeholder" aria-hidden="true">
+    <i class="material-symbols fill">forum</i>
+</div>
+
+<div id="chat_frequent" aria-label="{$c->__('chat.frequent')}">
+    <ul class="list flex fifth card shadow compact middle active">
+        {if="$top->isNotEmpty()"}
+            <li class="subheader">
+                <div>
+                    <p>{$c->__('chat.frequent')}</p>
+                </div>
+            </li>
+
+            {loop="$top"}
+                <li class="block {if="$value->last > 60"} inactive{/if}"
+                    onclick="Search.chat('{$value->jid|echapJS}', false)">
+                    <img class="main" src="{$value->getBanner(\Movim\ImageSize::L)}">
+                    <span class="primary icon bubble
+                        {if="$value->presence"}
+                            status {$value->presence->presencekey}
+                        {/if}">
+                        <a href="#" onclick="listIconClick(event)">
+                            <img src="{$value->getPicture()}">
+                        </a>
+                    </span>
+                    <div>
+                        <p class="line" title="{$value->truename}">
+                            {$value->truename}
+                            {if="$value->presence && $value->presence->capability"}
+                                <span class="second" title="{$value->presence->capability->name}">
+                                    <i class="material-symbols">{$value->presence->capability->getDeviceIcon()}</i>
+                                </span>
+                            {/if}
+                        </p>
+
+                        {if="$value->presence && $value->presence->seen"}
+                            <p class="line" title="{$c->__('last.title')} {$c->prepareDate($value->presence->seen, true)}">
+                                {$c->__('last.title')} {$c->prepareDate($value->presence->seen, true)}
+                            </p>
+                        {elseif="$value->presence"}
+                            <p class="line">{$value->presence->presencetext}</p>
+                        {else}
+                            <p></p>
+                        {/if}
+                    </div>
+                </li>
+            {/loop}
+        {/if}
+    </ul>
+</div>
+
+<div id="chat_explore" aria-label="{$c->__('explore.explore')}">
+    {autoescape="off"}
+        {$c->prepareExplore()}
+    {/autoescape}
+</div>
+
+<br aria-hidden="true"/>
+<br aria-hidden="true"/>

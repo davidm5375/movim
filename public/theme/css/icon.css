@@ -15,12 +15,30 @@ i.spin {
     animation: spin 2s linear infinite;
 }
 
-span.icon img {
-    max-width: 100%;
-    max-height: 100%;
+span.icon.shake,
+i.shake {
+    animation: shake 1s linear infinite;
 }
 
-span.icon.top {
+span.icon img {
+    max-width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+span.icon.r1 {
+    transform: rotate(90deg);
+}
+
+span.icon.r2 {
+    transform: rotate(180deg);
+}
+
+span.icon.r3 {
+    transform: rotate(270deg);
+}
+
+/*span.icon.top {
     position: relative;
     top: -1.5rem;
     width: 100%;
@@ -33,14 +51,13 @@ span.icon.top {
 
 span.icon.top.preview {
     height: 25rem;
-}
+}*/
 
 span.icon.primary.thumb,
 span.icon.control.thumb {
     width: 7rem;
     line-height: 7rem;
     margin-right: -1.5rem;
-    margin-left: 0.5rem;
     align-self: stretch;
     height: auto;
     text-shadow: 0 0 1rem rgba(0, 0, 0, 0.5);
@@ -56,14 +73,6 @@ span.primary.overflow {
     margin-right: 0;
 }
 
-ul.fill li span.icon.primary.thumb {
-    margin-left: 0;
-}
-
-ul.fill li span.icon.control.thumb {
-    margin-right: 0;
-}
-
 span.icon.bubble {
     border-radius: 5rem;
     font-size: 2.25rem;
@@ -76,8 +85,13 @@ span.icon.bubble img:not(.emoji) {
     border-radius: 5rem;
 }
 
-span.icon.bubble > i,
-span.icon.bubble > a > i {
+span.icon.bubble.space:not(:has(img)),
+span.icon.bubble.space img:not(.emoji) {
+    border-radius: 2rem;
+}
+
+span.icon.bubble>i,
+span.icon.bubble>a>i {
     font-size: 3rem;
     line-height: 5rem;
 }
@@ -85,7 +99,8 @@ span.icon.bubble > a > i {
 ul.list li span.icon.small {
     height: 4rem;
     line-height: 3.5rem;
-    font-size: 0; /* Only display the first letter */
+    font-size: 0;
+    /* Only display the first letter */
     flex: 0 0 4rem;
     margin-left: 1rem;
     margin-right: 1rem;
@@ -96,40 +111,145 @@ ul.list li span.icon.small img.emoji {
     height: 4rem;
 }
 
-ul.list li span.icon.small:not(.bubble) > i {
+ul.list li span.icon.small:not(.bubble)>i {
     font-size: 3rem;
     line-height: 3rem;
 }
 
 span.icon.small.bubble:first-letter,
-span.icon.small.bubble > i,
-span.icon.small.bubble > a > i {
+span.icon.small.bubble>i,
+span.icon.small.bubble>a>i {
     font-size: 2.25rem;
     line-height: 4rem;
 }
 
+span.icon.bubble.status,
+span.icon.bubble.stories {
+    border-radius: 0;
+    mask-size: 100%;
+    mask-origin: content-box;
+    mask-repeat: no-repeat;
+}
+
+span.icon.bubble.stories {
+    mask-origin: fill-box;
+    background: linear-gradient(to top right, var(--p-orange), var(--p-pink));
+    transition: transform 0.2s ease-in-out;
+}
+
+span.icon.bubble.stories.seen {
+    background: none;
+    background-color: rgba(var(--movim-font), 0.25);
+}
+
+span.icon.bubble.stories:active {
+    transform: scale(.95);
+}
+
+span.icon.bubble.status:not(.offline):not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask.svg);
+    -webkit-mask-origin: unset;
+    mask-origin: unset;
+}
+
+span.icon.bubble.stories.composing,
+span.icon.bubble.stories[data-counter]:not(.composing):not(.location) {
+    mask-image: url(../img/avatar_mask_notifs_stories.svg);
+}
+
+span.icon.bubble.stories:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_stories.svg);
+    -webkit-mask-origin: unset;
+    mask-origin: unset;
+}
+
+span.icon.bubble.status.online.stories:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_stories_online.svg);
+}
+
+span.icon.bubble.status.dnd:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_dnd.svg);
+}
+
+span.icon.bubble.status.dnd.stories:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_dnd_stories.svg);
+}
+
+span.icon.bubble.status.away:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_away.svg);
+}
+
+span.icon.bubble.status.away.stories:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_away_stories.svg);
+}
+
+span.icon.bubble.status.xa:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_xa.svg);
+}
+
+span.icon.bubble.status.xa.stories:not(.composing):not([data-counter]):not(.location) {
+    mask-image: url(../img/avatar_mask_xa_stories.svg);
+}
+
+span.icon.bubble.status.location {
+    mask-image: url(../img/avatar_mask_location.svg);
+}
+
+span.icon.bubble.status.location.stories {
+    mask-image: url(../img/avatar_mask_location_stories.svg);
+}
+
 span.icon span.counter,
+span.icon[data-counter]:after,
 span.icon.composing:after,
 span.icon.status:after {
     content: '';
     display: block;
-    width: 2rem;
+    min-width: 2rem;
     height: 2rem;
+    font-size: 1.5rem;
+    line-height: 2rem;
     right: calc(50% - 2.75rem);
-    top: 3rem;
+    top: calc(50% + 0.5rem);
     position: absolute;
-    transition: border-radius 0.15s ease-in-out;
+    transition: border-radius 0.25s var(--standard-easing);
     border-radius: 2em;
-    background-color: #DDD;
+    background-color: rgb(var(--movim-element-action));
     box-shadow: var(--elevation-0);
 }
 
-span.icon.status.location:after {
-    content: 'place';
-    font-family: 'Material Icons';
-    font-size: 1.5rem;
-    line-height: 2rem;
-    text-align: center;
+span.icon.status.offline:not([data-counter]):after {
+    display: none;
+}
+
+span.icon span.counter,
+span.icon[data-counter]:after,
+span.icon.composing:after {
+    padding: 0 0.25rem;
+    min-width: 1.5rem;
+    box-shadow: var(--elevation-1);
+}
+
+/* Counter */
+
+span.icon[data-counter]:after {
+    border-radius: 0.5rem;
+    content: attr(data-counter);
+}
+
+span.icon[data-counter].symbol:after {
+    font-family: 'Material Symbols';
+}
+
+/* Composing */
+
+span.icon.composing:after {
+    content: '…';
+    line-height: 1rem;
+    font-size: 2rem;
+    font-weight: bold;
+    border-radius: 0.5rem;
+    animation: fadeText 1.5s infinite;
 }
 
 /* Weird bug */
@@ -138,34 +258,32 @@ span.icon.small.status:after {
 }
 
 span.icon.small span.counter,
-span.icon.small.composing:after,
-span.icon.small.status:after {
+span.icon.small.composing:after {
     top: 2.25rem;
 }
 
-main ul li .control > i {
+span.icon.small.status:after {
+    top: 2.4rem;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    right: calc(50% - 2.1rem);
+}
+
+main ul li .control>i {
     margin-left: 0;
 }
 
 /* Counter */
 
+span.icon span.counter {
+    border-radius: 0.5rem;
+}
+
 span.icon span.counter:empty {
     display: none;
 }
 
-span.icon.composing:after,
-span.icon span.counter {
-    z-index: 1;
-    font-size: 1.5rem;
-    line-height: 2rem;
-    border-radius: 0.5rem;
-    width: auto;
-    min-width: 1.5rem;
-    padding: 0 0.25rem;
-    height: auto;
-}
-
-span.icon span.counter > i {
+span.icon span.counter>i {
     margin-left: 0.1rem;
     margin-right: 0.1rem;
 }
@@ -191,16 +309,4 @@ p span.icon.tiny {
 
 p span.icon.tiny:not(:first-child) {
     margin-left: 0.75rem;
-}
-
-/* Composing */
-
-span.icon.composing:after {
-    content: '…';
-    line-height: 1rem;
-    z-index: 1;
-    font-size: 2rem;
-    height: 2rem;
-    font-weight: bold;
-    animation: fadetext 1.5s infinite;
 }

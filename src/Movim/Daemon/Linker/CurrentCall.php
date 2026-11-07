@@ -1,0 +1,127 @@
+<?php
+
+/*
+ * SPDX-FileCopyrightText: 2024 Jaussoin Timothée
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace Movim\Daemon\Linker;
+
+use App\User;
+use Carbon\Carbon;
+use Movim\Widget\Wrapper;
+use Moxl\Xec\Payload\Packet;
+
+/**
+ * This class handle the current Jitsi call
+ */
+class CurrentCall
+{
+    public ?string $jid = null;
+    public ?string $id = null;
+    public ?string $mujiRoom = null;
+    public ?string $sfuRoom = null;
+    public ?Carbon $startTime = null;
+    public bool $answered = false;
+
+    public function __construct(private User $user, private string $sessionId)
+    {
+    }
+
+    public function start(string $jid, string $id, ?string $mujiRoom = null): bool
+    {
+        if ($this->isStarted()) {
+            return false;
+        }
+
+        $this->jid = $jid;
+        $this->id = $id;
+        $this->mujiRoom = $mujiRoom;
+        $this->startTime = Carbon::now();
+
+        if ($mujiRoom) {
+            $this->answered = true;
+        }
+
+        Wrapper::getInstance()->iterate(
+            key: 'currentcall_started',
+            packet: (new Packet)->pack(['id' => $id, 'mujiroom' => $mujiRoom], $this->getBareJid()),
+            user: $this->user,
+            sessionId: $this->sessionId
+        );
+
+        return true;
+    }
+
+    public function setSFURoom(string $jid, string $sfuRoom): bool
+    {
+        if ($this->isJidInCall($jid)) {
+            $this->sfuRoom = $sfuRoom;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public function answer(string $jid, string $id): bool
+    {
+        if ($this->isJidInCall($jid) && $this->hasId($id)) {
+            $this->answered = true;
+        }
+
+        return $this->answered;
+    }
+
+    public function stop(string $jid, string $id): bool
+    {
+        if ($this->getBareJid() != \bareJid($jid) || $this->id != $id) {
+            return false;
+        }
+
+        $jid = $this->getBareJid();
+        $id = $this->id;
+        $mujiRoom = $this->mujiRoom;
+
+        $this->jid = $this->id = $this->mujiRoom = $this->startTime = $this->sfuRoom = null;
+        $this->answered = false;
+
+        Wrapper::getInstance()->iterate(
+            key: 'currentcall_stopped',
+            packet: (new Packet)->pack(['id' => $id, 'mujiroom' => $mujiRoom], $jid),
+            user: $this->user,
+            sessionId: $this->sessionId
+        );
+
+        return true;
+    }
+
+    public function hasId(string $id): bool
+    {
+        return $this->id == $id;
+    }
+
+    public function isJidInCall(string $jid): bool
+    {
+        return \bareJid($jid) == $this->getBareJid();
+    }
+
+    public function isStarted(): bool
+    {
+        return $this->jid != null && $this->id != null;
+    }
+
+    public function isAnswered(): bool
+    {
+        return $this->jid != null && $this->id != null && $this->answered == true;
+    }
+
+    public function getBareJid(): ?string
+    {
+        if (! $this->isStarted()) {
+            return null;
+        }
+
+        return \bareJid($this->jid);
+    }
+}

@@ -19,16 +19,16 @@ class MessageOmemoHeader
 
     public function set($stanza)
     {
-        $this->sid = (int)$stanza->encrypted->header->attributes()->sid;
-        $this->iv = (string)$stanza->encrypted->header->iv;
-        $this->payload = (string)$stanza->encrypted->payload;
+        $this->sid = (int) $stanza->encrypted->header->attributes()->sid;
+        $this->iv = (string) $stanza->encrypted->header->iv;
+        $this->payload = (string) $stanza->encrypted->payload;
 
         $keys = [];
 
         foreach ($stanza->encrypted->header->key as $key) {
-            $keys[(string)$key->attributes()->rid] = [
-                'payload' => (string)$key,
-                'prekey' => (bool)$key->attributes()->prekey
+            $keys[(string) $key->attributes()->rid] = [
+                'payload' => (string) $key,
+                'prekey' => (bool) $key->attributes()->prekey,
             ];
         }
 
@@ -47,7 +47,7 @@ class MessageOmemoHeader
         $header->setAttribute('sid', $this->sid);
         $encrypted->appendChild($header);
 
-        foreach ($this->keys as $rid => $value ) {
+        foreach ($this->keys as $rid => $value) {
             $key = $dom->createElement('key', $value->payload);
             $key->setAttribute('rid', $rid);
 
@@ -67,7 +67,7 @@ class MessageOmemoHeader
         return $dom->documentElement;
     }
 
-    public function  __toString()
+    public function __toString()
     {
         return serialize([
             'sid' => $this->sid,

@@ -1,0 +1,423 @@
+<?php
+
+namespace App\Widgets\SpaceInfo;
+
+use App\Affiliation;
+use App\Conference;
+use App\Info;
+use App\Subscription;
+use App\Widgets\SpacesMenu\SpacesMenu;
+use Movim\Image;
+use Movim\Librairies\XMPPtoForm;
+use Movim\Widget\Base;
+use Moxl\Xec\Action\Avatar\Set as AvatarSet;
+use Moxl\Xec\Action\Muc\Destroy;
+use Moxl\Xec\Action\Muc\SetAffiliations;
+use Moxl\Xec\Action\Pubsub\GetAffiliations;
+use Moxl\Xec\Action\PubsubSubscription\Add;
+use Moxl\Xec\Action\Space\Destroy as SpaceDestroy;
+use Moxl\Xec\Action\Space\GetConfig;
+use Moxl\Xec\Action\Space\GetPendingSubscriptions;
+use Moxl\Xec\Action\Space\GetSubscriptions;
+use Moxl\Xec\Action\Space\SetAffiliations as SpaceSetAffiliations;
+use Moxl\Xec\Action\Space\SetConfig;
+use Moxl\Xec\Payload\Packet;
+
+class SpaceInfo extends Base
+{
+    public function load()
+    {
+        $this->registerEvent('pubsubsubscription_add_handle', 'onPubsubSubscriptionAdd', 'space*');
+        $this->registerEvent('pubsub_getaffiliations_handle', 'onAffiliations', 'space*');
+        $this->registerEvent('pubsub_getaffiliations_errorforbidden', 'onAffiliationsForbidden', ['chat', 'space*']);
+        $this->registerEvent('space_getconfig_handle', 'onConfig');
+        $this->registerEvent('space_setconfig_handle', 'onConfigSaved');
+        $this->registerEvent('space_setconfig_error', 'onConfigError');
+        $this->registerEvent('space_destroy_handle', 'onDestroy');
+        $this->registerEvent('space_getpendings_handle', 'onPendings');
+        $this->registerEvent('space_getsubscriptions_handle', 'onSubscriptions', 'space*');
+        $this->registerEvent('space_setaffiliations_handle', 'onSetAffiliations');
+        $this->addjs('spaceinfo.js');
+        $this->addcss('spaceinfo.css');
+    }
+
+    public function onPubsubSubscriptionAdd(Packet $packet)
+    {
+        $this->toast(__('spaceinfo.config_saved'));
+    }
+
+    public function onDestroy(Packet $packet)
+    {
+        (new SpacesMenu(user: $this->me, sessionId: $this->sessionId))->ajaxRemoveSubscription(
+            $packet->content['server'],
+            $packet->content['node']
+        );
+
+        // Check if we get the events to cleanup the DB, for now redirect
+        $this->rpc('MovimUtils.redirect', $this->route('chat'));
+    }
+
+    public function onAffiliations(Packet $packet)
+    {
+        [$server, $node] = array_values($packet->content);
+
+        $affiliation = Affiliation::where('server', $server)
+            ->where('node', $node)
+            ->where('jid', $this->me->id)
+            ->first();
+
+        if ($affiliation && $affiliation->affiliation == 'owner') {
+            $this->ajaxHttpGet($server, $node);
+            $this->ajaxGetPendings($server, $node);
+
+            $this->rpc('MovimTpl.fill', '#spaceinfo_affiliations', $this->view('_spaceinfo_affiliations', [
+                'affiliations' => Affiliation::where('server', $server)
+                    ->where('node', $node)
+                    ->orderBy('affiliation', 'desc')
+                    ->with('contact')
+                    ->get(),
+            ]));
+
+            // Some users doesn't have an affiliation so we complete with the subscriptions
+            $getSubscriptions = $this->xmpp(new GetSubscriptions);
+            $getSubscriptions->setTo($server)->setNode($node)
+                ->request();
+        }
+    }
+
+    public function onSubscriptions(Packet $packet)
+    {
+        [$server, $node] = array_values($packet->content);
+
+        $affiliation = Affiliation::where('server', $server)
+            ->where('node', $node)
+            ->where('jid', $this->me->id)
+            ->first();
+
+        if ($affiliation && $affiliation->affiliation == 'owner') {
+            $this->rpc(
+                'MovimTpl.append',
+                '#spaceinfo_affiliations ul.list',
+                $this->view('_spaceinfo_affiliations_subscriptions', [
+                    'subscriptions' => Subscription::where('server', $server)
+                        ->where('node', $node)
+                        ->whereNotIn('jid', function ($query) use ($server, $node) {
+                            $query->select('jid')
+                                ->from('affiliations')
+                                ->where('server', $server)
+                                ->where('node', $node);
+                        })
+                        ->with('contact')
+                        ->get(),
+                ])
+            );
+        }
+    }
+
+    public function onSetAffiliations(Packet $packet)
+    {
+        $subscription = $this->me->subscriptions()
+            ->spaces()
+            ->where('server', $packet->content['server'])
+            ->where('node', $packet->content['node'])
+            ->first();
+
+        if ($subscription) {
+            foreach ($subscription->spaceRooms as $conference) {
+                foreach ($packet->content['data'] as $jid => $affiliation) {
+                    $changeAffiliation = $this->xmpp(new SetAffiliations);
+                    $changeAffiliation->setTo($conference->conference)
+                        ->setAffiliations([$jid => $affiliation])
+                        ->request();
+                }
+            }
+        }
+    }
+
+    public function onAffiliationsForbidden(Packet $packet)
+    {
+        $this->ajaxEditMember($packet->content['server'], $packet->content['node']);
+    }
+
+    public function onPendings(Packet $packet)
+    {
+        $subscriptions = $packet->content['subscriptions'];
+        $pendings = $subscriptions->filter(function ($value) {
+            return $value['subscription'] == 'pending';
+        });
+
+        $this->rpc('MovimUtils.replace', '#spaceinfo_pendings', $this->view('_spaceinfo_pendings', [
+            'pendings' => $pendings,
+        ]));
+    }
+
+    public function onConfigSaved(Packet $packet)
+    {
+        $this->toast($this->__('spaceinfo.config_saved'));
+        $this->ajaxHttpGet($packet->content['server'], $packet->content['node']);
+
+        (new SpacesMenu(user: $this->me, sessionId: $this->sessionId))
+            ->ajaxGetSpaceInfo($packet->content['server'], $packet->content['node']);
+    }
+
+    public function onConfigError(Packet $packet)
+    {
+        $this->toast(
+            $packet->content ??
+                $this->__('spaceinfo.config_error')
+        );
+    }
+
+    public function onConfig(Packet $packet)
+    {
+        $subscription = $this->me->subscriptions()->space($packet->content['server'], $packet->content['node'])->first();
+
+        if ($subscription) {
+            $view = $this->tpl();
+
+            $xml = new XMPPtoForm($this->me);
+            $view->assign('config', $xml->getArray($packet->content['config']->x));
+            $view->assign('attributes', $packet->content['config']->attributes());
+            $view->assign('subscription', $subscription);
+
+            $this->drawer('spaceinfo_config', $view->draw('_spaceinfo_config'), tiny: true);
+
+            $this->ajaxGetAffiliations($packet->content['server'], $packet->content['node']);
+        }
+    }
+
+    public function ajaxEditMember(string $server, string $node)
+    {
+        $subscription = $this->me->subscriptions()->space($server, $node)->first();
+
+        if ($subscription) {
+            $this->dialog($this->view('_spaceinfo_member', [
+                'affiliation' => Affiliation::where('server', $server)
+                    ->where('node', $node)
+                    ->where('jid', $this->me->id)
+                    ->first(),
+                'subscription' => $subscription,
+            ]));
+        }
+    }
+
+    public function ajaxHttpGet(string $server, string $node)
+    {
+        $subscription = $this->me->subscriptions()->space($server, $node)->first();
+
+        if ($subscription) {
+            if ($subscription->info) {
+                $affiliation = Affiliation::where('server', $server)
+                    ->where('node', $node)
+                    ->where('jid', $this->me->id)
+                    ->first();
+
+                $this->rpc('MovimTpl.fill', '#spaceinfo_widget', $this->view('_spaceinfo', [
+                    'subscription' => $subscription,
+                    'edit' => ($affiliation && $affiliation->affiliation == 'owner'),
+                ]));
+            } else {
+                $this->rpc('SpacesMenu_ajaxGetSpaceInfo', $server, $node);
+                $this->rpc('SpacesMenu_ajaxRooms', $server, $node);
+            }
+        }
+    }
+
+    public function ajaxChangeConfiguration(string $server, string $node, \stdClass $data)
+    {
+        $subscription = $this->me->subscriptions()->space($server, $node)->first();
+
+        if (
+            $subscription
+            && in_array($data->notify->value, Conference::NOTIFICATIONS)
+            && is_bool($data->pinned->value)
+        ) {
+            $setConfiguration = $this->xmpp(new Add);
+            $setConfiguration->setServer($subscription->server)
+                ->setNode($subscription->node)
+                ->setFrom($this->me->id)
+                ->setPEPNode(Subscription::SPACE_NODE)
+                ->setExtensionsXML($subscription->extensions)
+                ->setNotify(array_search($data->notify->value, Conference::NOTIFICATIONS))
+                ->setPinned($data->pinned->value)
+                ->request();
+        }
+    }
+
+    public function ajaxGetPendings(string $server, string $node)
+    {
+        if (! validateServerNode($server, $node)) {
+            return;
+        }
+
+        $r = $this->xmpp(new GetPendingSubscriptions);
+        $r->setTo($server)
+            ->setNode($node)
+            ->request();
+    }
+
+    public function ajaxGetAffiliations(string $server, string $node)
+    {
+        if (! validateServerNode($server, $node)) {
+            return;
+        }
+
+        $r = $this->xmpp(new GetAffiliations);
+        $r->setTo($server)->setNode($node)
+            ->request();
+    }
+
+    public function ajaxGetConfig(string $server, string $node)
+    {
+        if (! validateServerNode($server, $node)) {
+            return;
+        }
+
+        $r = $this->xmpp(new GetConfig);
+        $r->setTo($server)
+            ->setNode($node)
+            ->request();
+    }
+
+    public function ajaxSetConfig(string $server, string $node, \stdClass $data)
+    {
+        if (! validateServerNode($server, $node)) {
+            return;
+        }
+
+        if ($data->isDirty) {
+            $r = $this->xmpp(new SetConfig);
+            $r->setTo($server)
+                ->setNode($node)
+                ->setData(formToArray($data))
+                ->request();
+        }
+    }
+
+    public function ajaxGetAvatar(string $server, string $node)
+    {
+        if (! validateServerNode($server, $node)) {
+            return;
+        }
+
+        $this->dialog($this->view('_spaceinfo_avatar', [
+            'info' => Info::where('server', $server)
+                ->where('node', $node)
+                ->first(),
+        ]));
+    }
+
+    public function ajaxSetAvatar(string $server, string $node, \stdClass $form)
+    {
+        if (! validateServerNode($server, $node)) {
+            return;
+        }
+
+        $key = $server . $node . 'avatar';
+
+        $image = new Image;
+        $image->fromBase64($form->photobin->value);
+        $image->setKey($key);
+        $image->save(format: 'jpeg', quality: 60, directory: IMAGES_DIR);
+
+        // Reload the freshly compressed picture
+        $image->load('jpeg', directory: IMAGES_DIR);
+
+        $r = $this->xmpp(new AvatarSet);
+        $r->setTo($server)
+            ->setNode($node)
+            ->setUrl(Image::getOrCreate($key, format: 'jpeg', noTime: true, directory: IMAGES_DIR))
+            ->setData($image->toBase())
+            ->request();
+    }
+
+    public function ajaxAskDestroy(string $server, string $node)
+    {
+        $subscription = $this->me->subscriptions()->space($server, $node)->first();
+
+        if ($subscription) {
+            $this->dialog($this->view('_spaceinfo_destroy', [
+                'subscription' => $subscription,
+                'server' => $server,
+                'node' => $node,
+            ]));
+        }
+    }
+
+    public function ajaxDestroy(string $server, string $node)
+    {
+        $subscription = $this->me->subscriptions()->space($server, $node)->first();
+
+        if ($subscription) {
+            foreach ($subscription->spaceRooms as $conference) {
+                $destroy = $this->xmpp(new Destroy);
+                $destroy->setTo($conference->conference)
+                    ->request();
+            }
+
+            $destroySpace = $this->xmpp(new SpaceDestroy);
+            $destroySpace->setTo($server)
+                ->setNode($node)
+                ->request();
+        }
+    }
+
+    public function ajaxSetAffiliations(string $server, string $node, \stdClass $data)
+    {
+        if (! $data->isDirty) {
+            return;
+        }
+
+        $currentAffiliations = Affiliation::where('server', $server)
+            ->where('node', $node)
+            ->get()
+            ->pluck('affiliation', 'jid');
+
+        // Inject the 'none' subscriptions
+        foreach (
+            Subscription::where('server', $server)
+                ->where('node', $node)
+                ->whereNotIn('jid', function ($query) use ($server, $node) {
+                    $query->select('jid')
+                        ->from('affiliations')
+                        ->where('server', $server)
+                        ->where('node', $node);
+                })
+                ->with('contact')
+                ->get() as $subscription
+        ) {
+            $currentAffiliations->put($subscription->jid, 'none');
+        }
+
+        $affiliations = [];
+        foreach ($data as $key => $input) {
+            if (
+                $currentAffiliations->has($key)
+                && $currentAffiliations->get($key) != $input->value
+            ) {
+                $affiliations[$key] = $input->value;
+            }
+        }
+
+        $setAffiliation = $this->xmpp(new SpaceSetAffiliations);
+        $setAffiliation->setTo($server)
+            ->setNode($node)
+            ->setData($affiliations)
+            ->request();
+    }
+
+    public function ajaxInvite(string $server, string $node)
+    {
+        if (! validateServerNode($server, $node)) {
+            return;
+        }
+
+        $this->dialog($this->view('_spaceinfo_invite', [
+            'subscription' => $this->me->subscriptions()
+                ->spaces()
+                ->where('server', $server)
+                ->where('node', $node)
+                ->first(),
+        ]));
+    }
+}

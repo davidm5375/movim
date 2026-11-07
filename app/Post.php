@@ -2,132 +2,200 @@
 
 namespace App;
 
-use Respect\Validation\Validator;
-
-use Illuminate\Database\Eloquent\Model;
+use Awobaz\Compoships\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Dom\HTMLDocument;
+use Dom\XPath;
 use Illuminate\Database\Capsule\Manager as DB;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Movim\Jid;
+use Movim\Route;
+use Movim\Widget\Wrapper;
+use Moxl\Xec\Payload\Packet;
+use React\Promise\Promise;
+use Respect\Validation\Validator;
+use SimpleXMLElement;
 
 class Post extends Model
 {
     protected $primaryKey = 'id';
-
     protected $guarded = [];
-    public $with = ['attachments', 'likes', 'comments',
-                    'contact',  'openlink', 'youtube',
-                    'links', 'files', 'pictures', 'picture',
-                    'attachment'];
-
-    private $titleLimit = 200;
-
-    public $attachments = [];
+    public $with = [
+        'attachments',
+        'likes',
+        'comments',
+        'contact',
+        'links',
+    ];
+    public $withCount = ['userViews'];
+    protected $casts = [
+        'published' => 'datetime:Y-m-d H:i:s',
+        'created_at' => 'datetime:Y-m-d H:i:s',
+        'updated_at' => 'datetime:Y-m-d H:i:s',
+    ];
+    private $titleLimit = 700;
+    private $changed = false; // Detect if the set post was different from the cache
+    public array $attachments = [];
+    public array $resolvableAttachments = [];
     public $tags = [];
+
+    public const MICROBLOG_NODE = 'urn:xmpp:microblog:0';
+    public const COMMENTS_NODE = 'urn:xmpp:microblog:0:comments';
+    public const STORIES_NODE = 'urn:xmpp:pubsub-social-feed:stories:0';
 
     public function contact()
     {
-        return $this->hasOne('App\Contact', 'id', 'aid');
+        return $this->hasOne(Contact::class, 'id', 'aid');
     }
 
     public function tags()
     {
-        return $this->belongsToMany('App\Tag')->withTimestamps();
+        return $this->belongsToMany(Tag::class)->withTimestamps();
     }
 
     public function comments()
     {
-        return $this->hasMany('App\Post', 'parent_id', 'id')
-                    ->orderBy('published')
-                    ->where('like', false);
+        return $this->hasMany(PostComment::class, 'parent_id', 'id')
+            ->orderBy('published')
+            ->where('like', false);
     }
 
     public function parent()
     {
-        return $this->hasOne('App\Post', 'id', 'parent_id');
+        return $this->hasOne(Post::class, 'id', 'parent_id');
     }
 
     public function info()
     {
-        return $this->hasOne('App\Info', 'server', 'server')
-                    ->where('node', $this->node);
+        return $this->hasOne(Info::class, ['server', 'node'], ['server', 'node']);
+    }
+
+    public function affiliations()
+    {
+        return $this->hasMany(Affiliation::class, ['server', 'node'], ['server', 'node']);
+    }
+
+    public function userOwner(User $user): bool
+    {
+        return $this->affiliations()
+            ->where('jid', $user->id)
+            ->where('affiliation', 'owner')
+            ->exists();
+    }
+
+    public function userViews()
+    {
+        return $this->belongsToMany(User::class, 'post_user_views', 'post_id', 'user_id')->withTimestamps();
+    }
+
+    public function viewed(User $user): bool
+    {
+        return $this->userViews()->where('user_id', $user->id)->exists();
     }
 
     public function likes()
     {
-        return $this->hasMany('App\Post', 'parent_id', 'id')
-                    ->whereIn('id', function ($query) {
-                        $query->select(DB::raw('min(id) as id'))
-                              ->from('posts')
-                              ->where('like', true)
-                              ->whereNotNull('aid')
-                              ->groupByRaw('aid, parent_id');
-                    });
-    }
-
-    public function openlink()
-    {
-        return $this->hasOne('App\Attachment')
-                    ->where('category', 'open');
-    }
-
-    public function youtube()
-    {
-        return $this->hasOne('App\Attachment')
-                    ->where('category', 'youtube');
+        return $this->hasMany(PostComment::class, 'parent_id', 'id')
+            ->whereIn('id', function ($query) {
+                $query->select(DB::raw('min(id) as id'))
+                    ->from('posts')
+                    ->where('like', true)
+                    ->whereNotNull('aid')
+                    ->groupByRaw('aid, parent_id');
+            });
     }
 
     public function links()
     {
-        return $this->hasMany('App\Attachment')
-                    ->where('category', 'link')
-                    ->whereNotIn('href', function ($query) {
-                        $query->select('href')
-                              ->from('attachments')
-                              ->where('post_id', $this->id)
-                              ->where('category', 'picture')
-                              ->get();
-                    });
-    }
-
-    public function files()
-    {
-        return $this->hasMany('App\Attachment')
-                    ->where('category', 'file');
-    }
-
-    public function pictures()
-    {
-        return $this->hasMany('App\Attachment')
+        return $this->hasMany(Attachment::class)
+            ->where('category', 'link')
+            /*->whereNotIn('href', function ($query) {
+                $query->select('href')
+                    ->from('attachments')
+                    ->whereColumn('post_id', $this->id)
                     ->where('category', 'picture')
-                    ->where('type', '!=', 'content');
+                    ->get();
+            })*/;
     }
 
-    public function picture()
-    {
-        return $this->hasOne('App\Attachment')
-                    ->where('category', 'picture');
-    }
-
-    public function attachment()
-    {
-        return $this->hasOne('App\Attachment')
-                    ->whereIn('rel', ['enclosure', 'related'])
-                    ->orderBy('rel', 'desc'); // related first
-    }
-
+    /**
+     * Attachements
+     */
     public function attachments()
     {
-        return $this->hasMany('App\Attachment');
+        return $this->hasMany(Attachment::class);
+    }
+
+    public function resolveAttachments(): Collection
+    {
+        return $this->relations['attachments'] ?? $this->attachments()->get();
+    }
+
+    public function getOpenlinkAttribute()
+    {
+        return $this->resolveAttachments()->firstWhere('category', 'open');
+    }
+
+    public function getEmbedsAttribute()
+    {
+        return $this->resolveAttachments()->where('category', 'embed');
+    }
+
+    public function getEmbedAttribute()
+    {
+        return $this->resolveAttachments()->firstWhere('category', 'embed');
+    }
+
+    public function getFilesAttribute()
+    {
+        return $this->resolveAttachments()->where('category', 'file');
+    }
+
+    public function getPicturesAttribute()
+    {
+        return $this->resolveAttachments()
+            ->where('category', 'picture')
+            ->where('type', '!=', 'content');
+    }
+
+    public function getPictureAttribute()
+    {
+        return $this->resolveAttachments()->firstWhere('category', 'picture');
+    }
+
+    public function getAttachmentAttribute()
+    {
+        return $this->resolveAttachments()
+            ->whereIn('rel', ['enclosure', 'related'])
+            ->orderBy('rel', 'desc')
+            ->first(); // related first
     }
 
     public function save(array $options = [])
     {
         try {
+            if (! $this->validAtom()) {
+                \logError('Invalid Atom: ' . $this->server . '/' . $this->node . '/' . $this->nodeid);
+
+                if ($this->created_at) {
+                    $this->delete();
+                }
+
+                return;
+            }
+
+            if (! $this->changed) {
+                return;
+            }
+
             parent::save($options);
 
-            if (!$this->isComment()) {
+            if (! $this->isComment()) {
                 $this->healAttachments();
-
                 $this->attachments()->delete();
                 $this->attachments()->saveMany($this->attachments);
+
                 $this->tags()->sync($this->tags);
             }
         } catch (\Exception $e) {
@@ -139,46 +207,51 @@ class Post extends Model
         }
     }
 
-    public function scopeRestrictToMicroblog($query)
+    private function validAtom(): bool
     {
-        return $query->where('posts.node', 'urn:xmpp:microblog:0');
+        return $this->title != null && $this->updated != null;
     }
 
-    public function scopeRestrictToCommunities($query)
+    public function scopeRestrictToMicroblog(Builder $query)
     {
-        return $query->where('posts.node', '!=', 'urn:xmpp:microblog:0');
+        return $query->where('posts.node', Post::MICROBLOG_NODE);
     }
 
-    public function scopeWithoutComments($query)
+    public function scopeRestrictToCommunities(Builder $query)
+    {
+        return $query->where('posts.node', '!=', Post::MICROBLOG_NODE);
+    }
+
+    public function scopeWithoutComments(Builder $query)
     {
         return $query->whereNull('posts.parent_id');
     }
 
-    public function scopeRestrictUserHost($query)
+    public function scopeRestrictUserHost(Builder $query, User $user)
     {
         $configuration = Configuration::get();
 
         if ($configuration->restrictsuggestions) {
-            $query->whereIn('id', function ($query) {
-                $host = \App\User::me()->session->host;
+            $query->whereIn('id', function ($query) use ($user) {
+                $host = $user->session->host;
                 $query->select('id')
-                      ->from('posts')
-                      ->where('server', 'like', '%.' . $host)
-                      ->orWhere('server', 'like', '@' . $host);
+                    ->from('posts')
+                    ->where('server', 'like', '%.' . $host)
+                    ->orWhere('server', 'like', '@' . $host);
             });
         }
     }
 
-    public function scopeRestrictNSFW($query)
+    public function scopeRestrictNSFW(Builder $query, User $user)
     {
         $query->where('nsfw', false);
 
-        if (\App\User::me()->nsfw) {
+        if ($user->nsfw) {
             $query->orWhere('nsfw', true);
         }
     }
 
-    public function scopeRecents($query)
+    public function scopeRecents(Builder $query)
     {
         $query->join(
             DB::raw('(
@@ -193,75 +266,129 @@ class Post extends Model
         );
     }
 
-    protected function withContactsScope($query)
+    protected function withStoriesScope($query, User $user)
     {
-        return $query->unionAll(DB::table('posts')
-            ->whereIn('posts.server', function ($query) {
-                $query->from('rosters')
-                    ->select('jid')
-                    ->where('session_id', SESSION_ID)
-                    ->where('subscription', 'both');
-            })
+        return $query->unionAll(
+            DB::table('posts')
+                ->where('node', Post::STORIES_NODE)
+                ->whereIn('posts.server', function ($query) use ($user) {
+                    $query->from('rosters')
+                        ->select('jid')
+                        ->where('session_id', $user->session->id)
+                        ->where('subscription', 'both');
+                })
         );
     }
 
-    public function scopeWithContacts($query)
+    protected function withFollowScope($query, User $user, ?string $since = null)
     {
-        return $this->withContactsScope($query);
-    }
-
-    protected function withMineScope($query)
-    {
-        return $query->unionAll(DB::table('posts')
-            ->where('node', 'urn:xmpp:microblog:0')
-            ->where('server', \App\User::me()->id)
-        );
-    }
-
-    public function scopeWithMine($query)
-    {
-        return $this->withMineScope($query);
-    }
-
-    protected function withSubscriptionsScope($query)
-    {
-        return $query->unionAll(DB::table('posts')
-            ->whereIn('server', function ($query) {
-                $query->select('server')
+        $posts = DB::table('posts')
+            ->whereIn(DB::raw('(server, node)'), function ($query) use ($user) {
+                $query->select('server', 'node')
                     ->from('subscriptions')
-                    ->where('jid', \App\User::me()->id);
-            })
-            ->whereIn('node', function ($query) {
-                $query->select('node')
-                    ->from('subscriptions')
-                    ->where('jid', \App\User::me()->id);
-            })
+                    ->where('jid', $user->id);
+            });
+
+        if ($since != null) {
+            $posts = $posts->where('published', '>', $since);
+        }
+
+        return $query->unionAll($posts);
+    }
+
+    protected function withContactsFollowScope($query, User $user)
+    {
+        return $query->unionAll(
+            DB::table('posts')
+                ->whereIn('server', function ($query) use ($user) {
+                    $query->select('server')
+                        ->from('subscriptions')
+                        ->where('jid', $user->id);
+                })
+                ->where('node', Post::MICROBLOG_NODE)
         );
     }
 
-    public function scopeWithSubscriptions($query)
+    protected function withMineScope($query, User $user, string $node = Post::MICROBLOG_NODE, ?string $since = null)
     {
-        return $this->withSubscriptionsScope($query);
+        $posts = DB::table('posts')
+            ->where('node', $node)
+            ->where('server', $user->id);
+
+        if ($since != null) {
+            $posts = $posts->where('published', '>', $since);
+        }
+
+        return $query->unionAll($posts);
     }
 
-    public function getPreviousAttribute()
+    protected function withCommunitiesFollowScope($query, User $user)
     {
-        return \App\Post::where('server', $this->server)
-                       ->where('node', $this->node)
-                       ->where('published', '<', $this->published)
-                       ->where('open', true)
-                       ->orderBy('published', 'desc')
-                       ->first();
+        return $query->unionAll(
+            DB::table('posts')
+                ->whereIn(DB::raw('(server, node)'), function ($query) use ($user) {
+                    $query->select('server', 'node')
+                        ->from('subscriptions')
+                        ->where('jid', $user->id)
+                        ->where('node', '!=', Post::MICROBLOG_NODE);
+                })
+        );
     }
 
-    public function getNextAttribute()
+    public function scopeMyStories(Builder $query, User $user, ?int $id = null)
     {
-        return \App\Post::where('server', $this->server)
-                       ->where('node', $this->node)
-                       ->where('published', '>', $this->published)
-                       ->orderBy('published')
-                       ->where('open', true)
-                       ->first();
+        $query = $query->whereIn('id', function ($query) use ($user) {
+            $filters = DB::table('posts')->where('id', -1);
+
+            $filters = Post::withMineScope($filters, $user, Post::STORIES_NODE);
+            $filters = Post::withStoriesScope($filters, $user);
+
+            $query->select('id')->from(
+                $filters,
+                'posts'
+            );
+        })
+            ->where('published', '>', Carbon::now()->subDay())
+            ->orderBy('published', 'desc');
+
+        if ($id != null) {
+            $query = $query->where('id', $id);
+        }
+
+        return $query->withOnly([]);
+    }
+
+    public function getColorAttribute(): string
+    {
+        if ($this->contact) {
+            return $this->contact->color;
+        }
+
+        if ($this->aid) {
+            return stringToColor($this->aid);
+        }
+
+        return stringToColor($this->node);
+    }
+
+    public function getPreviousAttribute(): ?Post
+    {
+        return Post::where('server', $this->server)
+            ->where('node', $this->node)
+            ->where('published', '<', $this->published)
+            ->where('open', true)
+            ->orderBy('published', 'desc')
+            ->first();
+    }
+
+    public function getNextAttribute(): ?Post
+    {
+        return Post::where('server', $this->server)
+            ->where('node', $this->node)
+            ->where('published', '>', $this->published)
+            ->orderBy('published')
+            ->where('open', true)
+            ->first();
     }
 
     public function getTruenameAttribute()
@@ -271,7 +398,7 @@ class Post extends Model
         }
 
         return $this->aid
-            ? explodeJid($this->aid)['username']
+            ? (new Jid($this->aid))->username
             : '';
     }
 
@@ -280,16 +407,24 @@ class Post extends Model
         return htmlspecialchars_decode($this->contentraw, ENT_XML1 | ENT_COMPAT);
     }
 
-    private function extractContent($contents)
+    private function extractContent(SimpleXMLElement $contents): ?string
     {
-        $content = '';
+        $htmlContent = $content = null;
 
         foreach ($contents as $c) {
             switch ($c->attributes()->type) {
                 case 'html':
+                    $d = htmlspecialchars_decode((string) $c);
+
+                    $dom = new \DOMDocument('1.0', 'UTF-8');
+                    $dom->loadHTML('<div>' . $d . '</div>', LIBXML_NOERROR);
+
+                    $htmlContent = (string) $dom->saveHTML($dom->documentElement->lastChild->lastChild);
+                    break;
                 case 'xhtml':
                     $import = null;
-                    $dom = new \DOMDocument('1.0', 'utf-8');
+                    $dom = new \DOMDocument('1.0', 'UTF-8');
+
                     if ($c->children() instanceof \DOMElement) {
                         $import = @dom_import_simplexml($c->children());
                     }
@@ -297,32 +432,40 @@ class Post extends Model
                     if ($import == null) {
                         $import = dom_import_simplexml($c);
                     }
+
                     $element = $dom->importNode($import, true);
                     $dom->appendChild($element);
-                    return (string)$dom->saveHTML();
+
+                    $htmlContent = (string) $dom->saveHTML();
                     break;
                 case 'text':
                     if (trim($c) != '') {
                         $this->contentraw = trim($c);
                     }
+
                     break;
                 default:
-                    $content = (string)$c;
+                    $content = (string) $c;
                     break;
             }
         }
 
-        return $content;
+        return $htmlContent ?? $content;
     }
 
-    private function extractTitle($titles)
+    private function extractTitle($titles): ?string
     {
-        $title = '';
+        $title = null;
+
         foreach ($titles as $t) {
             switch ($t->attributes()->type) {
                 case 'html':
                 case 'xhtml':
-                    $title = strip_tags((string)$t->children()->asXML());
+                    $title = strip_tags(
+                        ($t->children()->getName() == 'div' && (string) $t->children()->attributes()->xmlns == 'http://www.w3.org/1999/xhtml')
+                            ? html_entity_decode((string) $t->children()->asXML())
+                            : (string) $t->children()->asXML()
+                    );
                     break;
                 case 'text':
                     if (trim($t) != '') {
@@ -330,7 +473,7 @@ class Post extends Model
                     }
                     break;
                 default:
-                    $title = (string)$t;
+                    $title = (string) $t;
                     break;
             }
         }
@@ -340,58 +483,62 @@ class Post extends Model
 
     public function set($entry, $delay = false)
     {
-        $this->nodeid = (string)$entry->attributes()->id;
+        $this->nodeid = (string) $entry->attributes()->id;
 
+        $hash = hash('sha256', $entry->asXML());
+
+        // Detect if things changed from the cached version
+        if ($hash == $this->contenthash) {
+            return \React\Promise\resolve();
+        }
+
+        $this->contenthash = $hash;
+        $this->changed = true;
 
         // Ensure that the author is the publisher
-        if ($entry->entry->author && $entry->entry->author->uri
-        && 'xmpp:'.baseJid((string)$entry->attributes()->publisher) == (string)$entry->entry->author->uri) {
-            $this->aid = substr((string)$entry->entry->author->uri, 5);
-
+        if (
+            $entry->entry->author && $entry->entry->author->uri
+            && 'xmpp:' . bareJid((string) $entry->attributes()->publisher) == (string) $entry->entry->author->uri
+        ) {
+            $this->aid = substr((string) $entry->entry->author->uri, 5);
             $this->aname = ($entry->entry->author->name)
-                ? (string)$entry->entry->author->name
+                ? (string) $entry->entry->author->name
                 : null;
 
             $this->aemail = ($entry->entry->author->email)
-                ? (string)$entry->entry->author->email
+                ? (string) $entry->entry->author->email
                 : null;
         } else {
             $this->aid = null;
         }
 
-        // Non standard support
-        /*if ($entry->entry->source && $entry->entry->source->author->name) {
-            $this->aname = (string)$entry->entry->source->author->name;
-        }
-        if ($entry->entry->source && $entry->entry->source->author->uri
-         && substr((string)$entry->entry->source->author->uri, 5) == 'xmpp:') {
-            $this->aid = substr((string)$entry->entry->source->author->uri, 5);
-        }*/
-
         if (empty($this->aname)) {
             $this->aname = null;
         }
 
-        $this->title = $this->extractTitle($entry->entry->title);
-
         // Content
-        $summary = ($entry->entry->summary && (string)$entry->entry->summary != '')
-            ? '<p class="summary">'.(string)$entry->entry->summary.'</p>'
+        $this->title = $entry->entry->title
+            ? $this->extractTitle($entry->entry->title)
             : null;
 
-        if ($entry->entry && $entry->entry->content) {
-            $content = $this->extractContent($entry->entry->content);
-        } elseif ($summary == '') {
-            $content = __('');
-        } else {
-            $content = '';
-        }
+        $summary = ($entry->entry->summary && (string) $entry->entry->summary != '')
+            ? '<p class="summary">' . (string) $entry->entry->summary . '</p>'
+            : null;
 
-        $content = $summary.$content;
+        $content = $entry->entry->content
+            ? $this->extractContent($entry->entry->content)
+            : null;
+
+        $this->content = $this->contentcleaned = null;
+
+        if ($summary != null || $content != null) {
+            $this->content = trim((string) $summary . (string) $content);
+            $this->contentcleaned = purifyHTML(html_entity_decode($this->content));
+        }
 
         $this->updated = ($entry->entry->updated)
             ? toSQLDate($entry->entry->updated)
-            : gmdate(MOVIM_SQL_DATE);
+            : null;
 
         if ($entry->entry->published) {
             $this->published = toSQLDate($entry->entry->published);
@@ -405,34 +552,22 @@ class Post extends Model
             $this->delay = $delay;
         }
 
-        // Tags parsing
+        /**
+         * Tags parsing
+         **/
+        $tags = [];
+
         if ($entry->entry->category) {
-            if ($entry->entry->category->count() == 1
-            && isset($entry->entry->category->attributes()->term)
-            && !empty(trim($entry->entry->category->attributes()->term))) {
-                $tag = \App\Tag::firstOrCreateSafe([
-                    'name' => strtolower((string)$entry->entry->category->attributes()->term)
-                ]);
-
-                $this->tags[] = $tag->id;
-
-                if ($tag->name == 'nsfw') {
-                    $this->nsfw = true;
-                }
+            if (
+                $entry->entry->category->count() == 1
+                && isset($entry->entry->category->attributes()->term)
+                && ! empty(trim($entry->entry->category->attributes()->term))
+            ) {
+                $tags[strtolower((string) $entry->entry->category->attributes()->term)] = true;
             } else {
                 foreach ($entry->entry->category as $cat) {
-                    if (!empty(trim((string)$cat->attributes()->term))) {
-                        $tag = \App\Tag::firstOrCreateSafe([
-                            'name' => strtolower((string)$cat->attributes()->term)
-                        ]);
-
-                        if ($tag) {
-                            $this->tags[] = $tag->id;
-
-                            if ($tag->name == 'nsfw') {
-                                $this->nsfw = true;
-                            }
-                        }
+                    if (! empty(trim((string) $cat->attributes()->term))) {
+                        $tags[strtolower((string) $cat->attributes()->term)] = true;
                     }
                 }
             }
@@ -440,29 +575,41 @@ class Post extends Model
 
         // Extract more tags if possible
         $tagsContent = getHashtags(htmlspecialchars($this->title ?? ''))
-                     + getHashtags(htmlspecialchars($this->contentraw ?? ''));
+            + getHashtags(htmlspecialchars($this->contentraw ?? ''));
         foreach ($tagsContent as $tag) {
-            $tag = \App\Tag::firstOrCreateSafe([
-                'name' => strtolower((string)$tag)
-            ]);
+            $tags[strtolower($tag)] = true;
+        }
 
-            $this->tags[] = $tag->id;
+        if (! empty($tags)) {
+            $existingTags = Tag::whereIn('name', array_keys($tags))->get();
+
+            foreach ($existingTags as $tag) {
+                $this->tags[] = $tag->id;
+
+                if ($tag->name == 'nsfw') {
+                    $this->nsfw = true;
+                }
+                unset($tags[$tag->name]);
+            }
+
+            if (! empty($tags)) {
+                foreach ($tags as $tag => $set) {
+                    $dbTag = Tag::firstOrCreateSafe(['name' => strtolower((string) $tag)]);
+
+                    $this->tags[] = $dbTag->id;
+                    if ($dbTag->name == 'nsfw') {
+                        $this->nsfw = true;
+                    }
+                }
+            }
         }
 
         if (current(explode('.', $this->server)) == 'nsfw') {
             $this->nsfw = true;
         }
 
-        if (!isset($this->commentserver)) {
+        if (! isset($this->commentserver)) {
             $this->commentserver = $this->server;
-        }
-
-        $this->content = trim($content);
-        $hash = hash('sha256', $this->content);
-
-        if ($this->contenthash !== $hash) {
-            $this->contentcleaned = requestAPI('purifyhtml', 2, ['content' => $this->content]);
-            $this->contenthash = $hash;
         }
 
         // We fill empty aid
@@ -472,7 +619,7 @@ class Post extends Model
 
         // We check if this is a reply
         if ($entry->entry->{'in-reply-to'}) {
-            $href = (string)$entry->entry->{'in-reply-to'}->attributes()->href;
+            $href = (string) $entry->entry->{'in-reply-to'}->attributes()->href;
             $arr = explode(';', $href);
             $this->replyserver = substr($arr[0], 5, -1);
             $this->replynode = substr($arr[1], 5);
@@ -480,41 +627,47 @@ class Post extends Model
         }
 
         $extra = false;
+
         // We try to extract a picture
-        $xml = \simplexml_load_string('<div>'.$this->contentcleaned.'</div>');
-        if ($xml) {
-            $results = $xml->xpath('//img/@src');
+        try {
+            $dom = HTMLDocument::createFromString(
+                '<div id="movim-root">' . $this->contentcleaned . '</div>',
+                LIBXML_HTML_NOIMPLIED,
+                'UTF-8'
+            );
+            $xpath = new XPath($dom);
 
-            if (is_array($results) && !empty($results)) {
-                $extra = (string)$results[0];
+            $img = $xpath->query('//*[local-name()="img"]/@src')->item(0);
+
+            if ($img) {
+                $extra = $img->nodeValue;
             } else {
-                $results = $xml->xpath('//video/@poster');
-                if (is_array($results) && !empty($results)) {
-                    $extra = (string)$results[0];
+                $poster = $xpath->query('//*[local-name()="video"]/@poster')->item(0);
+                if ($poster) {
+                    $extra = $poster->nodeValue;
                 }
             }
 
-            $results = $xml->xpath('//a');
-            if (is_array($results) && !empty($results)) {
-                foreach ($results as $link) {
-                    $link->addAttribute('target', '_blank');
-                }
+            foreach ($xpath->query('//*[local-name()="a"]') as $link) {
+                $link->setAttribute('target', '_blank');
             }
+        } catch (\Throwable $e) {
         }
 
         $this->like = $this->isLike();
         $this->open = false;
-        $this->setAttachments($entry->entry->link, $extra);
 
         if ($this->isComment()) {
-            $p = \App\Post::where('commentserver', $this->server)
-                          ->where('commentnodeid', substr($this->node, 30))
-                          ->first();
+            $p = Post::where('commentserver', $this->server)
+                ->where('commentnodeid', substr($this->node, 30))
+                ->first();
 
             if ($p) {
                 $this->parent_id = $p->id;
             }
         }
+
+        $this->setAttachments($entry->entry->link, $extra);
     }
 
     private function setAttachments($links, $extra = false)
@@ -522,7 +675,7 @@ class Post extends Model
         $picture = false;
 
         foreach ($links as $attachment) {
-            $enc = (array)$attachment->attributes();
+            $enc = (array) $attachment->attributes();
             $enc = $enc['@attributes'];
 
             $att = new Attachment;
@@ -555,7 +708,7 @@ class Post extends Model
                     }
                     break;
                 case 'alternate':
-                    if (Validator::url()->validate($enc['href'])) {
+                    if (Validator::url()->isValid($enc['href'])) {
                         $this->open = true;
                         $att->category = 'open';
                     }
@@ -563,21 +716,43 @@ class Post extends Model
                 case 'related':
                     $att->category = 'link';
                     $att->logo = (isset($enc['logo'])) ? $enc['logo'] : null;
-
-                    if (preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $enc['href'], $match)) {
-                        $atty = new Attachment;
-                        $atty->rel = $enc['rel'];
-                        $atty->href = 'https://www.youtube.com/embed/' . $match[1];
-                        $atty->category = 'youtube';
-                        $this->attachments[] = $atty;
-                    }
                     break;
+            }
+
+            if (in_array($att->rel, ['enclosure', 'related', 'alternate'])) {
+                $atte = new Attachment;
+                $atte->rel = $att->rel;
+                $atte->category = 'embed';
+
+                // Youtube
+                if (preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $enc['href'], $match)) {
+                    $atte->href = 'https://www.youtube.com/embed/' . $match[1];
+                    $this->attachments[] = $atte;
+                    // RedGif
+                } elseif (preg_match('/(?:https:\/\/)?(?:www.)?redgifs.com\/watch\/([a-zA-Z]+)$/', $enc['href'], $match)) {
+                    $atte->href = 'https://www.redgifs.com/ifr/' . $match[1];
+                    $this->attachments[] = $atte;
+                    $this->resolveUrl($enc['href']);
+                    // PeerTube
+                } elseif (
+                    preg_match('/https:\/\/?(.*)\/w\/(\w{22})/', $enc['href'], $match)
+                    || preg_match('/https:\/\/?(.*)\/videos\/watch\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/', $enc['href'], $match)
+                ) {
+                    $atte->href = 'https://' . $match[1] . '/videos/embed/' . $match[2];
+                    $this->attachments[] = $atte;
+                    // Reddit
+                } elseif (
+                    in_array(parse_url($enc['href'], PHP_URL_HOST), ['old.reddit.com', 'reddit.com', 'www.reddit.com'])
+                    && substr(parse_url($enc['href'], PHP_URL_PATH), 0, 8) == '/gallery'
+                ) {
+                    $this->resolveUrl($enc['href']);
+                }
             }
 
             $this->attachments[] = $att;
 
-            if ((string)$attachment->attributes()->title == 'comments') {
-                $url = parse_url(urldecode((string)$attachment->attributes()->href));
+            if ((string) $attachment->attributes()->title == 'comments') {
+                $url = parse_url(urldecode((string) $attachment->attributes()->href));
 
                 if ($url) {
                     $this->commentserver = $url['path'];
@@ -596,97 +771,167 @@ class Post extends Model
         }
     }
 
+    private function resolveUrl(string $url)
+    {
+        array_push(
+            $this->resolvableAttachments,
+            new Promise(function () use ($url) {
+                \requestResolverWorker($url)->then(function ($extractor) {
+                    try {
+                        $attachment = new Attachment;
+                        $attachment->rel = 'enclosure';
+                        $attachment->href = $extractor->image;
+                        $attachment->type = 'media/jpeg';
+                        $attachment->category = 'picture';
+                        $attachment->post_id = $this->id;
+                        $attachment->save();
+                    } catch (\Throwable $th) {
+                        //
+                    }
+
+                    Wrapper::getInstance()->iterate('post_resolved', (new Packet)->pack($this->id));
+                });
+            })
+        );
+    }
+
     private function healAttachments()
     {
         $enclosures = [];
 
-        foreach (array_filter($this->attachments, fn ($a) => $a->rel == 'enclosure') as $attachment)
-        {
+        foreach (array_filter($this->attachments, fn ($a) => $a->rel == 'enclosure') as $attachment) {
             array_push($enclosures, $attachment->href);
         }
 
-        foreach (array_filter($this->attachments, fn ($a) => $a->rel != 'enclosure') as $key => $attachment)
-        {
+        foreach (array_filter($this->attachments, fn ($a) => $a->rel != 'enclosure') as $key => $attachment) {
             if (in_array($attachment->href, $enclosures)) {
                 unset($this->attachments[$key]);
             }
         }
+
+        // Remove duplicates...
+        foreach ($this->attachments as $key => $attachment) {
+            foreach ($this->attachments as $keyCheck => $attachmentCheck) {
+                if (
+                    $key != $keyCheck
+                    && $attachment->href == $attachmentCheck->href
+                    && $attachment->category == $attachmentCheck->category
+                    && $attachment->rel == $attachmentCheck->rel
+                ) {
+                    unset($this->attachments[$key]);
+                }
+            }
+        }
     }
 
-    public function getUUID()
+    public function getUUID(): string
     {
         if (substr($this->nodeid, 10) == 'urn:uuid:') {
             return $this->nodeid;
         }
 
-        return 'urn:uuid:'.generateUUID($this->nodeid);
+        return 'urn:uuid:' . generateUUID(hash('sha256', $this->server . $this->node . $this->nodeid, true));
     }
 
-    public function getRef()
+    public function getRef(): string
     {
-        return 'xmpp:'.$this->server.'?;node='.$this->node.';item='.$this->nodeid;
+        return 'xmpp:' . $this->server . '?;' .
+            http_build_query([
+                'node' => $this->node,
+                'item' => $this->nodeid,
+            ], arg_separator: ';');
+    }
+
+    public function getLink(?bool $public = false): string
+    {
+        if ($public) {
+            return $this->isMicroblog()
+                ? Route::urlize('blog', [$this->server, $this->nodeid])
+                : Route::urlize('community', [$this->server, $this->node, $this->nodeid]);
+        }
+
+        return Route::urlize('post', [$this->server, $this->node, $this->nodeid]);
     }
 
     // Works only for the microblog posts
-    public function getParent()
+    public function getParent(): ?Post
     {
-        return \App\Post::find($this->parent_id);
+        return Post::find($this->parent_id);
     }
 
-    public function isMine($force = false)
+    public function isMine(?User $me, ?bool $force = false): bool
     {
-        if ($force) {
-            return ($this->aid == \App\User::me()->id);
+        if (! $me) {
+            return false;
         }
 
-        return ($this->aid == \App\User::me()->id
-            || $this->server == \App\User::me()->id);
+        if ($force) {
+            return $this->aid == $me->id;
+        }
+
+        return $this->aid == $me->id
+            || $this->server == $me->id;
     }
 
-    public function isMicroblog()
+    public function isMicroblog(): bool
     {
-        return ($this->node == "urn:xmpp:microblog:0");
+        return $this->node == 'urn:xmpp:microblog:0';
     }
 
-    public function isEditable()
+    public function isEdited(): bool
     {
-        return ($this->contentraw != null || $this->links != null);
+        return $this->published != $this->updated;
     }
 
-    public function isShort()
+    public function isEditable(): bool
     {
-        return (strlen($this->contentcleaned) < 700);
+        return $this->contentraw != null || $this->links != null;
     }
 
-    public function isBrief()
+    public function isShort(): bool
     {
-        return ($this->content == '' && strlen($this->title) < $this->titleLimit);
+        return $this->contentcleaned == null || (strlen($this->contentcleaned) < 700);
     }
 
-    public function isReply()
+    public function isBrief(): bool
+    {
+        return $this->content == null && strlen($this->title) < $this->titleLimit;
+    }
+
+    public function isReply(): bool
     {
         return isset($this->replynodeid);
     }
 
-    public function isLike()
+    public function isLike(): bool
     {
-        return ($this->contentraw == '♥' || $this->title == '♥');
+        return $this->title == '♥';
     }
 
-    public function isRTL()
+    public function isRTL(): bool
     {
-        return (isRTL($this->contentraw ?? '') || isRTL($this->title));
+        return isRTL($this->contentraw ?? '') || isRTL($this->title ?? '');
     }
 
-    public function isComment()
+    public function isStory(): bool
     {
-        return (substr($this->node, 0, 30) == 'urn:xmpp:microblog:0:comments/');
+        return $this->node == Post::STORIES_NODE;
     }
 
-    public function hasCommentsNode()
+    public function isRecentStory(): bool
     {
-        return (isset($this->commentserver)
-             && isset($this->commentnodeid));
+        return Carbon::create($this->published)->isAfter(Carbon::now()->subDay());
+    }
+
+    public function isComment(): bool
+    {
+        return str_starts_with($this->node, Post::COMMENTS_NODE);
+    }
+
+    public function hasCommentsNode(): bool
+    {
+        return isset($this->commentserver)
+            && isset($this->commentnodeid);
     }
 
     public function getSummary()
@@ -695,43 +940,93 @@ class Post extends Model
             return truncate(html_entity_decode($this->title), 140);
         }
 
-        return truncate(stripTags(html_entity_decode($this->contentcleaned)), 140);
+        return truncate(stripTags(html_entity_decode($this->contentcleaned ?? '')), 140);
     }
 
-    public function getTitle()
+    public function getContent(bool $addHashTagLinks = false, bool $public = false): string
     {
-        return (isset($this->title)
-            && strlen($this->title) >= $this->titleLimit)
-            ? __('post.default_title')
-            : $this->title;
-    }
+        if ($this->contentcleaned == null) {
+            return '';
+        }
 
-    public function getContent()
-    {
-        return (strlen($this->title) >= $this->titleLimit)
-            ? nl2br(addUrls(addHashtagsLinks($this->title)))
-            : $this->contentcleaned;
+        $contentCleaned = $this->contentcleaned;
+
+        if ($public == false) {
+            $dom = HTMLDocument::createFromString(
+                '<div id="movim-root">' . $this->contentcleaned . '</div>',
+                LIBXML_HTML_NOIMPLIED,
+                'UTF-8'
+            );
+
+            $xpath = new XPath($dom);
+            foreach ($xpath->query('//*[local-name()="img"]/@src') as $src) {
+                $src->textContent = protectPicture($src->nodeValue);
+            }
+
+            $contentCleaned = '';
+
+            foreach ($dom->getElementById('movim-root')->childNodes as $child) {
+                $contentCleaned .= $dom->saveHTML($child);
+            }
+        }
+
+        return ($addHashTagLinks)
+            ? linkify($contentCleaned, hashtagLinks: true)
+            : $contentCleaned;
     }
 
     public function getReply()
     {
-        if (!$this->replynodeid) {
+        if (! $this->replynodeid) {
             return;
         }
 
-        return \App\Post::where('server', $this->replyserver)
-                        ->where('node', $this->replynode)
-                        ->where('nodeid', $this->replynodeid)
-                        ->first();
+        return Post::where('server', $this->replyserver)
+            ->where('node', $this->replynode)
+            ->where('nodeid', $this->replynodeid)
+            ->first();
     }
 
-    public function isLiked()
+    public function isLiked(User $user)
     {
-        return ($this->likes()->where('aid', \App\User::me()->id)->count() > 0);
+        return $this->likes()->where('aid', $user->id)->count() > 0;
     }
 
     public function isRecycled()
     {
         return false;
+    }
+
+    public function toArray()
+    {
+        $now = Carbon::now();
+
+        return [
+            'server' => $this->attributes['server'],
+            'node' => $this->attributes['node'],
+            'nodeid' => $this->attributes['nodeid'],
+            'aname' => $this->attributes['aname'] ?? null,
+            'aid' => $this->attributes['aid'] ?? null,
+            'aemail' => $this->attributes['aemail'] ?? null,
+            'title' => $this->attributes['title'],
+            'content' => $this->attributes['content'] ?? null,
+            'contentraw' => $this->attributes['contentraw'] ?? null,
+            'contentcleaned' => $this->attributes['contentcleaned'] ?? null,
+            'commentserver' => $this->attributes['commentserver'] ?? null,
+            'commentnodeid' => $this->attributes['commentnodeid'] ?? null,
+            'contenthash' => $this->attributes['contenthash'] ?? null,
+            'parent_id' => $this->attributes['parent_id'] ?? null,
+            'replyserver' => $this->attributes['replyserver'] ?? null,
+            'replynode' => $this->attributes['replynode'] ?? null,
+            'replynodeid' => $this->attributes['replynodeid'] ?? null,
+            'open' => (bool) $this->attributes['open'] ?? false,
+            'nsfw' => $this->attributes['nsfw'] ?? false,
+            'like' => $this->attributes['like'] ?? false,
+            'published' => $this->attributes['published'] ?? null,
+            'updated' => $this->attributes['updated'],
+            'delay' => $this->attributes['delay'] ?? null,
+            'created_at' => $this->attributes['created_at'] ?? $now,
+            'updated_at' => $this->attributes['updated_at'] ?? $now,
+        ];
     }
 }

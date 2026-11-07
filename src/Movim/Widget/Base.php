@@ -1,4 +1,5 @@
 <?php
+
 /*
  * SPDX-FileCopyrightText: 2010 Jaussoin Timothée
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -6,38 +7,53 @@
 
 namespace Movim\Widget;
 
-use Rain\Tpl;
+use App\User;
+use App\Widgets\Dialog\Dialog;
+use App\Widgets\Drawer\Drawer;
+use App\Widgets\Notif\Notif;
+use Illuminate\Database\Capsule\Manager as DB;
+use Illuminate\Support\Carbon;
 use Movim\Controller\Ajax;
+use Movim\Daemon\Linker\CurrentCall;
+use Movim\Route;
+use Movim\RPC;
 use Movim\Template\Partial;
+use Moxl\Xec\Action;
+use Rain\Tpl;
 
 class Base
 {
-    protected $js = [];     // Contains javascripts
-    protected $css = [];    // Contains CSS files
+    protected array $js = [];     // Contains javascripts
+    protected array $css = [];    // Contains CSS files
     protected $ajax;        // Contains ajax client code
-    protected $user;
-    protected $name;
+    protected ?string $name = null;
     protected $view;
-
+    public ?User $me = null;
     protected $_view;
-
-    public $events;
-    public $filters;
+    public $baseUri;
+    public array $events = [];
+    public array $tasks = [];
+    public array $filters = [];
 
     // Meta tags
     public $title;
     public $image;
     public $description;
 
-    public function __construct(bool $light = false, string $view = null)
-    {
+    public function __construct(
+        ?User $user,
+        bool $light = false,
+        ?string $view = null,
+        public ?string $sessionId = null
+    ) {
         if ($view != null) {
             $this->_view = $view;
         }
 
-        $this->user = \App\User::me();
+        $this->me = $user;
+        $this->setName();
         $this->load();
-        $this->name = get_class($this);
+        $this->baseUri = BASE_URI;
 
         // If light loading enabled, we stop here
         if ($light) {
@@ -48,9 +64,9 @@ class Base
             // Put default widget init here.
             $this->ajax = Ajax::getInstance();
 
-            if (!$this->ajax->isRegistered($this->name)) {
+            if (! $this->ajax->isRegistered($this->name)) {
                 // Generating Ajax calls.
-                $refl = new \ReflectionClass($this->name);
+                $refl = new \ReflectionClass('App\\Widgets\\' . $this->name . '\\' . $this->name);
                 $meths = $refl->getMethods();
 
                 foreach ($meths as $method) {
@@ -73,10 +89,10 @@ class Base
             }
 
             $config = [
-                'tpl_dir'       => $this->respath('', true),
-                'cache_dir'     => CACHE_PATH,
-                'tpl_ext'       => 'tpl',
-                'auto_escape'   => true
+                'tpl_dir' => $this->respath('', true),
+                'cache_dir' => CACHE_PATH,
+                'tpl_ext' => 'tpl',
+                'auto_escape' => true,
             ];
 
             // We load the template engine
@@ -91,28 +107,155 @@ class Base
     {
         unset($this->view);
         unset($this->ajax);
-        unset($this->user);
         unset($this->_view);
     }
 
     public function __(...$args)
     {
+        if ($this->sessionId) {
+            $args = func_get_args();
+            $string = array_shift($args);
+
+            return linker($this->sessionId)->locale->translate($string, $args);
+        }
+
         return __(...$args);
     }
 
-    public function ___(...$args)
+    public function xmpp(Action $action)
     {
-        echo call_user_func_array([&$this, '__'], $args);
+        $action->attachSession($this->sessionId);
+        $action->attachUser($this->me);
+
+        return $action;
     }
 
-    public function route(...$args): string
+    public function notif(?string $rpcCall = null, ...$args)
     {
-        return \Movim\Route::urlize(...$args);
+        $notif = new Notif($this->me, sessionId: $this->sessionId);
+
+        if ($rpcCall) {
+            $notif->rpcCall($rpcCall);
+        }
+
+        $notif->append(...$args);
     }
 
-    public function rpc(...$args)
+    public function currentCall(): ?CurrentCall
     {
-        \Movim\RPC::call(...$args);
+        return $this->sessionId
+            ? linker($this->sessionId)?->currentCall
+            : null;
+    }
+
+    /*public function isJidInCall(string $jid): bool
+    {
+        $sessionId = $this->sessionId ?? $this->me->session?->id;
+
+        return linker($sessionId)
+            ? linker($sessionId)->currentCall->isJidInCall($jid)
+            : (bool)requestAPI('jidincall', post: [
+                'sessionid' => $sessionId,
+                'jid' => $jid,
+            ]);
+    }*/
+
+    public function dialog(...$args)
+    {
+        (new Dialog($this->me))->fill(...$args);
+    }
+
+    public function drawer(...$args)
+    {
+        (new Drawer($this->me))->fill(...$args);
+    }
+
+    public function route(...$args): ?string
+    {
+        return Route::urlize(...$args);
+    }
+
+    /**
+     * Return a human-readable date
+     *
+     * @param  timestamp  $string
+     */
+    public function prepareDate(string $datetime = '', ?bool $compact = false, ?bool $hours = true): string
+    {
+        global $language;
+
+        $locale = $this->sessionId ? linker($this->sessionId)->locale->language : $language;
+        $carbon = Carbon::parse($datetime)->locale($locale ?? 'en')->timezone($this->resolveTimezone());
+
+        if ($compact == false) {
+            return $carbon->isoFormat('D MMMM YYYY H:mm');
+        }
+
+        if ($carbon->isToday()) {
+            if ($hours) {
+                return $carbon->isoFormat('H:mm');
+            }
+
+            return $this->__('date.yesterday');
+        }
+
+        if ($carbon->diffInSeconds() > 3600 * 24 * 7) {
+            return $carbon->isoFormat('D MMMM YYYY');
+        }
+
+        return $carbon->diffForHumans();
+    }
+
+    /**
+     * Return a human-readable time
+     *
+     * @param  timestamp  $string
+     */
+    public function prepareTime(string $datetime = ''): string
+    {
+        $time = strtotime($datetime);
+        $time = $time != false ? $time : time();
+        $t = $time + getTimezoneOffset($this->resolveTimezone());
+
+        return gmdate('H:i', $t);
+    }
+
+    private function resolveTimezone(): string
+    {
+        if (defined('SESSION_TIMEZONE')) {
+            return SESSION_TIMEZONE;
+        }
+
+        return $this->sessionId
+            ? linker($this->sessionId)->timezone ?? date_default_timezone_get()
+            : 'UTC';
+    }
+
+    public function toast($title, int $timeout = 3000)
+    {
+        $this->rpc('Toast.send', $title, $timeout);
+    }
+
+    public function database(string $driver): bool
+    {
+        return DB::getDriverName() == $driver;
+    }
+
+    public function emoji(string $id): string
+    {
+        return BASE_URI . 'theme/img/emojis/svg/' . $id . '.svg';
+    }
+
+    public function rpc($funcname, ...$args)
+    {
+        (new RPC(
+            user: $this->me,
+            sessionId: $this->sessionId
+        ))->call($funcname, ...$args);
+    }
+
+    public function boot()
+    {
     }
 
     public function load()
@@ -122,18 +265,9 @@ class Base
     /**
      * Generates the widget's HTML code.
      */
-    public function build(): string
+    public function build(...$params): string
     {
-        return $this->draw();
-    }
-
-    /**
-     * Send an event to the Widgets
-     */
-    public function event(string $key, $data = null)
-    {
-        $widgets = Wrapper::getInstance();
-        $widgets->iterate($key, $data);
+        return $this->draw(...$params);
     }
 
     /**
@@ -145,29 +279,16 @@ class Base
     }
 
     /**
-     * Get the current user
-     */
-    public function getUser()
-    {
-        return $this->user;
-    }
-
-    /*
-     * @desc Preload some sourcecode for the draw method
-     */
-    public function display()
-    {
-    }
-
-    /**
      *  @desc Return the template's HTML code
      */
-    public function draw(): string
+    public function draw(...$params): string
     {
-        $this->display();
+        if (method_exists($this, 'display')) {
+            $this->display(...$params);
+        }
 
-        return (file_exists($this->respath(strtolower($this->name).'.tpl', true)))
-            ? trim($this->view->draw(strtolower($this->name), true))
+        return (file_exists($this->respath(strtolower($this->name) . '.tpl', true)))
+            ? trim((string) $this->view->draw(strtolower($this->name), true))
             : '';
     }
 
@@ -176,8 +297,20 @@ class Base
         return new Partial($this);
     }
 
+    protected function view(string $template, ?array $assign = []): ?string
+    {
+        $view = $this->tpl();
+
+        foreach ($assign as $key => $value) {
+            $view->assign($key, $value);
+        }
+
+        return $view->draw($template);
+    }
+
     /**
      * @brief Returns the path to the specified widget file.
+     *
      * @param file is the file's name to make up the path for.
      * @param fspath is optional, returns the OS path if true, the URL by default.
      */
@@ -188,13 +321,13 @@ class Base
         bool $notime = false
     ): string {
         $folder = ($parent == false)
-            ? get_class($this)
-            : get_parent_class($this);
+            ? (new \ReflectionClass($this))->getShortName()
+            : (new \ReflectionClass($this))->getParentClass()->getShortName();
 
-        $path = 'app/widgets/' . $folder . '/' . $file;
+        $path = 'app/Widgets/' . $folder . '/' . $file;
 
         if ($fspath) {
-            $path = DOCUMENT_ROOT . '/'.$path;
+            $path = DOCUMENT_ROOT . '/' . $path;
         } else {
             $path = urilize($path, $notime);
         }
@@ -236,15 +369,27 @@ class Base
      */
     private function cacheFile(string $filename)
     {
-        $local = WIDGETS_PATH . get_class($this) . '/' . $filename;
-        $cache = PUBLIC_CACHE_PATH . get_class($this) . '_' . $filename;
-        $path = 'cache/' . get_class($this) . '_' . $filename;
+        $this->setName();
 
-        if (!\file_exists($cache)) {
+        $local = DOCUMENT_ROOT . '/app/Widgets/' . $this->name . '/' . $filename;
+        $cache = PUBLIC_CACHE_PATH . $this->name . '_' . $filename;
+        $path = 'cache/' . $this->name . '_' . $filename;
+
+        if (! \file_exists($cache)) {
             \symlink($local, $cache);
         }
 
         return urilize($path);
+    }
+
+    /**
+     * @brief Set the current widget name
+     */
+    private function setName()
+    {
+        if ($this->name == null) {
+            $this->name = (new \ReflectionClass($this))->getShortName();
+        }
     }
 
     /**
@@ -269,24 +414,21 @@ class Base
 
     /**
      * @brief Registers an event handler.
-     * @param $key The event key
-     * @param $method The function to call
-     * @param $filter Only call this function if the session notif_key is good
+     *
+     * @param  $key  The event key
+     * @param  $method  The function to call
+     * @param  $filter  Only call this function if the session notif_key is good
      */
-    protected function registerEvent(string $key, string $method, ?string $filter = null)
+    protected function registerEvent(string $key, string $method, string|array|null $filter = null)
     {
-        if (!is_array($this->events)
-        || !array_key_exists($key, $this->events)) {
+        if (! array_key_exists($key, $this->events)) {
             $this->events[$key] = [$method];
         } else {
             $this->events[$key][] = $method;
         }
 
         if ($filter != null) {
-            if (!is_array($this->filters)) {
-                $this->filters = [];
-            }
-            $this->filters[$key . '_' . $method] = $filter;
+            $this->filters[$key . '_' . $method] = is_string($filter) ? [$filter] : $filter;
         }
     }
 }

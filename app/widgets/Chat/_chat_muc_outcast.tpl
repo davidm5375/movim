@@ -1,1 +1,0 @@
-<i class="material-icons icon red">remove_circle</i> {$c->__('chat.muc_outcast', $message->thread)}

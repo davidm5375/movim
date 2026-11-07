@@ -1,0 +1,530 @@
+#visio {
+    display: block;
+    position: fixed;
+    transition: opacity 0.3s ease-in-out,
+        bottom 0.3s ease-in-out,
+        right 0.3s ease-in-out,
+        width 0.3s ease-in-out,
+        height 0.3s ease-in-out,
+        transform 0.3s ease-in-out;
+    background-color: #111;
+}
+
+#dialog:not(:empty)~#visio,
+#drawer:not(:empty)~#visio {
+    transform: translateX(110%);
+}
+
+#chat_widget #visio {
+    position: relative;
+    bottom: 0;
+    right: 0;
+    border-radius: 0;
+    height: 100%;
+    z-index: 0;
+    overflow: hidden;
+
+    grid-column: start / end;
+    grid-row: header / visio;
+}
+
+#chat_widget.call #visio {
+    grid-row: header / end;
+}
+
+body>#visio:not(:fullscreen) #toggle_dtmf,
+
+#chat_widget #visio #switch_chat,
+#visio:not([data-jid]),
+#visio:not([data-jid]) #toggle_audio,
+#visio #dtmf:not(.hide)~#participants,
+
+body>#visio:not(:fullscreen) #toggle_mode,
+#visio:not([data-muji=true]) #toggle_mode {
+    display: none;
+}
+
+#visio #visio_source {
+    display: none;
+}
+
+#visio #switch_camera:not(.enabled) {
+    display: none;
+}
+
+#visio #dtmf {
+    top: calc(50% - 15rem);
+    position: absolute;
+    width: 100%;
+    text-align: center;
+}
+
+#visio #dtmf p.dtmf {
+    width: 16rem;
+    margin: 0 auto;
+    margin-top: 2rem;
+    text-align: center;
+    position: relative;
+    mask-image: linear-gradient(to left, black calc(100% - 2rem), transparent);
+    height: 2.5rem;
+}
+
+#visio #dtmf p.dtmf span {
+    position: absolute;
+    right: 0;
+    height: 2rem;
+    text-align: center;
+    min-width: 100%;
+}
+
+#visio .infos {
+    color: white;
+    position: absolute;
+    top: calc(50% - 15rem);
+    width: 100%;
+    z-index: -1;
+    text-align: center;
+    transition: opacity 0.5s ease-in-out;
+}
+
+#visio[data-muji='false'] #participants:has(.participant:not(.video_off))~.infos,
+#visio[data-muji='true'] #participants:not(:empty)~.infos,
+#visio #dtmf:not(.hide)~.infos {
+    opacity: 0;
+}
+
+#visio .infos #remote_level {
+    overflow: hidden;
+    border-radius: 100%;
+    width: 15rem;
+    height: 15rem;
+    margin: 0 auto;
+    margin-bottom: 2rem;
+    font-size: 6rem;
+    line-height: 15rem;
+    border: 0.5rem solid transparent;
+}
+
+#visio .infos #remote_level div.avatar img {
+    width: 100%;
+}
+
+#visio .infos p.state {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+/* Minimized */
+
+body>#visio:not(:fullscreen) {
+    bottom: 7rem;
+    right: 1rem;
+    width: 40rem;
+    height: 25rem;
+    border-radius: 1rem;
+    z-index: 3;
+}
+
+body>#visio:not(:fullscreen) #participants:has(.participant:nth-child(2)) .participant,
+body>#visio:not(:fullscreen) #participants:has(.participant:nth-child(5)) .participant,
+body>#visio:not(:fullscreen) #participants .participant.active {
+    height: 92%;
+    flex-basis: 100%;
+}
+
+body>#visio:not(:fullscreen) .participant span.pin,
+body>#visio[data-muji='true']:not(:fullscreen) #participants .participant:not(.active) {
+    display: none;
+}
+
+body>#visio:not(:fullscreen) #visio_contact,
+body>#visio:not(:fullscreen) .participant img.avatar {
+    transform: scale(0.7);
+}
+
+@media screen and (max-width: 800px) {
+
+    #chat_widget #visio:not(:fullscreen) #visio_contact,
+    body>#visio:not(:fullscreen) .participant img.avatar {
+        transform: scale(0.7);
+    }
+
+    body>#visio:not(:fullscreen) #visio {
+        width: 30rem;
+        height: 20rem;
+    }
+}
+
+#visio header {
+    position: absolute;
+    width: 100%;
+    z-index: 1;
+}
+
+#visio header::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 115%;
+    background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#visio header span.control {
+    transition: opacity 0.3s ease-in-out;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#visio.movements header span.control,
+#visio.movements header::before,
+#visio header:hover span.control,
+#visio header:hover::before {
+    opacity: 1;
+    pointer-events: initial;
+}
+
+#visio header ul.list li {
+    justify-content: space-between;
+    padding-right: 0;
+}
+
+#visio header ul.list li span#switch_chat {
+    flex: 0 0 5rem;
+}
+
+#visio header i {
+    text-shadow: 0 0 3rem #333, 0 0 0.5rem #777;
+}
+
+#visio header i#network_condition:before {
+    font-family: 'Material Symbols';
+    color: var(--movim-font);
+    vertical-align: middle;
+}
+
+#visio header i#network_condition.excellent:before {
+    content: '\e202';
+    color: var(--p-green);
+}
+
+#visio header i#network_condition.good:before {
+    content: '\ebe3';
+    color: var(--p-orange);
+}
+
+#visio header i#network_condition.bad:before {
+    content: '\ebdf';
+    color: var(--p-red);
+}
+
+#visio header #no_mic_sound.disabled {
+    display: none;
+}
+
+#visio header #no_mic_sound {
+    animation: fadeIn 0.3s;
+    font-size: 1.5rem;
+    line-height: 2.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: white;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+#visio .button.action {
+    right: calc(50% - 3.5rem);
+    position: absolute;
+}
+
+#visio #participants {
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    align-content: center;
+    padding: 0 1rem;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+#visio .participant {
+    position: relative;
+    aspect-ratio: 4/3;
+    background-color: #222;
+    border-radius: 1rem;
+    overflow: hidden;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    max-height: calc(100% - 2rem);
+    transition: outline 0.3s;
+    outline: 0.25rem solid rgb(255, 255, 255, calc(var(--level) * 0.75));
+    justify-content: center;
+    order: 2;
+}
+
+#visio #participants .participant:only-child {
+    max-height: 96%;
+}
+
+#visio #participants:has(.participant:nth-child(2)) .participant {
+    flex-basis: 48%;
+    flex-grow: 0;
+}
+
+#visio #participants:has(.participant:nth-child(3)):not(.active) .participant {
+    max-height: calc(50% - 2rem);
+}
+
+#visio #participants:has(.participant:nth-child(5)) .participant {
+    flex-basis: 32%;
+}
+
+#visio #participants:has(.participant:nth-child(7)):not(.active) .participant {
+    max-height: calc(33% - 2rem);
+}
+
+@media screen and (max-width: 800px) {
+    #visio #participants:has(.participant:nth-child(5)) .participant {
+        flex-basis: 48%;
+    }
+
+    #visio #participants:has(.participant:nth-child(5)):not(.active) .participant {
+        max-height: calc(25% - 2rem);
+    }
+}
+
+/* Video elements */
+
+#visio .participant video {
+    height: 100%;
+    max-height: 100%;
+    width: auto;
+    object-fit: cover;
+    position: absolute;
+}
+
+#visio .participant video.screen {
+    height: auto;
+}
+
+#visio .participant.screen_off video.screen {
+    opacity: 0;
+}
+
+#visio .participant:not(.screen_off) video:not(.screen) {
+    height: 10%;
+    border-radius: 0.5rem;
+    bottom: 1rem;
+    left: 1rem;
+}
+
+#visio .participant:not(.screen_off) video:not(.screen):hover {
+    height: 30%;
+}
+
+#visio .participant video {
+    transition: opacity 0.5s ease-in-out, outline 0.4s ease 0s, height 0.3s;
+}
+
+#visio .participant.video_off video:not(.screen) {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Avatar */
+
+#visio .participant img.avatar {
+    position: absolute;
+    width: auto;
+    height: 15rem;
+    max-height: 50%;
+    transition: opacity 0.5s ease-in-out;
+    opacity: 0;
+    display: block;
+    align-self: center;
+    border-radius: 100%;
+}
+
+#visio .participant.video_off.screen_off img.avatar {
+    opacity: 1;
+}
+
+/* Status box */
+
+#visio .participant div.status {
+    display: block;
+    background-color: rgba(0, 0, 0, 0.3);
+    bottom: 1rem;
+    position: absolute;
+    line-height: 3.5rem;
+    font-size: 1.75rem;
+    font-weight: bold;
+    padding: 0 1.25rem;
+    border-radius: 1rem;
+    color: white;
+    box-shadow: var(--elevation-1);
+    transition: background-color 0.3s ease-in-out;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+#visio .participant:not(.screen_off) div.status {
+    background-color: var(--p-red);
+}
+
+#visio .participant div.status[data-name]::before {
+    content: attr(data-name);
+    margin-right: 1rem;
+    vertical-align: center;
+}
+
+#visio .participant:not(.audio_off):not(.video_off).screen_off div.status[data-name]::before {
+    margin-right: 0;
+}
+
+#visio .participant div.status span::before,
+#visio .participant div.status span::after {
+    font-family: 'Material Symbols';
+    font-variation-settings: 'FILL' 1;
+    vertical-align: center;
+    margin: 0.5rem;
+}
+
+#visio .participant div.status span.video_off::before {
+    content: '\e04c';
+}
+
+#visio .participant:not(.audio_off) div.status span.audio_off,
+#visio .participant:not(.video_off) div.status span.video_off,
+#visio .participant:not(.pinned) div.status span.pin,
+#visio .participant.screen_off div.status span.screen {
+    display: none;
+}
+
+#visio .participant div.status span.audio_off::before {
+    content: '\e02b';
+}
+
+#visio .participant div.status span.screen::before {
+    font-family: 'sans-serif';
+    content: 'LIVE';
+}
+
+#visio .participant div.status.screen_hd span.screen::after {
+    content: '\e052';
+}
+
+#visio .participant div.status.screen_fhd span.screen::after {
+    content: '\f58b';
+}
+
+/* Pin and audio control buttons */
+
+#visio .participant span.pin,
+#visio .participant span.audio_control,
+#visio .participant div.audio_control_range {
+    display: block;
+    background-color: rgba(0, 0, 0, 0.3);
+    font-size: 2rem;
+    line-height: 3.5rem;
+    padding: 0 1rem;
+    border-radius: 0.5rem;
+    box-shadow: var(--elevation-1);
+    bottom: 1rem;
+    left: 1rem;
+    position: absolute;
+    transition: opacity 0.2s ease-in-out;
+    opacity: 0;
+}
+
+#visio:not([data-muji=true]) .participant span.pin {
+    display: none;
+}
+
+#visio .participant.pinned span.pin,
+#visio .participant:not(.pinned):hover span.pin {
+    opacity: 1;
+}
+
+#visio .participant span.pin:hover,
+#visio .participant span.audio_control:hover {
+    cursor: pointer;
+}
+
+#visio .participant span.pin::before,
+#visio .participant span.audio_control:before {
+    font-family: 'Material Symbols';
+    content: '\e6aa';
+}
+
+#visio .participant span.audio_control:before {
+    content: '\e050';
+}
+
+#visio .participant span.audio_control.middle:before {
+    content: '\e04d';
+}
+
+#visio .participant span.audio_control.low:before {
+    content: '\e04e';
+}
+
+#visio .participant span.audio_control.mute:before {
+    content: '\e04f';
+}
+
+#visio .participant span.pin:hover::before,
+#visio .participant.pinned span.pin::before,
+#visio .participant span.audio_control:before {
+    font-variation-settings: 'FILL' 1;
+}
+
+#visio .participant:hover span.audio_control {
+    opacity: 1;
+}
+
+#visio .participant span.audio_control,
+#visio .participant div.audio_control_range {
+    right: 1rem;
+    left: auto;
+}
+
+#visio .participant div.audio_control_range {
+    bottom: 5.5rem;
+    height: 10rem;
+    padding: 1rem 0;
+    width: 4rem;
+    text-align: center;
+}
+
+#visio .participant div.audio_control_range input[type=range] {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    appearance: slider-vertical;
+    height: 100%;
+}
+
+#visio .participant span.audio_control:hover+div.audio_control_range,
+#visio .participant div.audio_control_range:hover {
+    opacity: 1;
+}
+
+/* Active speaker */
+
+#visio #participants.active:has(.participant:nth-child(2)) .participant.active {
+    height: 80%;
+    width: 100%;
+    order: 1;
+    flex: 1 0 auto;
+}
+
+#visio #participants.active:has(.participant:nth-child(2)) .participant:not(.active) {
+    height: 15%;
+    max-width: 25rem;
+    flex: 1;
+}

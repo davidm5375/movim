@@ -1,7 +1,7 @@
 <?php
 
-use Movim\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Movim\Migration;
 
 class CreatePresencesTable extends Migration
 {
@@ -10,7 +10,7 @@ class CreatePresencesTable extends Migration
         $this->schema->create('presences', function (Blueprint $table) {
             $table->string('session_id', 32);
             $table->string('jid', 64);
-            $table->string('resource', 128)->nullable();
+            $table->string('resource', 128);
             $table->integer('value');
             $table->integer('priority');
             $table->string('status')->nullable();
@@ -25,8 +25,8 @@ class CreatePresencesTable extends Migration
 
             $table->primary(['session_id', 'jid', 'resource']);
             $table->foreign('session_id')
-                  ->references('id')->on('sessions')
-                  ->onDelete('cascade');
+                ->references('id')->on('sessions')
+                ->onDelete('cascade');
         });
     }
 

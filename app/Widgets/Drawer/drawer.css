@@ -1,0 +1,67 @@
+.drawer {
+    position: fixed;
+    z-index: 3;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: calc(100% - 7rem);
+    box-shadow: var(--elevation-5);
+    transition: transform .45s var(--decelerate-easing);
+    display: flex;
+    flex-direction: column;
+    border-radius: 2rem 2rem 0 0;
+}
+
+.drawer.tiny {
+    height: auto;
+}
+
+.drawer>section {
+    height: 100%;
+    overflow-y: auto;
+    position: relative;
+}
+
+.drawer>section form>div:not(:has(ul.list)) {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.drawer:empty {
+    transition: transform 0.45s var(--accelerate-easing);
+    transform: translateY(100%);
+    pointer-events: none;
+    height: auto;
+}
+
+.drawer ul.list li.subheader.sticky {
+    background-color: rgb(var(--movim-background));
+}
+
+@media screen and (min-width: 570px) {
+    .drawer {
+        width: 70rem;
+        left: calc(50% - 35rem);
+    }
+}
+
+@media screen and (max-width: 570px) {
+    .drawer~main, .drawer~nav {
+        transition: transform .25s var(--decelerate-easing);
+    }
+
+    .drawer:not(:empty)~main,
+    .drawer:not(:empty)~nav {
+        transition: transform .25s var(--accelerate-easing);
+        transform: translateY(-2rem);
+    }
+}
+
+
+#drawer ul.list>li.search form div:after {
+    background-color: rgb(var(--movim-background-main));
+}
+
+#drawer ul.list>li.search form div:focus-within:after {
+    background-color: rgba(var(--movim-background-main), 0.8);
+}

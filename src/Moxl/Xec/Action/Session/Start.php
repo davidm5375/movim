@@ -1,0 +1,32 @@
+<?php
+
+namespace Moxl\Xec\Action\Session;
+
+use Moxl\Stanza\Stream;
+use Moxl\Xec\Action;
+
+class Start extends Action
+{
+    protected $_to;
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(Stream::sessionStart(), to: $this->_to, type: 'set');
+    }
+
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        linker($this->sessionId)->authentication->password;
+
+        $session = $this->me->session;
+        $session->active = true;
+        $session->save();
+
+        $message = new \stdClass;
+        $message->started = true;
+        linker($this->sessionId)->writeOut($message);
+
+        $this->deliver();
+    }
+}

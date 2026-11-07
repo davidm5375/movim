@@ -1,0 +1,50 @@
+<?php
+
+namespace Moxl\Xec\Action\Bookmark2;
+
+use App\Conference;
+use Moxl\Stanza\Bookmark2;
+use Moxl\Xec\Action;
+
+class Get extends Action
+{
+    protected $_to;
+    protected $_version = '1';
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(Bookmark2::get($this->_version), type: 'get');
+    }
+
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        $this->me->session
+            ->conferences()
+            ->where('bookmarkversion', (int) $this->_version)
+            ->delete();
+
+        $conferences = [];
+        $conferenceIds = [];
+
+        foreach ($stanza->pubsub->items->item as $item) {
+            if ($item->conference && $item->conference->attributes()->xmlns == 'urn:xmpp:bookmarks:1') {
+                $conference = new Conference;
+                $conference->set($this->me->session, $item);
+                array_push($conferences, $conference->toArray());
+                array_push($conferenceIds, $conference->conference);
+            }
+        }
+
+        // We remove the conferences that might be saved under another bookmark version
+        $this->me->session
+            ->conferences()
+            ->whereIn('conference', $conferenceIds)
+            ->delete();
+
+        Conference::saveMany($conferences);
+
+        $this->pack($this->_version);
+        $this->deliver();
+    }
+}

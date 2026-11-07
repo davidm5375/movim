@@ -1,0 +1,15 @@
+#avatar span.primary {
+    min-width: 10rem;
+    height: 10rem;
+    margin-right: 1rem;
+}
+
+#avatar span.primary i {
+    line-height: 10rem;
+    font-size: 5rem;
+}
+
+form[name=bannerform] img.avatar {
+    max-width: calc(100% - 2rem);
+    margin: 1rem;
+}

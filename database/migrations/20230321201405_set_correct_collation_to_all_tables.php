@@ -16,7 +16,7 @@ class SetCorrectCollationToAllTables extends Migration
                 and table_type="BASE TABLE"
             ') as $convert) {
                 $this->schema->getConnection()->statement($convert->result);
-            };
+            }
 
             $this->enableForeignKeyCheck();
         }
@@ -24,6 +24,5 @@ class SetCorrectCollationToAllTables extends Migration
 
     public function down()
     {
-
     }
 }

@@ -1,0 +1,33 @@
+<?php
+
+namespace Moxl\Xec\Action\Register;
+
+use Moxl\Stanza\Register;
+use Moxl\Xec\Action;
+
+class Remove extends Action
+{
+    protected ?string $_to = null;
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(Register::remove(), to: $this->_to, type: 'set');
+    }
+
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        if ($this->_to == null) {
+            $this->deliver();
+        }
+    }
+
+    public function error(string $errorId, ?string $message = null)
+    {
+        // We don't handle errors for now if we unregister from a specific thing
+        if ($this->_to == null) {
+            $this->pack($message);
+            $this->deliver();
+        }
+    }
+}

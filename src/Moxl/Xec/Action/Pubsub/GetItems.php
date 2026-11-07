@@ -1,0 +1,171 @@
+<?php
+
+namespace Moxl\Xec\Action\Pubsub;
+
+use App\Info;
+use App\Post;
+use Carbon\Carbon;
+use Moxl\Stanza\Avatar;
+use Moxl\Stanza\Pubsub;
+use Moxl\Stanza\PubsubAtom;
+use Moxl\Xec\Action;
+
+class GetItems extends Action
+{
+    protected $_to;
+    protected $_node;
+    protected $_since;
+    protected ?int $_paging;
+    protected ?string $_after = null;
+    protected ?string $_before = null;
+    protected bool $_paginated = false;
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(Pubsub::getItems(
+            $this->_node,
+            $this->_paging,
+            $this->_after,
+            $this->_before
+        ), to: $this->_to, type: 'get');
+    }
+
+    public function setAfter($after)
+    {
+        $this->_after = $after;
+        $this->_paginated = true;
+
+        return $this;
+    }
+
+    public function setBefore($before)
+    {
+        $this->_before = $before;
+        $this->_paginated = true;
+
+        return $this;
+    }
+
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        $ids = [];
+        $updateds = collect();
+        $posts = collect();
+
+        foreach ($stanza->pubsub->items->item as $item) {
+            if (
+                isset($item->entry)
+                && (string) $item->entry->attributes()->xmlns == PubsubAtom::ATOM_NAMESPACE
+            ) {
+                if (
+                    $this->_since == null
+                    || strtotime($this->_since) < strtotime($item->entry->published)
+                ) {
+                    $p = new Post([
+                        'server' => $this->_to,
+                        'node' => $this->_node,
+                        'nodeid' => (string) $item->attributes()->id,
+                    ]);
+                    $p->set($item);
+                    $posts[$p->nodeid] = $p;
+
+                    array_push($ids, $p->nodeid);
+                    $updateds->push(new Carbon($p->updated));
+                }
+            } elseif (
+                isset($item->metadata)
+                && (string) $item->metadata->attributes()->xmlns == Avatar::NODE_METADATA
+                && isset($item->metadata->info->attributes()->url)
+            ) {
+                requestAvatarUrl(
+                    jid: $this->_to,
+                    node: $this->_node,
+                    url: (string) $item->metadata->info->attributes()->url
+                );
+            }
+        }
+
+        /**
+         * Check if the posts have a different contenthash in the DB, filter, and update
+         * those that need to be updated
+         */
+        $postsContentHashes = Post::select('nodeid', 'contenthash')
+            ->where('server', $this->_to)
+            ->where('node', $this->_node)
+            ->whereIn('nodeid', $posts->pluck('nodeid'))
+            ->pluck('contenthash', 'nodeid');
+
+        foreach ($posts as $post) {
+            if ($post->contenthash == $postsContentHashes->get($post->nodeid)) {
+                $posts->forget($post->nodeid);
+            }
+        }
+
+        if ($posts->isNotEmpty()) {
+            Post::where('server', $this->_to)
+                ->where('node', $this->_node)
+                ->whereIn('nodeid', $posts->pluck('nodeid'))
+                ->delete();
+
+            foreach ($posts as $p) {
+                $p->save();
+            }
+        }
+
+        if (
+            $this->_after
+            || ($updateds->isNotEmpty() && $updateds->first()->isBefore($updateds->last()))
+        ) {
+            $ids = array_reverse($ids);
+        }
+
+        $first = $last = $count = null;
+
+        if (
+            $stanza->pubsub->set
+            && $stanza->pubsub->set->attributes()->xmlns == 'http://jabber.org/protocol/rsm'
+        ) {
+            $first = (string) $stanza->pubsub->set->first;
+            $last = (string) $stanza->pubsub->set->last;
+            $count = (int) $stanza->pubsub->set->count;
+
+            $info = Info::where('server', $this->_to)
+                ->where('node', $this->_node)
+                ->first();
+
+            if ($info) {
+                $info->items = $count;
+                $info->save();
+            }
+        }
+
+        $this->pack([
+            'server' => $this->_to,
+            'node' => $this->_node,
+            'ids' => $ids,
+            'first' => ($this->_after) ? $last : $first,
+            'last' => ($this->_after) ? $first : $last,
+            'count' => $count,
+            'paginated' => $this->_paginated,
+            'before' => $this->_before,
+            'after' => $this->_after,
+        ]);
+
+        $this->deliver();
+    }
+
+    public function error(string $errorId, ?string $message = null)
+    {
+        $this->pack(['server' => $this->_to, 'node' => $this->_node]);
+        $this->deliver();
+    }
+
+    public function errorPresenceSubscriptionRequired(string $errorId, ?string $message = null)
+    {
+        $this->pack(['server' => $this->_to, 'node' => $this->_node]);
+        $this->deliver();
+
+        return false; // Don't proparage to the general error() handler
+    }
+}

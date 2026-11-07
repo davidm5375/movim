@@ -1,0 +1,65 @@
+<?php $this->widget('Search');?>
+<?php $this->widget('Upload'); ?>
+<?php $this->widget('Notifications');?>
+<?php $this->widget('SendTo');?>
+<?php if($this->user?->hasOMEMO()) $this->widget('ChatOmemo');?>
+
+<?php $this->widget('PostActions');?>
+
+<nav aria-label="<?php echo __('global.main_menu') ?>" class="on_desktop">
+    <?php $this->widget('Presence');?>
+    <?php $this->widget('Shortcuts');?>
+    <?php $this->widget('SpacesMenu');?>
+    <?php $this->widget('Navigation');?>
+</nav>
+
+<?php $this->widget('BottomNavigation');?>
+
+<main>
+    <button class="button action color" onclick="Search_ajaxRequest(false, true)" title="{$c->__('button.search')}">
+        <i class="material-symbols">search</i>
+    </button>
+    <div class="large">
+        <?php if (!empty($_GET['s']) && $_GET['s'] == 'servers') { ?>
+            <header>
+                <ul class="list middle">
+                    <li>
+                        <span class="primary icon active" onclick="history.back()">
+                            <i class="material-symbols">arrow_back</i>
+                        </span>
+
+                        <?php if (!$this->user->isRestricted()) { ?>
+                            <span class="control icon active divided" onclick="CommunitiesServers_ajaxDiscoverServer()">
+                                <i class="material-symbols">search</i>
+                            </span>
+                        <?php } ?>
+
+                        <div>
+                            <p class="center"><?php echo __('communities.servers'); ?></p>
+                            <p class="center line"><?php echo __('communities.empty_text'); ?></p>
+                        </div>
+                    </li>
+                </ul>
+            </header>
+            <?php $this->widget('CommunitiesInteresting'); ?>
+            <?php $this->widget('CommunitiesServers'); ?>
+        <?php } else { ?>
+            <header>
+                <ul class="list middle">
+                    <li>
+                        <div>
+                            <p class="center"><?php echo __('page.explore'); ?></p>
+                            <p class="center line"><?php echo __('communities.empty_text'); ?></p>
+                        </div>
+                    </li>
+                </ul>
+            </header>
+            <?php $this->widget('CommunitiesTags'); ?>
+            <?php $this->widget('Communities'); ?>
+        <?php } ?>
+    </div>
+</main>
+
+<?php if ($this->user?->hasPubsub() && $this->user?->hasUpload()) { ?>
+    <?php $this->widget('PublishStories');?>
+<?php } ?>

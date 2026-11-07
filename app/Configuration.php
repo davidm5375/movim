@@ -7,10 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Configuration extends Model
 {
     protected $table = 'configuration';
-
     private static $instance = null;
-
     public $fillable = [
+        'chatonly',
         'description',
         'disableregistration',
         'info',
@@ -21,20 +20,23 @@ class Configuration extends Model
         'loglevel',
         'username',
         'password',
-        'twittertoken',
+        'ssrfwhitelist',
         'xmppdomain',
         'xmppdescription',
-        'xmppwhitelist'
+        'xmppwhitelist',
     ];
-
     protected $attributes = [
-        'id'                    => 1,
-        'unregister'            => false,
-        'disableregistration'   => false,
-        'restrictsuggestions'   => false,
-        'loglevel'              => 0,
-        'locale'                => 'en',
-        'xmppwhitelist'         => null
+        'id' => 1,
+        'unregister' => false,
+        'disableregistration' => false,
+        'chatonly' => false,
+        'restrictsuggestions' => false,
+        'loglevel' => 0,
+        'locale' => 'en',
+        'xmppwhitelist' => null,
+        'ssrfwhitelist' => null,
+        'gifapikey' => null,
+        'maxsessions' => 0,
     ];
 
     public static function get()
@@ -44,6 +46,7 @@ class Configuration extends Model
         }
 
         self::$instance = self::findOrNew(1);
+
         return self::$instance;
     }
 
@@ -52,11 +55,18 @@ class Configuration extends Model
         $this->attributes['password'] = password_hash($value, PASSWORD_DEFAULT);
     }
 
-    public function getXmppwhitelistAttribute()
+    public function getXmppwhitelistAttribute(): array
     {
         return (empty($this->attributes['xmppwhitelist']))
             ? []
-            : explode(',', $this->attributes['xmppwhitelist']);
+            : array_map(fn ($domain) => trim($domain), explode(',', $this->attributes['xmppwhitelist']));
+    }
+
+    public function getSsrfwhitelistArrayAttribute(): array
+    {
+        return (empty($this->attributes['ssrfwhitelist']))
+            ? []
+            : array_map(fn ($domain) => trim($domain), explode(',', $this->attributes['ssrfwhitelist']));
     }
 
     public function getXmppwhitelistStringAttribute()

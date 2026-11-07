@@ -1,0 +1,61 @@
+#stories {
+    min-height: 17.5rem;
+}
+
+#stories div.lists {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+#stories div.lists ul.list {
+    grid-template-columns: repeat(1, 1fr);
+    padding-bottom: 0.5rem;
+    height: 14.5rem;
+}
+
+#stories div.lists ul.list:first-child {
+    padding-inline-end: 0;
+}
+
+#stories ul.list.flex li.block {
+    grid-row: 1;
+    grid-column: auto;
+    order: 0;
+    margin-bottom: 0.25rem;
+    animation: none;
+}
+
+#stories ul.list.flex li.block.add {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    background-color: rgba(var(--movim-element-action), 0.2);
+    width: 7rem;
+    transition: transform .3s;
+}
+
+#stories ul.list.flex li.block.add i {
+    font-size: 2.5rem;
+}
+
+#stories ul.list.flex li.block.add:hover {
+    background-color: rgba(var(--movim-element-action), 0.1);
+    transform: scale(0.975);
+}
+
+#stories ul.list.flex li.block.add:active {
+    background-color: rgba(var(--movim-element-action), 0.2);
+    transform: scale(0.95);
+}
+
+#stories ul.list.flex li.block.add>div {
+    margin-top: 0;
+    display: block;
+    text-align: center;
+}
+
+#stories ul.list.flex li.block.seen {
+    order: 1;
+    filter: grayscale(0.5);
+}

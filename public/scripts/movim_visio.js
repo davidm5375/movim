@@ -1,0 +1,530 @@
+var MovimVisio = {
+    id: null,
+
+    calling: false,
+
+    pc: null,
+
+    screenshareSid: null,
+    screenshareSFUPc: null,
+
+    variables: null,
+    services: [],
+
+    participant: null,
+    callStatus: null,
+    screenQualityInterval: null,
+
+    localStream: null,
+    localVideo: null,
+    localAudio: null,
+    screenSharing: null,
+
+    observer: null,
+
+    activeSpeakerIntervalId: null,
+
+    bundleRegex: 'a=group:(\\S+) (.+)',
+    midRegex: 'a=mid:(.+)',
+
+    mouseMovement: null,
+    mouseMovementTimeout: 5000,
+
+    startedAtTimer: null,
+
+    sfu: null,
+
+    load: function () {
+        MovimVisio.participant = document.createElement('div');
+        MovimVisio.participant.classList.add('participant', 'me');
+        MovimVisio.participant.classList.add('screen_off');
+        MovimVisio.participant.classList.add('video_off');
+
+        MovimVisio.screenSharing = document.createElement('video');
+        MovimVisio.screenSharing.classList.add('screen');
+        MovimVisio.screenSharing.autoplay = true;
+        MovimVisio.screenSharing.disablePictureInPicture = true;
+        MovimVisio.screenSharing.poster = BASE_URI + 'theme/img/empty.png';
+        MovimVisio.participant.appendChild(MovimVisio.screenSharing);
+
+        MovimVisio.localVideo = document.createElement('video');
+        MovimVisio.localVideo.autoplay = true;
+        MovimVisio.localVideo.disablePictureInPicture = true;
+        MovimVisio.localVideo.poster = BASE_URI + 'theme/img/empty.png';
+        MovimVisio.localVideo.muted = true;
+        MovimVisio.participant.appendChild(MovimVisio.localVideo);
+
+        MovimVisio.callStatus = document.createElement('div')
+        MovimVisio.callStatus.classList.add('status');
+        MovimVisio.callStatus.dataset.name = MovimVisio.variables.me;
+        MovimVisio.participant.appendChild(this.callStatus);
+
+        var audioOffStatus = document.createElement('span');
+        audioOffStatus.classList.add('audio_off');
+        MovimVisio.callStatus.appendChild(audioOffStatus);
+
+        var videoOffStatus = document.createElement('span');
+        videoOffStatus.classList.add('video_off');
+        MovimVisio.callStatus.appendChild(videoOffStatus);
+
+        var screenStatus = document.createElement('span');
+        screenStatus.classList.add('screen');
+        MovimVisio.callStatus.appendChild(screenStatus);
+
+        MovimVisio.screenQualityInterval = setInterval(() => {
+            MovimVisio.callStatus.classList.remove('screen_hd', 'screen_fhd');
+            if (!MovimVisio.participant.classList.contains('screen_off')) {
+                if (MovimVisio.screenSharing.videoWidth >= 1920) {
+                    MovimVisio.callStatus.classList.add('screen_fhd');
+                } else if (MovimVisio.screenSharing.videoWidth >= 1280) {
+                    MovimVisio.callStatus.classList.add('screen_hd');
+                }
+            }
+        }, 3000);
+
+        if (MovimVisio.variables.avatar_url) {
+            let background = document.createElement('img');
+            background.classList.add('avatar');
+            background.src = MovimVisio.variables.avatar_url;
+            MovimVisio.participant.prepend(background);
+        }
+
+        document.querySelector('#participants').appendChild(MovimVisio.participant);
+
+        MovimVisio.localVideo.addEventListener('loadeddata', () => {
+            MovimVisio.localVideo.play()
+        });
+
+        MovimVisio.localAudio = document.getElementById('local_audio');
+    },
+
+    init: function (fullJid, jid, id, withVideo, isMuji, sfuConference, contactName, contactAvatarUrl) {
+        MovimVisio.id = id;
+
+        // Set a lock for the current browser (in case there's several others opened)
+        localStorage.setItem('callId', id);
+        localStorage.setItem('callJid', jid);
+
+        let visio = document.querySelector('#visio');
+        delete visio.dataset.type;
+        visio.dataset.jid = jid;
+        visio.dataset.muji = isMuji ? 'true' : 'false';
+
+        if (typeof sfuConference == 'string') {
+            visio.dataset.muji = 'true'; // To use the Muji layout... without using Muji
+            visio.dataset.sfu = 'true';
+            visio.dataset.jid = sfuConference;
+
+            Visio_ajaxHttpPrepareInfo(sfuConference, true);
+            MovimVisio.activeSpeakerIntervalId = setInterval(MovimJingles.checkActiveSpeaker, 1000);
+        } else {
+            Visio_ajaxHttpPrepareInfo(jid, isMuji);
+        }
+
+        if (isMuji == true) {
+            MovimVisio.mujiPublish(true);
+            MovimVisio.activeSpeakerIntervalId = setInterval(MovimJingles.checkActiveSpeaker, 1000);
+        } else {
+            MovimJingles.initSession(jid, fullJid, id, contactName, contactAvatarUrl);
+
+            if (MovimVisio.id) {
+                // Called
+                Visio_ajaxProceed(fullJid, MovimVisio.id);
+            } else {
+                // Calling
+                MovimVisio.id = crypto.randomUUID();
+                localStorage.setItem('callId', MovimVisio.id);
+                Visio_ajaxPropose(fullJid, MovimVisio.id, withVideo, (typeof sfuConference == 'string'));
+            }
+        }
+
+        if (typeof sfuConference == 'string') {
+            MovimVisio.sfu = jid;
+
+            let sfuParticipant = visio.querySelector('div.participant[data-jid="' + jid + '"]');
+            if (sfuParticipant) {
+                // Ugly but works for now
+                sfuParticipant.remove();
+            }
+
+            Visio_ajaxUpgradeCurrentCallToSFU(jid, sfuConference);
+        }
+
+        visio.classList.add('movements');
+
+        Notif.setCallStatus(MovimVisio.variables.in_call);
+
+        visio.addEventListener('mousemove', e => {
+            clearTimeout(MovimVisio.mouseMovement);
+            visio.classList.add('movements');
+
+            MovimVisio.mouseMovement = setTimeout(() => {
+                visio.classList.remove('movements');
+            }, MovimVisio.mouseMovementTimeout);
+        })
+
+        if (typeof navigator.mediaDevices.getDisplayMedia == 'undefined') {
+            document.querySelector('#screen_sharing').classList.add('hide');
+        }
+
+        if (MovimVisio.startedAtTimer) {
+            clearInterval(MovimVisio.startedAtTimer);
+        }
+
+        setInterval(VisioUtils.updateStartedAtCounters, 1000);
+
+        Dialog_ajaxClear();
+        Notif.snackbarClear();
+    },
+
+    startScreenshareSFU: function () {
+        if (!MovimVisio.screenSharing.srcObject) return;
+
+        const pc = new RTCPeerConnection({
+            iceServers: MovimVisio.services,
+            bundlePolicy: 'max-bundle',
+            iceCandidatePoolSize: 10
+        });
+
+        MovimVisio.screenshareSid = crypto.randomUUID();
+        MovimVisio.screenshareSFUPc = pc;
+
+        MovimVisio.screenSharing.srcObject.getTracks().forEach(track => {
+            pc.addTrack(track, MovimVisio.screenSharing.srcObject);
+        });
+
+        pc.onicecandidate = event => {
+            if (event.candidate && event.candidate.candidate) {
+                Visio_ajaxCandidate(MovimVisio.sfu, MovimVisio.screenshareSid, event.candidate);
+            }
+        };
+
+        pc.createOffer()
+            .then(offer => pc.setLocalDescription(offer))
+            .then(() => Visio_ajaxSessionInitiate(MovimVisio.sfu, pc.localDescription, MovimVisio.screenshareSid, null))
+            .catch(err => MovimUtils.logError(err));
+    },
+
+    stopScreenshareSFU: function () {
+        if (!MovimVisio.screenshareSFUPc) return;
+
+        Visio_ajaxTerminate(MovimVisio.sfu, MovimVisio.screenshareSid, 'success', false);
+
+        MovimVisio.screenshareSFUPc.close();
+        MovimVisio.screenshareSFUPc = null;
+        MovimVisio.screenshareSid = null;
+    },
+
+    onScreenshareAcceptSDP: function (sdp) {
+        if (!MovimVisio.screenshareSFUPc) return;
+
+        MovimVisio.screenshareSFUPc
+            .setRemoteDescription({ 'sdp': sdp + "\n", 'type': 'answer' })
+            .catch(err => MovimUtils.logError(err));
+    },
+
+    onScreenshareCandidate: function (candidate, mid, mlineindex) {
+        if (!MovimVisio.screenshareSFUPc) return;
+
+        MovimVisio.screenshareSFUPc.addIceCandidate(new RTCIceCandidate({
+            'candidate': candidate.split(/\n/).filter(line => line.startsWith('a=candidate')).join('').substring(2),
+            'sdpMid': mid,
+            'sdpMLineIndex': mlineindex
+        })).catch(error => MovimUtils.logError(error));
+    },
+
+    mujiPublish: function (init) {
+        let pc = new RTCPeerConnection({ 'iceServers': MovimVisio.services });
+
+        /**
+         * Ugly heuristic because it is not possible to match the SDP mids with the tranceiver sender track ids...
+         */
+        let id = 0;
+
+        MovimVisio.localStream.getTracks().forEach(track => {
+            pc.addTrack(track, MovimVisio.localStream);
+            id++;
+        });
+
+        let screenIds = [];
+
+        if (MovimVisio.screenSharing.srcObject) {
+            MovimVisio.screenSharing.srcObject.getTracks().forEach(track => {
+                pc.addTrack(track);
+                screenIds.push(id);
+                id++;
+            });
+        }
+
+        pc.createOffer().then(function (offer) {
+            if (MovimVisio.screenSharing.srcObject) {
+                // XEP-0507: Jingle Content Category
+                newMedias = offer.sdp.split('m=').map(media => {
+                    let mid = media.match(MovimVisio.midRegex);
+                    if (mid != null) {
+                        if (screenIds.includes(parseInt(mid[1]))) {
+                            return media + 'a=content:slides' + "\n";
+                        }
+                    }
+
+                    return media;
+                });
+
+                localDescription = newMedias.join('m=');
+                offer.sdp = localDescription;
+            }
+
+            Visio_ajaxMujiPublish(MovimVisio.id, offer, init);
+            pc.close();
+        });
+    },
+
+    setVariable: function (variables) {
+        MovimVisio.variables = variables;
+    },
+
+    setServices: function (services) {
+        MovimVisio.services = services;
+    },
+
+    getUserMedia: function (withVideo) {
+        MovimVisio.load();
+
+        let lobby = document.querySelector('#visio_lobby');
+
+        if (lobby) {
+            VisioUtils.disableLobbyCallButton();
+        }
+
+        MovimTpl.loadingPage();
+
+        return navigator.mediaDevices.getUserMedia(VisioUtils.getConstraints(withVideo)).then(stream => {
+            MovimTpl.finishedPage();
+
+            MovimVisio.localStream = stream;
+
+            if (lobby) {
+                lobby.classList.add('configure');
+            } else if (MovimVisio.localAudio.srcObject == null) {
+                Visio_ajaxClear();
+                return;
+            }
+
+            stream.getTracks().forEach(track => {
+                if (lobby) {
+                    VisioUtils.enableLobbyCallButton();
+                }
+
+                if (track.kind == 'audio' && MovimVisio.localAudio && MovimVisio.localAudio.srcObject == null /* In case we're just adding the video */) {
+                    MovimVisio.localAudio.srcObject = stream;
+                } else if (withVideo && track.kind === 'video') {
+                    MovimVisio.localVideo.srcObject = stream;
+
+                    // Toggle the video on
+                    MovimVisio.participant.classList.remove('video_off');
+                    document.querySelector('#toggle_video i').innerText = 'videocam';
+
+                    if (lobby) {
+                        let cameraPreview = lobby.querySelector('video#camera_preview');
+                        cameraPreview.addEventListener('loadeddata', () => cameraPreview.play());
+                        cameraPreview.srcObject = stream;
+                        cameraPreview.disablePictureInPicture = true;
+                    }
+
+                }
+            });
+
+            VisioUtils.handleAudio();
+
+            if (lobby) {
+                navigator.mediaDevices.enumerateDevices().then(devices => MovimVisio.gotDevices(withVideo, devices));
+            }
+        }, (e) => {
+            MovimTpl.finishedPage();
+        });
+    },
+
+    gotDevices: function (withVideo, devicesInfo) {
+        microphoneFound = false;
+        cameraFound = false;
+
+        let microphoneSelect = document.querySelector('select[name=default_microphone]');
+        microphoneSelect.onchange = (e) => {
+            localStorage.defaultMicrophone = e.target.value;
+            MovimVisio.getUserMedia(withVideo);
+        };
+        microphoneSelect.innerText = '';
+
+        VisioUtils.handleAudio();
+
+        let cameraSelect = document.querySelector('select[name=default_camera]');
+
+        if (cameraSelect) {
+            cameraSelect.addEventListener('change', e => {
+                localStorage.defaultCamera = e.target.value;
+
+                let cameraPreview = document.querySelector('video#camera_preview');
+
+                if (cameraPreview.srcObject) {
+                    cameraPreview.srcObject.getTracks().forEach(track => track.stop());
+                }
+
+                cameraPreview.srcObject = null;
+
+                MovimVisio.getUserMedia(withVideo);
+            });
+            cameraSelect.innerText = '';
+        }
+
+        for (const deviceInfo of devicesInfo) {
+            if (deviceInfo.kind === 'audioinput') {
+                const option = document.createElement('option');
+                option.value = deviceInfo.deviceId;
+                option.text = deviceInfo.label || `Microphone ${microphoneSelect.length + 1}`;
+
+                if (deviceInfo.deviceId == localStorage.defaultMicrophone) {
+                    option.selected = true;
+                    microphoneFound = true;
+                }
+
+                microphoneSelect.appendChild(option);
+            }
+
+            if (withVideo && deviceInfo.kind === 'videoinput') {
+                const option = document.createElement('option');
+                option.value = deviceInfo.deviceId;
+                option.text = deviceInfo.label || `Camera ${microphoneSelect.length + 1}`;
+
+                if (deviceInfo.deviceId == localStorage.defaultCamera) {
+                    option.selected = true;
+                    cameraFound = true;
+                }
+
+                // Sometimes we can have two devices with the same id
+                if (!cameraSelect.querySelector('option[value="' + deviceInfo.deviceId + '"]')) {
+                    cameraSelect.appendChild(option);
+                }
+            }
+        }
+
+        if (microphoneFound == false) {
+            localStorage.defaultMicrophone = microphoneSelect.value;
+        }
+
+        if (withVideo && cameraFound == false) {
+            localStorage.defaultCamera = cameraSelect.value;
+        }
+    },
+
+    clear: function () {
+        MovimTpl.finishedPage();
+
+        MovimVisio.id = null;
+        MovimVisio.sfu = null;
+
+        Notif.setCallStatus(null);
+
+        clearInterval(MovimVisio.activeSpeakerIntervalId);
+
+        let visio = document.querySelector('#visio');
+        //delete visio.dataset.type;
+        delete visio.dataset.jid;
+        delete visio.dataset.muji;
+        delete visio.dataset.sfu;
+
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+
+        VisioUtils.stopAudio();
+
+        if (MovimVisio.localAudio) {
+            let stream = MovimVisio.localAudio.srcObject;
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+
+            MovimVisio.localAudio.srcObject = null;
+        }
+
+        if (MovimVisio.localVideo) {
+            let stream = MovimVisio.localVideo.srcObject;
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+
+            MovimVisio.localVideo.srcObject = null;
+        }
+
+        if (MovimVisio.localStream) {
+            MovimVisio.localStream.getTracks().forEach(function (track) {
+                track.stop();
+            });
+            MovimVisio.localStream = null;
+        }
+
+        MovimVisio.participant.remove();
+        clearInterval(MovimVisio.screenQualityInterval);
+
+        VisioUtils.disableScreenSharing();
+
+        MovimVisio.localAudio = null;
+        MovimVisio.localVideo = null;
+        MovimVisio.screenSharing = null;
+    },
+
+    moveToChat: function (jid) {
+        if (MovimVisio.observer != null) {
+            MovimVisio.observer.disconnect();
+        }
+
+        // SFU case
+        if (MovimVisio.sfu != null) {
+            let visio = document.querySelector('#visio');
+            jid = visio.dataset.jid;
+        }
+
+        var parts = MovimUtils.urlParts();
+
+        if ((parts.page == 'chat' && parts.params[0] == jid)
+            || (parts.page == 'space' && parts.params[2] == jid)) {
+            const visio = document.getElementById('visio');
+            const body = document.body;
+
+            document.querySelector('#chat_widget header').after(visio);
+            Chat.scrollRestore();
+
+            const callback = (mutationList, observer) => {
+                if (!document.getElementById('visio')) {
+                    document.getElementById('endcommon').before(visio);
+                }
+            };
+
+            MovimVisio.observer = new MutationObserver(callback);
+            MovimVisio.observer.observe(body, { childList: true, subtree: true });
+        }
+
+    },
+
+    callStop: function (id, jid) {
+        localStorage.removeItem('callId');
+        localStorage.removeItem('callJid');
+    }
+}
+
+if (typeof Visio_ajaxHttpGetVariables == 'function') {
+    Visio_ajaxHttpGetVariables();
+}
+
+if (typeof MovimWebsocket != 'undefined') {
+    MovimWebsocket.attach(() => {
+        if (MovimVisio.services.length == 0 && typeof Visio_ajaxResolveServices == 'function') {
+            Visio_ajaxResolveServices();
+            Visio_ajaxCheckStatus(localStorage.getItem('callId'), localStorage.getItem('callJid'));
+        }
+    });
+}

@@ -1,0 +1,1 @@
+<div id="spaceinfo_widget"></div>

@@ -1,0 +1,114 @@
+#snap {
+    top: 0;
+    left: 0;
+    background-color: rgb(var(--movim-background));
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    display: none;
+    animation: fadeIn 0.3s;
+}
+
+#snapclose,
+#snapswitch,
+#snapdraw {
+    width: 5.5rem;
+    height: 5.5rem;
+    line-height: 5.5rem;
+    margin-top: 0.75rem;
+    font-size: 2.5rem;
+    backdrop-filter: blur(1rem);
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+#snap canvas,
+#snap video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    max-width: calc(100% - 8rem);
+    max-height: calc(100% - 8rem);
+    border-radius: 2rem;
+    box-shadow: var(--elevation-3);
+    object-fit: cover;
+}
+
+#snap.upload canvas {
+    animation: zoomOut 0.3s;
+    max-height: calc(100% - 15rem);
+    box-shadow: var(--elevation-5);
+}
+
+#snap.draw canvas {
+    background-color: white;
+}
+
+#snap video {
+    background-image: url(../theme/img/cloud_spinner.svg);
+    background-repeat: no-repeat;
+    background-position: center center;
+    animation: zoom 0.3s;
+}
+
+#snap .bottom_center {
+    width: 100%;
+    position: absolute;
+    bottom: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+#snap .bottom_center > button {
+    position: relative;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    right: 0;
+}
+
+/* States */
+#snap.shoot,
+#snap.upload,
+#snap.wait,
+#snap.draw,
+#snap.init {
+    display: block;
+}
+
+#snap select#snapsource,
+
+#snap.shoot #snapupload,
+#snap.shoot #snapdraw,
+#snap.shoot #snapclose,
+#snap.shoot #snapwait,
+#snap.shoot #snapswitch:not(.enabled),
+#snap.shoot canvas,
+
+#snap.upload #snapshoot,
+#snap.upload #snapwait,
+#snap.upload #snapswitch,
+#snap.upload video,
+
+#snap.wait #snapshoot,
+#snap.wait #snapupload,
+#snap.wait #snapdraw,
+#snap.wait #snapback,
+#snap.wait #snapclose,
+#snap.wait #snapswitch,
+#snap.wait video,
+
+#snap.draw #snapshoot,
+#snap.draw #snapwait,
+#snap.draw #snapclose,
+#snap.draw #snapswitch,
+#snap.draw video,
+
+#snap.init #snapshoot,
+#snap.init #snapupload,
+#snap.init #snapdraw,
+#snap.init #snapclose,
+#snap.init #snapswitch,
+#snap.init canvas,
+#snap.init video {
+    display: none;
+}

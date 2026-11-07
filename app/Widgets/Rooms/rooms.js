@@ -1,0 +1,262 @@
+var Rooms = {
+    default_services: [],
+    refreshMujisInterval: null,
+
+    cleanId: function (input) {
+        if (input.value) {
+            if (input.value.substring(0, 5) == 'xmpp:') {
+                input.value = input.value.substring(5);
+            }
+
+            if (input.value.slice(-5) == '?join') {
+                input.value = input.value.slice(0, -5);
+            }
+        }
+    },
+
+    setDefaultServices: function (services) {
+        Rooms.default_services = services;
+    },
+
+    toggleScroll: function () {
+        var chats = document.querySelector('#chats_widget_header');
+        var rooms = document.querySelector('#rooms');
+
+        if (rooms.dataset.scroll) {
+            chats.scrollIntoView();
+        } else {
+            rooms.scrollIntoView();
+        }
+    },
+
+    scrollToChats: function () {
+        var chats = document.querySelector('#chats_widget_header');
+        var rooms = document.querySelector('#rooms');
+
+        var chatcounter = document.querySelector('#chatcounter i');
+        var bottomchatcounter = document.querySelector('#bottomchatcounter i');
+
+        chats.dataset.scroll = true;
+        delete rooms.dataset.scroll;
+
+        chatcounter.innerHTML = bottomchatcounter.innerHTML = 'chat_bubble';
+    },
+
+    scrollToRooms: function () {
+        var chats = document.querySelector('#chats_widget_header');
+        var rooms = document.querySelector('#rooms');
+
+        var chatcounter = document.querySelector('#chatcounter i');
+        var bottomchatcounter = document.querySelector('#bottomchatcounter i');
+
+        delete chats.dataset.scroll;
+        rooms.dataset.scroll = true;
+
+        chatcounter.innerHTML = bottomchatcounter.innerHTML = 'forum';
+    },
+
+    checkNoConnected: function () {
+        if (
+            !document.querySelector('#rooms ul.list.rooms li.connected')
+            && localStorage.getItem('rooms_all') == 'true'
+            && document.querySelector('#rooms ul.list.rooms')
+        ) {
+            document.querySelector('#rooms ul.list.rooms').classList.add('all');
+        }
+    },
+
+    toggleShowAll: function () {
+        document.querySelector('#rooms ul.list.rooms').classList.toggle('all');
+        localStorage.setItem('rooms_all', document.querySelector('#rooms ul.list.rooms').classList.contains('all'));
+
+        Rooms.displayToggleButton();
+    },
+
+    displayToggleButton: function () {
+        document.querySelectorAll('#rooms span.chip').forEach(chip => {
+            chip.classList.remove('enabled');
+        });
+
+        if (localStorage.getItem('rooms_all') == 'true') {
+            document.querySelector('#rooms span.chip[data-filter=all]')?.classList.add('enabled');
+        } else {
+            document.querySelector('#rooms span.chip[data-filter=connected]')?.classList.add('enabled');
+        }
+    },
+
+    selectGatewayRoom: function (room) {
+        document.querySelector('form[name="rooms_discover"] input[name=jid]').value = room;
+        RoomsUtils_ajaxDiscoRoom(room);
+        MovimUtils.addClass('#rooms_discover_add', 'disabled');
+    },
+
+    setJid: function (slugifiedJid) {
+        let input = document.querySelector('form[name=bookmarkmucadd] input[name=jid]');
+
+        if (input && input.value === '') {
+            input.value = slugifiedJid;
+        }
+    },
+
+    suggest: function () {
+        let input = document.querySelector('form[name=bookmarkmucadd] input[name=jid]');
+
+        if (input && input.value != '' && !input.value.includes('@')) {
+            let suggestions = document.querySelector('datalist#suggestions');
+            if (suggestions) {
+                suggestions.textContent = '';
+
+                Rooms.default_services.forEach(function (item) {
+                    var option = document.createElement('option');
+                    option.value = input.value + '@' + item.server;
+                    suggestions.appendChild(option);
+                });
+            }
+        }
+    },
+
+    refresh: function () {
+        Rooms.displayToggleButton();
+
+        var parent = document.querySelector('#rooms').parentElement;
+
+        parent.onscroll = e => {
+            if ((e.target.scrollHeight <= e.target.scrollTop + e.target.offsetHeight + 1)
+                || (e.target.scrollTop + 5 >= document.querySelector('#rooms').offsetTop)) {
+                Rooms.scrollToRooms();
+            } else {
+                Rooms.scrollToChats();
+            }
+        };
+
+        var list = document.querySelector('#rooms ul.list.rooms');
+        var items = document.querySelectorAll('#rooms ul.list.rooms li:not(.subheader)');
+        var i = 0;
+
+        var differentStates = false;
+        list.classList.remove('different_states');
+
+        while (i < items.length) {
+            if (items[i].dataset.jid != null) {
+                items[i].onclick = function (e) {
+                    Chat.getRoom(this.dataset.jid);
+                }
+
+                if (MovimUtils.isMobile()) {
+                    let touchTimer;
+                    let moveX = 0;
+                    let moveY = 0;
+
+                    items[i].ontouchstart = function (event) {
+                        touchTimer = setTimeout(() => {
+                            touchTimer = null;
+
+                            if (moveX == 0 && moveY == 0) {
+                                RoomsUtils_ajaxAdd(this.dataset.jid);
+                            }
+                        }, 500);
+                    }
+
+                    items[i].ontouchmove = function (event) {
+                        moveX += Math.abs(event.targetTouches[0].pageX);
+                        moveY += Math.abs(event.targetTouches[0].pageY);
+                    }
+
+                    items[i].ontouchend = function (event) {
+                        clearTimeout(touchTimer);
+                        moveX = moveY = 0;
+                    }
+                }
+            }
+
+            if (
+                i >= 1
+                && !differentStates
+                && items[i - 1].classList.contains('connected') != items[i].classList.contains('connected')
+            ) {
+                differentStates = true;
+            }
+
+            items[i].classList.remove('active');
+
+            i++;
+        }
+
+        if (differentStates) {
+            list.classList.add('different_states');
+        } else {
+            Rooms.checkNoConnected();
+        }
+    },
+
+    clearRooms: function () {
+        if (rooms = document.querySelector('#rooms ul.list.rooms')) {
+            rooms.innerHTML = '';
+        }
+    },
+
+    setRoom: function (id, html) {
+        var listSelector = '#rooms ul.list.rooms ';
+        var list = document.querySelector(listSelector);
+
+        if (list) {
+            var element = list.querySelector('#' + id);
+
+            if (element) element.remove();
+
+            var rooms = document.querySelectorAll(listSelector + '> li');
+            var i = 0;
+
+            while (i < rooms.length) {
+                if (rooms[i].id > id) {
+                    MovimTpl.prependBefore(listSelector + '#' + rooms[i].id, html);
+                    break;
+                }
+
+                i++;
+            }
+
+            if (i == rooms.length) {
+                MovimTpl.append(listSelector, html);
+            }
+        }
+    },
+
+    clearAllActives: function () {
+        document.querySelectorAll('#rooms ul.list.rooms li:not(.subheader)')
+            .forEach(item => item.classList.remove('active'));
+    },
+
+    setActive: function (jid) {
+        Chats.clearAllActives();
+        Rooms.clearAllActives();
+        MovimUtils.addClass('#rooms ul.list.rooms li[data-jid="' + jid + '"]', 'active');
+    },
+
+    setUnread: function (id, unread) {
+        var element = document.querySelector('#rooms ul.list.rooms #' + id);
+
+        if (element) {
+            if (unread) {
+                element.classList.add('unread');
+            } else {
+                element.classList.remove('unread');
+            }
+        }
+    },
+
+    refreshMujis: function () {
+        // Doesn't refresh the list while we're on it
+        document.querySelectorAll('#rooms li.muji:not(.active)').forEach(room => {
+            Rooms_ajaxRefresh(room.dataset.jid);
+        });
+    }
+}
+
+MovimWebsocket.initiate(() => {
+    clearInterval(Rooms.refreshMujisInterval);
+    Rooms.refreshMujisInterval = setInterval(Rooms.refreshMujis, 15 * 1000);
+
+    Rooms_ajaxHttpGet();
+    Rooms.checkNoConnected();
+});

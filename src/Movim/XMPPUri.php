@@ -1,0 +1,136 @@
+<?php
+
+/*
+ * SPDX-FileCopyrightText: 2024 Jaussoin Timothée
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace Movim;
+
+use App\Post;
+
+class XMPPUri
+{
+    private ?string $type = null;
+    private ?string $category = null;
+    private array $uri = [];
+    private array $params = [];
+
+    public function __construct(string $uri)
+    {
+        $this->uri = parse_url($uri);
+        if ($this->uri && array_key_exists('scheme', $this->uri) && $this->uri['scheme'] == 'xmpp') {
+            if (isset($this->uri['query'])) {
+                if ($this->uri['query'] == 'join') {
+                    $this->type = 'room';
+                    $this->params = [$this->uri['path']];
+                }
+
+                $queryParams = explodeQueryParams($this->uri['query']);
+
+                if (isset($queryParams['node'])) {
+                    if (isset($queryParams['item'])) {
+                        $this->type = 'post';
+                        $this->params = [$this->uri['path'], $queryParams['node'], $queryParams['item']];
+
+                        return;
+                    }
+
+                    $this->category = match ($queryParams['node']) {
+                        Post::STORIES_NODE => 'story',
+                        Post::MICROBLOG_NODE => 'microblog',
+                        default => 'community',
+                    };
+
+                    if ($this->category == 'microblog') {
+                        $this->type = 'contact';
+                        $this->params = [$this->uri['path']];
+                    }
+
+                    if ($this->category == 'community') {
+                        $this->type = 'community';
+                        $this->params = [$this->uri['path'], $queryParams['node']];
+                    }
+                }
+            } elseif (isset($this->uri['host']) && isset($this->uri['user'])) {
+                $this->type = 'contact';
+                $this->params = [$this->uri['user'] . '@' . $this->uri['host']];
+            } else {
+                $this->type = 'contact';
+                $this->params = [$this->uri['path']];
+            }
+        }
+    }
+
+    public function getServer(): ?string
+    {
+        return \in_array($this->type, ['post', 'community']) ? $this->params[0] : null;
+    }
+
+    public function getNode(): ?string
+    {
+        return \in_array($this->type, ['post', 'community']) ? $this->params[1] : null;
+    }
+
+    public function getNodeItemId(): ?string
+    {
+        return \in_array($this->type, ['post', 'community']) ? $this->params[2] : null;
+    }
+
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+
+    public function getCategory(): ?string
+    {
+        return $this->category;
+    }
+
+    public function getRoute(): ?string
+    {
+        switch ($this->type) {
+            case 'room':
+                return Route::urlize(
+                    'chat',
+                    [$this->params[0], 'room']
+                );
+                break;
+
+            case 'post':
+                return Route::urlize(
+                    'post',
+                    $this->params
+                );
+                break;
+
+            case 'contact':
+                return Route::urlize(
+                    'contact',
+                    $this->params
+                );
+                break;
+
+            case 'community':
+                return Route::urlize(
+                    'community',
+                    $this->params
+                );
+                break;
+        }
+
+        return null;
+    }
+
+    public function getPost(): ?Post
+    {
+        if ($this->type != 'post') {
+            return null;
+        }
+
+        return Post::where('server', $this->params[0])
+            ->where('node', $this->params[1])
+            ->where('nodeid', $this->params[2])
+            ->first();
+    }
+}

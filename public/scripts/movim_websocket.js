@@ -4,12 +4,12 @@
  * This file define the websocket behaviour and handle its connection
  */
 
-WebSocket.prototype.unregister = function() {
-    this.send(JSON.stringify({'func' : 'unregister'}));
+WebSocket.prototype.unregister = function () {
+    this.send(JSON.stringify({ 'func': 'unregister' }));
 };
 
-WebSocket.prototype.register = function(host) {
-    this.send(JSON.stringify({'func' : 'register', 'host' : host}));
+WebSocket.prototype.register = function (host) {
+    this.send(JSON.stringify({ 'func': 'register', 'host': host }));
 };
 
 /**
@@ -30,68 +30,81 @@ var MovimWebsocket = {
     attached: [], // Launched when the socket is connected to the daemon
     started: [], // Launched when the linker is started
     registered: [], // Launched when the linker is connected to XMPP
+    reconnectTimeout: null,
     attempts: 1,
     pong: false,
     closed: false,
     statusBar: null,
 
-    launchAttached : function() {
+    launchAttached: function () {
         // We hide the Websocket error
         MovimWebsocket.statusBar.classList.add('hide');
 
-        for(var i = 0; i < MovimWebsocket.attached.length; i++) {
+        for (var i = 0; i < MovimWebsocket.attached.length; i++) {
             MovimWebsocket.attached[i]();
         }
     },
 
-    launchRegistered : function() {
-        for(var i = 0; i < MovimWebsocket.registered.length; i++) {
+    launchRegistered: function () {
+        for (var i = 0; i < MovimWebsocket.registered.length; i++) {
             MovimWebsocket.registered[i]();
         }
     },
 
-    launchStarted : function() {
-        for(var i = 0; i < MovimWebsocket.started.length; i++) {
+    launchStarted: function () {
+        for (var i = 0; i < MovimWebsocket.started.length; i++) {
             MovimWebsocket.started[i]();
         }
     },
 
-    launchInitiated : function() {
-        for(var i = 0; i < MovimWebsocket.initiated.length; i++) {
+    launchInitiated: function () {
+        for (var i = 0; i < MovimWebsocket.initiated.length; i++) {
             MovimWebsocket.initiated[i]();
         }
     },
 
-    init : function() {
+    resolvePushEndpoint: async function () {
+        if (!('serviceWorker' in navigator)) return null;
+
+        const registration = await navigator.serviceWorker.getRegistration(SW_URI);
+        if (!registration || !registration.pushManager) return null;
+
+        const pushSubscription = await registration.pushManager.getSubscription();
+        if (!pushSubscription) return null;
+
+        return pushSubscription.endpoint;
+    },
+
+    init: async function () {
+        var uri = 'ws:' + BASE_URI + 'ws/';
+
         if (window.location.protocol === "https:") {
             var uri = 'wss:' + BASE_URI + 'ws/';
-        } else {
-            var uri = 'ws:' + BASE_URI + 'ws/';
         }
-
-        MovimWebsocket.launchInitiated();
 
         if (this.connection !== null) {
             this.connection.onclose = null;
             this.connection.close();
         }
 
-        var date = new Date();
+        const pushEndpoint = await this.resolvePushEndpoint();
 
-        this.connection = new WebSocket(uri +
-            '?path=' + MovimUtils.urlParts().page +
-            '&offset=' + date.getTimezoneOffset());
+        if (pushEndpoint) {
+            uri += '?push=' + encodeURIComponent(pushEndpoint);
+        }
 
-        this.connection.onopen = function(e) {
+        this.connection = new WebSocket(uri);
+
+        this.connection.onopen = function (e) {
             console.log("Connection established!");
+
             MovimWebsocket.attempts = 1;
+            clearTimeout(MovimWebsocket.reconnectTimeout);
+
             MovimWebsocket.launchAttached();
-            setTimeout(function() {
-                MovimWebsocket.ping();
-            }, 10000);
         };
 
-        this.connection.onmessage = function(e) {
+        this.connection.onmessage = function (e) {
             var obj = JSON.parse(e.data);
 
             if (obj != null) {
@@ -101,7 +114,7 @@ var MovimWebsocket = {
 
                 if (obj.func == 'started') {
                     // If the linker was started but we're not on the login page
-                    if (!['login', 'account', 'accountnext', 'tag', 'about'].includes(MovimUtils.urlParts().page)) {
+                    if (!['login', 'account', 'register', 'tag', 'about', 'community'].includes(MovimUtils.urlParts().page)) {
                         MovimUtils.disconnect();
                     } else {
                         MovimWebsocket.launchStarted();
@@ -120,7 +133,7 @@ var MovimWebsocket = {
             }
         };
 
-        this.connection.onclose = function(e) {
+        this.connection.onclose = function (e) {
             console.log("Connection closed by the server or session closed");
 
             if (e.code == 1008) {
@@ -128,14 +141,14 @@ var MovimWebsocket = {
                 this.closed = true;
                 MovimWebsocket.statusBar.classList.remove('hide', 'connect');
                 MovimWebsocket.connection.close();
-            } if (e.code == 1006) {
+            } else if (e.code == 1006) {
                 MovimWebsocket.reconnect();
             } else if (e.code == 1000) {
                 MovimUtils.disconnect();
             }
         };
 
-        this.connection.onerror = function(e) {
+        this.connection.onerror = function (e) {
             console.log("Connection error!");
 
             // We show the Websocket error
@@ -147,86 +160,66 @@ var MovimWebsocket = {
         };
     },
 
-    send : function(widget, func, params) {
-        if (this.connection.readyState == 1) {
+    send: function (widget, func, params) {
+        if (this.connection && this.connection.readyState == 1) {
             var body = {
-                'w' : widget,
-                'f' : func
+                'w': widget,
+                'f': func
             };
 
             if (params) body.p = params;
             this.connection.send(JSON.stringify(
-                {'func' : 'message', 'b' : body}
+                { 'func': 'message', 'b': body }
             ));
         }
     },
 
-    // A ping/pong system to handle socket errors for buggy browser (Chrome on Linux…)
-    ping : function() {
-        if (this.connection.readyState == 1 && !this.closed) {
-            this.connection.send(
-                JSON.stringify(
-                    {'func' : 'ping'}
-                )
-            );
-
-            setTimeout(function() {
-                if (MovimWebsocket.pong == false) {
-                    MovimWebsocket.connection.onerror();
-                } else {
-                    MovimWebsocket.pong = false;
-                    MovimWebsocket.ping();
-                }
-            }, 10000);
-        }
-    },
-
-    attach : function(func) {
-        if (typeof(func) === "function") {
+    attach: function (func) {
+        if (typeof (func) === "function") {
             this.attached.push(func);
         }
     },
 
-    register : function(func) {
-        if (typeof(func) === "function") {
+    register: function (func) {
+        if (typeof (func) === "function") {
             this.registered.push(func);
         }
     },
 
-    start : function(func) {
-        if (typeof(func) === "function") {
+    start: function (func) {
+        if (typeof (func) === "function") {
             this.started.push(func);
         }
     },
 
-    initiate : function(func) {
-        if (typeof(func) === "function") {
+    initiate: function (func) {
+        if (typeof (func) === "function") {
             this.initiated.push(func);
         }
     },
 
-    clearAttached : function() {
+    clearAttached: function () {
         this.attached = [];
     },
 
-    clearInitiated : function() {
+    clearInitiated: function () {
         this.initiated = [];
     },
 
-    clear: function() {
+    clear: function () {
         this.clearAttached();
         this.clearInitiated();
     },
 
-    unregister : function() {
+    unregister: function () {
         this.connection.unregister();
     },
 
-    reconnect : function() {
+    reconnect: function () {
         var interval = MovimWebsocket.generateInterval();
         console.log("Try to reconnect");
 
-        setTimeout(function () {
+        MovimWebsocket.reconnectTimeout = setTimeout(function () {
             // We've tried to reconnect so increment the attempts by 1
             MovimWebsocket.attempts++;
 
@@ -234,16 +227,16 @@ var MovimWebsocket = {
             MovimWebsocket.statusBar.classList.remove('hide');
             MovimWebsocket.statusBar.classList.add('connect');
 
-            // Connection has closed so try to reconnect every 10 seconds.
+            // Connection has closed so try to reconnect every x seconds.
             MovimWebsocket.init();
         }, interval);
     },
 
-    generateInterval :function() {
+    generateInterval: function () {
         var maxInterval = (Math.pow(2, MovimWebsocket.attempts) - 1) * 1000;
 
-        if (maxInterval > 30*1000) {
-            maxInterval = 30*1000; // If the generated interval is more than 30 seconds, truncate it down to 30 seconds.
+        if (maxInterval > 10 * 1000) {
+            maxInterval = 10 * 1000; // If the generated interval is more than 30 seconds, truncate it down to 30 seconds.
         }
 
         // generate the interval to a random number between 0 and the maxInterval determined from above
@@ -251,18 +244,32 @@ var MovimWebsocket = {
     }
 }
 
-window.onbeforeunload = function() {
+MovimEvents.registerWindow('offline', 'movimwebsocket', () => {
+    console.log('offline');
+    MovimWebsocket.connection.onerror();
+});
+
+MovimEvents.registerWindow('online', 'movimwebsocket', () => {
+    MovimWebsocket.statusBar.classList.remove('hide');
+    MovimWebsocket.statusBar.classList.add('connect');
+
+    MovimWebsocket.launchInitiated();
+    MovimWebsocket.init();
+});
+
+window.onbeforeunload = function () {
     if (MovimWebsocket.connection !== null) {
-        MovimWebsocket.connection.onclose = function () {}; // disable onclose handler first
+        MovimWebsocket.connection.onclose = function () { }; // disable onclose handler first
         MovimWebsocket.connection.close()
     }
 };
 
-// If the Websocket was closed after some innactivity, we try to reconnect
-window.addEventListener('focus', function() {
+// If the Websocket was closed after some inactivity, we try to reconnect
+MovimEvents.registerWindow('focus', 'movimwebsocket', () => {
     if (MovimWebsocket.connection !== null
-     && MovimWebsocket.connection.readyState > 1) {
-         // Show the reconnect state
+        && MovimWebsocket.connection.readyState > 1) {
+
+        // Show the reconnect state
         MovimWebsocket.statusBar.classList.remove('hide');
         MovimWebsocket.statusBar.classList.add('connect');
 
@@ -270,15 +277,8 @@ window.addEventListener('focus', function() {
     }
 });
 
-document.addEventListener("DOMContentLoaded", function(event) {
+MovimEvents.registerWindow('loaded', 'movimwebsocket', () => {
     MovimWebsocket.statusBar = document.getElementById('status_websocket');
-
-    movimAddFocus(function() {
-        if (!MovimWebsocket.statusBar.classList.contains('hide')) {
-            MovimWebsocket.reconnect();
-        }
-    });
-
-    // And we start it
+    MovimWebsocket.launchInitiated();
     MovimWebsocket.init();
 });

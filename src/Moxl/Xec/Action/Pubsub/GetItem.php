@@ -1,0 +1,165 @@
+<?php
+
+namespace Moxl\Xec\Action\Pubsub;
+
+use App\Conference;
+use App\Post;
+use Moxl\Stanza\Avatar;
+use Moxl\Stanza\Pubsub;
+use Moxl\Stanza\PubsubAtom;
+use Moxl\Xec\Action;
+use Psr\Http\Message\ResponseInterface;
+
+class GetItem extends Action
+{
+    protected $_to;
+    protected $_node;
+    protected $_id;
+    protected ?int $_replypostid = null;
+    protected bool $fromPayload = false;
+    protected $_parentid;
+    protected $_messagemid;
+
+    public function request()
+    {
+        $this->store();
+        $this->iq(Pubsub::getItem($this->_node, $this->_id), to: $this->_to, type: 'get');
+    }
+
+    public function fromPayload()
+    {
+        $this->fromPayload = true;
+
+        return $this;
+    }
+
+    public function handle(?\SimpleXMLElement $stanza = null, ?\SimpleXMLElement $parent = null)
+    {
+        if ($stanza->pubsub->items->item) {
+            foreach ($stanza->pubsub->items->item as $item) {
+                if (
+                    isset($item->entry)
+                    && (string) $item->entry->attributes()->xmlns == PubsubAtom::ATOM_NAMESPACE
+                ) {
+                    $p = Post::firstOrNew([
+                        'server' => $this->_to,
+                        'node' => $this->_node,
+                        'nodeid' => $this->_id,
+                    ]);
+                    $p->set($item);
+
+                    if (isset($this->_parentid)) {
+                        $p->parent_id = $this->_parentid;
+                    }
+
+                    if ($p->isComment() && ! isset($p->parent_id)) {
+                        return;
+                    }
+
+                    $p->save();
+
+                    if ($this->_replypostid != null) {
+                        $this->pack($this->_replypostid);
+                        $this->deliver();
+                    } elseif ($p->isStory()) {
+                        $this->pack($p->id);
+                        $this->deliver('story');
+                    } elseif ($p->isComment()) {
+                        $this->pack($p->id);
+                        $this->deliver('post_comment_published');
+                    } else {
+                        $this->pack($p->id);
+                        $this->deliver($this->fromPayload ? 'post' : 'post_refreshed');
+                    }
+
+                    if ($this->_messagemid) {
+                        $message = $this->me->messages()->where('mid', $this->_messagemid)->first();
+
+                        if ($message) {
+                            $message->postid = $p->id;
+                            $message->save();
+
+                            $this->method('messageresolved');
+                            $this->pack($message);
+                            $this->deliver();
+                        }
+                    }
+                } elseif (
+                    isset($item->metadata)
+                    && (string) $item->metadata->attributes()->xmlns == Avatar::NODE_METADATA
+                    && isset($item->metadata->info)
+                    && isset($item->metadata->info->attributes()->url)
+                ) {
+                    requestAvatarUrl(
+                        jid: $this->_to,
+                        node: $this->_node,
+                        url: (string) $item->metadata->info->attributes()->url
+                    )->then(function (ResponseInterface $response) {
+                        $this->method('avatar');
+                        $this->pack([
+                            'server' => $this->_to,
+                            'node' => $this->_node,
+                        ]);
+                        $this->deliver();
+                    });
+                } elseif ($item->conference && $item->conference->attributes()->xmlns == 'urn:xmpp:bookmarks:1') {
+                    // Ensure that we actually have a Space subscription to the node
+                    $subscription = $this->me->subscriptions()
+                        ->spaces()
+                        ->where('server', $this->_to)
+                        ->where('node', $this->_node)
+                        ->first();
+
+                    if ($subscription) {
+                        $conference = new Conference;
+                        $conference->set($this->me->session, item: $item, spaceServer: $this->_to, spaceNode: $this->_node);
+
+                        $subscription->spaceRooms()->where('conference', $conference->conference)->delete();
+
+                        $conference->save();
+
+                        $this->pack([
+                            'server' => $this->_to,
+                            'node' => $this->_node,
+                        ]);
+                        $this->deliver('space_addedroom');
+                    }
+                }
+            }
+            // Don't handle the case if we try to retrieve the avatar
+        } elseif ($this->_id != Avatar::NODE_METADATA) {
+            $pd = new PostDelete($this->me, sessionId: $this->sessionId);
+            $pd->setTo($this->_to)
+                ->setNode($this->_node)
+                ->setId($this->_id);
+
+            $pd->handle();
+        }
+    }
+
+    public function errorItemNotFound(string $errorId, ?string $message = null)
+    {
+        $this->errorServiceUnavailable($errorId, $message);
+    }
+
+    public function errorBadRequest(string $errorId, ?string $message = null)
+    {
+        $this->errorServiceUnavailable($errorId, $message);
+    }
+
+    public function errorPresenceSubscriptionRequired(string $errorId, ?string $message = null)
+    {
+        $this->pack($this->_to);
+        $this->deliver();
+    }
+
+    public function errorServiceUnavailable(string $errorId, ?string $message = null)
+    {
+        $pd = new PostDelete($this->me, sessionId: $this->sessionId);
+        $pd->setTo($this->_to)
+            ->setNode($this->_node)
+            ->setId($this->_id);
+
+        $pd->handle();
+    }
+}

@@ -3,100 +3,134 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use React\Promise\Deferred;
+use React\Promise\Promise;
 use Respect\Validation\Validator;
-use Movim\EmbedLight;
-
-use Embed\Embed;
-use Embed\Http\Crawler;
-use Embed\Http\CurlClient;
-use Movim\EmbedImagesExtractor;
 
 class Url extends Model
 {
-    public function resolve($url)
+    private const HASH_METHOD = 'sha256';
+
+    public static function resolveFromDB(?string $url): ?Url
     {
-        if (Validator::url()->validate($url)) {
-            $hash = hash('sha256', $url);
-            $cached = \App\Url::where('hash', $hash)->first();
+        if (Validator::url()->isValid($url)) {
+            $hash = hash(self::HASH_METHOD, $url);
+            $dbUrl = Url::where('hash', $hash)->first();
 
-            if ($cached) {
-                $this->id = $cached->id;
-                $this->maybeResolveMessageFile($cached->cache);
-                return $cached->cache;
-            } else {
-                $cached = new \App\Url;
-                $cached->hash = $hash;
+            if ($dbUrl) {
+                return $dbUrl;
             }
-
-            $cached->cache = $url;
-            $cached->save();
-
-            $this->id = $cached->id;
-            $this->maybeResolveMessageFile($cached->cache);
-
-            return $cached->cache;
         }
+
+        return null;
     }
 
-    public function maybeResolveMessageFile($cache)
+    public static function resolve(?string $url, ?int $timeout = 10): Promise
     {
-        if ($cache->title == $cache->url
-        && ($cache->type == 'image' || $cache->type == 'video')
+        $defered = new Deferred;
+
+        if (! Validator::url()->isValid($url)) {
+            $defered->reject('Bad URL');
+        }
+
+        if ($dbUrl = self::resolveFromDB($url)) {
+            $defered->resolve($dbUrl);
+        }
+
+        try {
+            requestResolverWorker($url, $timeout)->then(function ($resolved) use ($defered, $url) {
+                $dbUrl = new Url;
+                $dbUrl->author_name = $resolved->authorName;
+                $dbUrl->author_url = $resolved->authorUrl;
+                $dbUrl->content_type = $resolved->contentType;
+                $dbUrl->content_length = $resolved->contentLength ?? 0;
+                $dbUrl->description = $resolved->description;
+                $dbUrl->hash = hash(self::HASH_METHOD, $url);
+                $dbUrl->image = $resolved->image;
+                $dbUrl->provider_icon = $resolved->icon;
+                $dbUrl->provider_name = $resolved->providerName;
+                $dbUrl->provider_url = $resolved->providerUrl;
+                $dbUrl->published_at = $resolved->publishedTime;
+                $dbUrl->title = $resolved->title;
+                $dbUrl->type = $resolved->type;
+                $dbUrl->url = $url;
+
+                $dbUrl->images = $resolved->images;
+                $dbUrl->tags = $resolved->keywords;
+
+                $dbUrl->save();
+
+                $defered->resolve($dbUrl);
+            }, function () use ($defered) {
+                $defered->reject('Timeout');
+            });
+        } catch (\Exception $e) {
+            $defered->reject('Cannot resolve the URL');
+        }
+
+        return $defered->promise();
+    }
+
+    public function setTagsAttribute(array $tags)
+    {
+        $dbTags = [];
+
+        foreach ($tags as $tag) {
+            array_push($dbTags, (string) $tag);
+        }
+
+        $this->attributes['serialized_tags'] = serialize($dbTags);
+    }
+
+    public function getTagsAttribute(): array
+    {
+        return unserialize($this->attributes['serialized_tags']);
+    }
+
+    public function setImagesAttribute(array $images)
+    {
+        $dbImages = [];
+
+        foreach ($images as $image) {
+            $image = is_array($image) ? $image['url'] : $image; // hack
+            if (filter_var($image, FILTER_VALIDATE_URL)) {
+                array_push($dbImages, [
+                    'url' => (string) $image,
+                    'size' => $image == $this->attributes['url']
+                        ? $this->attributes['content_length']
+                        : 0,
+                ]);
+            }
+        }
+
+        $this->attributes['serialized_images'] = serialize($dbImages);
+    }
+
+    public function getImagesAttribute(): array
+    {
+        return unserialize($this->attributes['serialized_images']);
+    }
+
+    public function getMessageFileAttribute(): ?MessageFile
+    {
+        if (
+            $this->type == 'image' || $this->type == 'video'
         ) {
             $name = '';
-            $path = parse_url($cache->url, PHP_URL_PATH);
+            $path = parse_url($this->url, PHP_URL_PATH);
             if ($path) {
                 $name = basename($path);
             }
 
             $file = new MessageFile;
-            $file->name = !empty($name) ? $name : $cache->url;
-            $file->type = $cache->contentType;
-            $file->size = (!empty($cache->images[0]) && array_key_exists('size', $cache->images[0]))
-                ? $cache->images[0]['size']
-                : 20000;
-            $file->uri  = $cache->url;
+            $file->name = $this->title ?? $name;
+            $file->type = $this->content_type;
+            $file->size = count($this->images) > 0 ? $this->content_length : 0;
+            $file->url = $this->url;
 
-            $this->file = $file;
+            return $file;
         }
-    }
 
-    public function getCacheAttribute()
-    {
-        return unserialize(base64_decode($this->attributes['cache']));
-    }
-
-    public function setCacheAttribute($url)
-    {
-        $client = new CurlClient;
-        $client->setSettings([
-            'max_redirs' => 3,               // see CURLOPT_MAXREDIRS
-            'connect_timeout' => 5,          // see CURLOPT_CONNECTTIMEOUT
-            'timeout' => 5,                  // see CURLOPT_TIMEOUT
-            'ssl_verify_host' => 2,          // see CURLOPT_SSL_VERIFYHOST
-            'ssl_verify_peer' => 1,          // see CURLOPT_SSL_VERIFYPEER
-            'follow_location' => true,       // see CURLOPT_FOLLOWLOCATION
-            'user_agent' => DEFAULT_HTTP_USER_AGENT,
-        ]);
-
-        try {
-            $embed = new Embed(new Crawler($client));
-            $configuration = Configuration::get();
-
-            if (!empty($configuration->twittertoken)) {
-                $embed->setSettings([
-                    'twitter:token' => $configuration->twittertoken
-                ]);
-            }
-
-            $embed->getExtractorFactory()->addDetector('images', EmbedImagesExtractor::class);
-            $info = $embed->get($url);
-
-            $embed = new EmbedLight($info);
-
-            $this->attributes['cache'] = base64_encode(serialize($embed));
-        } catch (\Exception $e) {
-            error_log($e->getMessage());
-        }
+        return null;
     }
 }

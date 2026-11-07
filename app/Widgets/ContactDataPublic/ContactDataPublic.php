@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Widgets\ContactDataPublic;
+
+use App\Contact;
+use App\User;
+use App\Widgets\ContactData\ContactData;
+use App\Widgets\ContactSubscriptions\ContactSubscriptions;
+use Movim\Widget\Base;
+
+class ContactDataPublic extends Base
+{
+    public function prepareCard($contact)
+    {
+        return (new ContactData($this->me, sessionId: $this->sessionId))->prepareCard($contact);
+    }
+
+    public function prepareSubscriptions($jid)
+    {
+        return (new ContactSubscriptions($this->me, sessionId: $this->sessionId))->prepareSubscriptions($jid);
+    }
+
+    public function display()
+    {
+        $jid = $this->get('f');
+
+        $user = User::where('nickname', $jid)->first();
+        if ($user) {
+            $jid = $user->id;
+        }
+
+        $this->view->assign('contact', Contact::firstOrNew(['id' => $jid]));
+        $this->view->assign('jid', $jid);
+    }
+}

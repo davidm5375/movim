@@ -1,0 +1,111 @@
+#upload img.preview_picture {
+    max-height: 35rem;
+    max-width: calc(100% - 2rem);
+    margin: 0 auto;
+    display: block;
+}
+
+#upload img.preview_picture[src] {
+    margin: 1rem auto;
+    border-radius: 0.5rem;
+    margin-top: 0;
+}
+
+#upload img.preview_picture[src] ~ li:not(.file) {
+    display: none;
+}
+
+#upload:not(.encrypted) #encrypted_warning {
+    display: none;
+}
+
+#upload div.drop {
+    width: auto;
+    margin: 0.25rem 1rem;
+    display: block;
+    box-sizing: border-box;
+    border-radius: 1.5rem;
+    min-height: 30rem;
+    background-color: rgba(0, 0, 0, 0.15);
+    border: 0.5rem solid transparent;
+    border-style: dashed;
+    padding: 1rem;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#upload input[type=file] {
+    display: none;
+}
+
+#upload div.drop.dropped {
+    border-color: gray;
+}
+
+#upload li.file {
+    padding: 0;
+}
+
+#upload li.file span.primary {
+    margin-right: 1.5rem;
+}
+
+#upload li.file:not(.preview) span.primary {
+    display: none;
+}
+
+#upload + footer {
+    display: flex;
+}
+
+#upload_progress {
+    float: left;
+    text-align: left;
+    width: 100%;
+    flex: 1;
+    margin-top: 0.25rem;
+}
+
+#upload_progress li span:has(i:empty) {
+    display: none;
+}
+
+#upload_progress li {
+    padding: 0;
+}
+
+#upload_progress div {
+    margin-left: 0;
+}
+
+#upload_progress span.primary {
+    opacity: 0.5;
+}
+
+#upload_progress p {
+    font-size: 1.75rem;
+    opacity: 0.75;
+}
+
+body.dropped:after {
+    content: '';
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    z-index: 3;
+
+    box-sizing: border-box;
+    font-family: 'Material Symbols';
+    content: "\e2c6";
+    font-size: 10rem;
+    text-align: center;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(1rem);
+    background-color: rgba(17, 17, 17, 0.75);
+}

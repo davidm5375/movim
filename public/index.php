@@ -44,10 +44,9 @@ use Movim\Controller\Front;
 use Movim\Widget\Wrapper;
 
 $bootstrap = new Bootstrap;
-$bootstrap->boot();
+$session = $bootstrap->boot();
+$request = new Front($session?->user);
+$request->handle();
 
-$rqst = new Front;
-$rqst->handle();
-
-Wrapper::getInstance(false);
+Wrapper::getInstance();
 Wrapper::destroyInstance();

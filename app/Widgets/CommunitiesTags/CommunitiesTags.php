@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Widgets\CommunitiesTags;
+
+use App\Post;
+use App\Tag;
+use Movim\Widget\Base;
+
+class CommunitiesTags extends Base
+{
+    private function getPosts()
+    {
+        $posts = Post::withoutComments()
+            ->restrictNSFW($this->me)
+            ->restrictUserHost($this->me)
+            ->recents()
+            ->orderBy('posts.published', 'desc');
+
+        if ($this->_view == 'community') {
+            $posts->where('posts.server', $this->get('s'));
+        }
+
+        return $posts->where('open', true);
+    }
+
+    public function display()
+    {
+        $posts = $this->getPosts()->take(20)->get('id');
+
+        $tags = Tag::whereIn('id', function ($query) use ($posts) {
+            $query->select('tag_id')
+                ->fromSub(function ($query) use ($posts) {
+                    $query->selectRaw('tag_id, count(tag_id) as count')
+                        ->from('post_tag')
+                        ->groupBy('tag_id')
+                        ->orderBy('count', 'desc')
+                        ->whereIn('post_id', $posts->pluck('id'));
+                }, 'top');
+        })->take(20)->get();
+
+        $this->view->assign('community', ($this->_view == 'community'));
+        $this->view->assign('tags', $tags);
+    }
+}
